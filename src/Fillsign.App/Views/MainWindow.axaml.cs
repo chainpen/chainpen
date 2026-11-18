@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Fillsign.App.Platform;
+using Fillsign.App.Platform.Signatures;
 using Fillsign.App.ViewModels;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Import;
@@ -18,12 +19,23 @@ namespace Fillsign.App.Views;
 public partial class MainWindow : Window, IEditorHost
 {
     private const string PracticeFormName = "Practice form.pdf";
+    private const double DefaultDialogTop = 160;
     private static readonly FilePickerFileType s_documents = new("PDFs and images")
     {
         Patterns = ["*.pdf", "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp", "*.heic", "*.heif"],
         AppleUniformTypeIdentifiers = ["com.adobe.pdf", "public.image"],
         MimeTypes = ["application/pdf", "image/*"],
     };
+
+    private static readonly FilePickerFileType s_photos = new("Photos and scans")
+    {
+        Patterns = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp", "*.heic", "*.heif"],
+        AppleUniformTypeIdentifiers = ["public.image"],
+        MimeTypes = ["image/*"],
+    };
+
+    // Every window shares one store, so a signature kept in one window shows in the others.
+    private static readonly Lazy<SavedSignatureStore> s_defaultSignatureStore = new(SavedSignatureStore.ForCurrentUser);
 
     private readonly MainWindowViewModel _viewModel;
     // Dialogs show one at a time: each waits for the one before it.
@@ -335,13 +347,31 @@ public partial class MainWindow : Window, IEditorHost
     public async Task ShowMessageAsync(string title, string message) =>
         await ShowDialogAsync(new MessageDialog(title, [message], "Got it"), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
 
-    /// <summary>The signature dialog (Draw, Type, Upload) arrives in Phase 4; until then, say so instead of doing nothing (FR-4.8).</summary>
+    /// <summary>Saved signatures and initials. Tests point this at a temporary folder.</summary>
+    internal static SavedSignatureStore? SignatureStoreOverride { get; set; }
+
+    private static SavedSignatureStore SignatureStore => SignatureStoreOverride ?? s_defaultSignatureStore.Value;
+
+    /// <summary>The signature dialog (FR-3.4, FR-4): choose a saved one or make one, then place it.</summary>
     public async Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync()
     {
-        await ShowMessageAsync(
-            "Signing isn’t available yet",
-            "Drawing, typing or uploading a signature comes in the next part of this build. You can tick, type, add the date and draw on the page now.").ConfigureAwait(true);
-        return null;
+        SavedSignatureStore store = SignatureStore;
+
+        // Reading saved signatures can ask for Keychain or keyring access, so keep it off the UI thread.
+        await Task.Run(store.Load).ConfigureAwait(true);
+        using var viewModel = new SignatureDialogViewModel(store, ChoosePhotoFileAsync, TimeProvider.System);
+        return await ShowDialogAsync(new SignatureDialog(viewModel), _ => viewModel.Result, top: 40).ConfigureAwait(true);
+    }
+
+    private async Task<string?> ChoosePhotoFileAsync()
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose a photo or scan of your signature",
+            AllowMultiple = false,
+            FileTypeFilter = [s_photos, FilePickerFileTypes.All],
+        }).ConfigureAwait(true);
+        return files.Select(file => file.TryGetLocalPath()).OfType<string>().FirstOrDefault();
     }
 
     public void OpenInNewWindow(IReadOnlyList<string> paths)
@@ -351,7 +381,8 @@ public partial class MainWindow : Window, IEditorHost
     }
 
     /// <summary>Shows one dialog at a time over the dimmed window and returns its answer.</summary>
-    private async Task<TResult> ShowDialogAsync<TDialog, TResult>(TDialog dialog, Func<TDialog, Task<TResult>> result)
+    /// <param name="top">Distance from the top of the window; tall dialogs sit higher so they fit.</param>
+    private async Task<TResult> ShowDialogAsync<TDialog, TResult>(TDialog dialog, Func<TDialog, Task<TResult>> result, double top = DefaultDialogTop)
         where TDialog : Control
     {
         Task before = _previousDialog;
@@ -361,6 +392,7 @@ public partial class MainWindow : Window, IEditorHost
         IInputElement? previousFocus = FocusManager?.GetFocusedElement();
         try
         {
+            DialogHost.Margin = new Thickness(0, top, 0, 0);
             DialogHost.Content = dialog;
             DialogLayer.IsVisible = true;
             return await result(dialog).ConfigureAwait(true);

@@ -1,0 +1,358 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Fillsign.App.Controls"
+             xmlns:vm="using:Fillsign.App.ViewModels"
+             x:Class="Fillsign.App.Views.SignatureDialog"
+             x:DataType="vm:SignatureDialogViewModel">
+    <!-- D1–D3, D10, D11: choose a saved signature or make one, then Place. -->
+    <Border Classes="dialog">
+        <Panel>
+            <!-- ===== The form ===== -->
+            <StackPanel IsVisible="{Binding IsForm}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon" BorderThickness="0" Background="Transparent" VerticalAlignment="Top"
+                            Command="{Binding CancelCommand}" AutomationProperties.Name="Close">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Foreground="{DynamicResource TextMuted}" />
+                    </Button>
+                    <TextBlock Classes="heading-dialog" FontSize="20" VerticalAlignment="Center" Text="{Binding Title}" />
+                </DockPanel>
+                <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding FirstTimeHint}"
+                           IsVisible="{Binding !HasSaved}" />
+
+                <!-- Signature or initials is chosen here and only here (INTERACTION-PATTERNS §8). -->
+                <Border Classes="segments" Margin="0,14,0,0" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <RadioButton Classes="segment" GroupName="kind" Content="Signature" IsChecked="{Binding IsSignature}"
+                                     AutomationProperties.Name="Signature" />
+                        <RadioButton Classes="segment" GroupName="kind" Content="Initials" IsChecked="{Binding IsInitials}"
+                                     AutomationProperties.Name="Initials" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Saved ones, most recently used first and preselected, then New (FR-4.6). -->
+                <StackPanel IsVisible="{Binding HasSaved}">
+                    <TextBlock x:Name="ChooseHeading" Margin="0,18,0,8" FontWeight="SemiBold" Text="{Binding ChooseHeading}" />
+                    <ListBox x:Name="OptionList" Classes="options" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}"
+                             AutomationProperties.LabeledBy="{Binding #ChooseHeading}">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel ItemSpacing="10" LineSpacing="10" /></ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SignatureOptionViewModel">
+                                <Panel AutomationProperties.Name="{Binding AccessibleName}">
+                                    <Image Source="{Binding Thumbnail}" MaxWidth="140" MaxHeight="48" Stretch="Uniform"
+                                           IsVisible="{Binding !IsNew}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" IsVisible="{Binding IsNew}">
+                                        <c:StrokeIcon Data="{StaticResource IconPlus}" Foreground="{DynamicResource Accent}" />
+                                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Text="{Binding NewLabel}" />
+                                    </StackPanel>
+                                </Panel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Classes="muted" FontSize="13" Margin="0,10,0,0" TextWrapping="Wrap" Text="{Binding SavedHint}"
+                               IsVisible="{Binding IsSavedSelected}" />
+                </StackPanel>
+
+                <!-- The chosen saved signature, as it will look. -->
+                <Border IsVisible="{Binding IsSavedSelected}" Margin="0,16,0,0" Padding="20" CornerRadius="{StaticResource RadiusLarge}"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource SurfaceSubtle}">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                        <Image Source="{Binding SelectedSaved.Thumbnail, FallbackValue={x:Null}}" MaxWidth="260" MaxHeight="72" Stretch="Uniform"
+                               AutomationProperties.Name="{Binding SelectedSaved.AccessibleName, FallbackValue=''}" />
+                        <TextBlock Classes="caption" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                                   Text="{Binding PlaceLabel, StringFormat='After you choose {0}, click where it should go on the page.'}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ===== Making a new one ===== -->
+                <StackPanel IsVisible="{Binding IsCreating}">
+                    <Border Margin="0,16,0,0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderSubtle}">
+                        <StackPanel Orientation="Horizontal" Spacing="20">
+                            <RadioButton Classes="tab" GroupName="method" Content="Draw" IsChecked="{Binding IsDrawTab}" />
+                            <RadioButton Classes="tab" GroupName="method" Content="Type" IsChecked="{Binding IsTypeTab}" />
+                            <RadioButton Classes="tab" GroupName="method" Content="Photo or scan" IsChecked="{Binding IsPhotoTab}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Type: the name first, then ink and style. -->
+                    <StackPanel IsVisible="{Binding IsTypeTab}">
+                        <TextBlock x:Name="TypeLabel" Margin="0,16,0,6" FontWeight="SemiBold" Text="{Binding TypeLabel}" />
+                        <TextBox x:Name="TypedNameBox" Text="{Binding TypedName}" PlaceholderText="{Binding TypePlaceholder}" FontSize="15"
+                                 MaxLength="60" AutomationProperties.LabeledBy="{Binding #TypeLabel}" KeyDown="OnTypedNameKeyDown" />
+                    </StackPanel>
+
+                    <DockPanel Margin="0,14,0,0" IsVisible="{Binding ShowsInk}">
+                        <Button DockPanel.Dock="Right" Classes="small" Content="Clear" Command="{Binding ClearPadCommand}"
+                                IsVisible="{Binding IsDrawTab}" IsEnabled="{Binding HasInk}" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock x:Name="InkLabel" Classes="muted" FontSize="13" VerticalAlignment="Center" Text="Ink" />
+                            <RadioButton Classes="swatch" GroupName="ink" Background="{DynamicResource InkBlack}" IsChecked="{Binding IsBlackInk}"
+                                         AutomationProperties.Name="Black ink" />
+                            <RadioButton Classes="swatch" GroupName="ink" Background="{DynamicResource InkBlue}" IsChecked="{Binding IsBlueInk}"
+                                         AutomationProperties.Name="Blue ink" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- What's needed, shown after Place is pressed too early (FR-4.8). Clears once fixed. -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,10,0,0" IsVisible="{Binding HasError}"
+                                AutomationProperties.LiveSetting="Assertive">
+                        <c:StrokeIcon Data="{StaticResource IconWarningCircle}" Size="16" Foreground="{DynamicResource Danger}" VerticalAlignment="Top" />
+                        <TextBlock x:Name="ErrorText" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Danger}" TextWrapping="Wrap"
+                                   MaxWidth="560" Text="{Binding Error}" />
+                    </StackPanel>
+
+                    <!-- Draw (D1). Initials get a smaller pad (D11). -->
+                    <c:SignaturePad x:Name="Pad" Margin="0,8,0,0" IsVisible="{Binding IsDrawTab}" Classes.initials="{Binding IsInitials}"
+                                    Strokes="{Binding Strokes}" Ink="{Binding Ink}" Hint="{Binding PadHint}" HasError="{Binding HasError}"
+                                    AutomationProperties.Name="Signature pad. Sign with your mouse, trackpad, pen or finger, or use the Type tab." />
+
+                    <!-- Type (D2): three handwriting styles. -->
+                    <StackPanel IsVisible="{Binding IsTypeTab}">
+                        <TextBlock x:Name="StyleLabel" Margin="0,14,0,8" FontWeight="SemiBold" Text="Style" />
+                        <ListBox Classes="options styles" Margin="-5,0" ItemsSource="{Binding StyleOptions}" SelectedItem="{Binding SelectedStyle}"
+                                 AutomationProperties.LabeledBy="{Binding #StyleLabel}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StyleOptionViewModel">
+                                    <TextBlock AutomationProperties.Name="{Binding AccessibleName}" FontFamily="{Binding FontFamily}"
+                                               FontWeight="{Binding FontWeight}" FontSize="{Binding PreviewSize}"
+                                               Foreground="{Binding $parent[UserControl].((vm:SignatureDialogViewModel)DataContext).InkBrush}"
+                                               Text="{Binding $parent[UserControl].((vm:SignatureDialogViewModel)DataContext).TypedPreview}"
+                                               TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+
+                    <!-- Photo or scan (D3). -->
+                    <StackPanel IsVisible="{Binding IsPhotoTab}">
+                        <Button Margin="0,14,0,0" HorizontalAlignment="Stretch" MinHeight="64" Command="{Binding ChoosePhotoCommand}"
+                                IsVisible="{Binding !HasPhoto}">
+                            <StackPanel Classes="content">
+                                <c:StrokeIcon Data="{StaticResource IconImage}" />
+                                <TextBlock Text="Choose a photo or scan…" />
+                            </StackPanel>
+                        </Button>
+                        <Border IsVisible="{Binding HasPhoto}" Margin="0,14,0,0" Padding="12,8" CornerRadius="{StaticResource RadiusLarge}"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Classes="small" Content="Choose another…" Command="{Binding ChoosePhotoCommand}" />
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <c:StrokeIcon Data="{StaticResource IconImage}" />
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding PhotoName}" TextTrimming="CharacterEllipsis" MaxWidth="320" />
+                                    <TextBlock Classes="muted" Text="{Binding PhotoSize, StringFormat='· {0}'}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="14" Margin="0,14,0,0" IsVisible="{Binding HasPhoto}">
+                            <StackPanel Spacing="6">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="Your photo" />
+                                <Border Height="150" CornerRadius="{StaticResource RadiusLarge}" BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}"
+                                        ClipToBounds="True" Padding="8">
+                                    <Image Source="{Binding PhotoOriginal}" Stretch="Uniform" AutomationProperties.Name="Your photo" />
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="6">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="How it will look on the page" />
+                                <Border Height="150" CornerRadius="{StaticResource RadiusLarge}" BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}"
+                                        ClipToBounds="True" Padding="8" Background="{StaticResource Checkerboard}">
+                                    <Image Source="{Binding PhotoResult}" Stretch="Uniform" AutomationProperties.Name="Your signature as it will look on the page" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox Margin="0,14,0,0" IsChecked="{Binding RemoveBackground}" IsVisible="{Binding HasPhoto}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Remove the paper background" />
+                                <TextBlock Classes="muted" FontSize="13" Text="Untick if parts of your signature disappear." />
+                            </StackPanel>
+                        </CheckBox>
+                    </StackPanel>
+
+                    <!-- Keeping is opt-in and never preselected (FR-4.5). -->
+                    <CheckBox Margin="0,14,0,0" IsChecked="{Binding KeepOnComputer}" IsEnabled="{Binding CanKeep}" Content="{Binding KeepLabel}" />
+                    <TextBlock Classes="muted" FontSize="13" Margin="28,2,0,0" TextWrapping="Wrap" Text="{Binding KeepDetail}"
+                               IsVisible="{Binding KeepDetail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+
+                <!-- Problems with a saved one (for example it couldn't be removed). -->
+                <TextBlock Margin="0,12,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Danger}" TextWrapping="Wrap"
+                           Text="{Binding SavedError}" IsVisible="{Binding SavedError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                           AutomationProperties.LiveSetting="Assertive" />
+
+                <Border Margin="0,18,0,0" Padding="0,16,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12">
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                            <Button x:Name="PlaceButton" Classes="primary" Content="{Binding PlaceLabel}" Command="{Binding PlaceCommand}" />
+                        </StackPanel>
+                        <Panel VerticalAlignment="Center">
+                            <Button Classes="link danger" HorizontalAlignment="Left" Content="{Binding RemoveLabel}"
+                                    Command="{Binding AskToRemoveCommand}" IsVisible="{Binding IsSavedSelected}" />
+                            <TextBlock Classes="muted" FontSize="13" Text="The photo stays on this computer."
+                                       IsVisible="{Binding IsPhotoTab}" />
+                        </Panel>
+                    </DockPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ===== D10: removing a saved signature can't be undone, so ask. ===== -->
+            <StackPanel IsVisible="{Binding IsConfirmingRemove}">
+                <TextBlock Classes="heading-dialog" Text="{Binding RemoveTitle}" />
+                <Border Margin="0,14,0,0" Padding="14" CornerRadius="{StaticResource RadiusLarge}" BorderThickness="1"
+                        BorderBrush="{DynamicResource BorderSubtle}">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Image Source="{Binding SelectedSaved.Thumbnail, FallbackValue={x:Null}}" MaxWidth="150" MaxHeight="42" Stretch="Uniform" />
+                        <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding SelectedSaved.Description, FallbackValue=''}" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Classes="muted" Margin="0,14,0,0" TextWrapping="Wrap" LineHeight="21"
+                           Text="It will be removed from this computer and can’t be brought back. Documents you’ve already saved or exported keep it." />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">
+                    <!-- Focus starts on Cancel; Enter never triggers the red button. -->
+                    <Button x:Name="KeepButton" Content="Cancel" Command="{Binding CancelCommand}" />
+                    <Button Classes="danger-fill" Content="{Binding RemoveButtonLabel}" Command="{Binding ConfirmRemoveCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Panel>
+    </Border>
+
+    <UserControl.Resources>
+        <!-- Shows transparency in the photo preview (D3). -->
+        <VisualBrush x:Key="Checkerboard" TileMode="Tile" DestinationRect="0,0,16,16" SourceRect="0,0,16,16" Stretch="None">
+            <VisualBrush.Visual>
+                <Canvas Width="16" Height="16" Background="#ffffff">
+                    <Rectangle Width="8" Height="8" Fill="#eef0f3" />
+                    <Rectangle Canvas.Left="8" Canvas.Top="8" Width="8" Height="8" Fill="#eef0f3" />
+                </Canvas>
+            </VisualBrush.Visual>
+        </VisualBrush>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- Signature / Initials switch. -->
+        <Style Selector="Border.segments">
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceSunken}" />
+        </Style>
+        <Style Selector="RadioButton.segment">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Box" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="7"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"
+                                          Foreground="{DynamicResource TextMuted}" FontWeight="Medium" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.segment:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+        </Style>
+        <Style Selector="RadioButton.segment:checked /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource Text}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="RadioButton.segment:focus-visible /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" />
+        </Style>
+
+        <!-- Draw / Type / Photo tabs. -->
+        <Style Selector="RadioButton.tab">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Underline" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="4,0">
+                        <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"
+                                          Foreground="{DynamicResource TextMuted}" FontWeight="Medium" FontSize="14" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.tab:checked /template/ Border#Underline">
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+        </Style>
+        <Style Selector="RadioButton.tab:checked /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="RadioButton.tab:focus-visible /template/ Border#Underline">
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+
+        <!-- Option cards: saved signatures and handwriting styles. -->
+        <Style Selector="ListBox.options">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+        <Style Selector="ListBox.options ListBoxItem">
+            <Setter Property="Width" Value="170" />
+            <Setter Property="Height" Value="76" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ListBox.styles ListBoxItem">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="Height" Value="80" />
+            <Setter Property="Margin" Value="5,0" />
+        </Style>
+        <Style Selector="ListBox.options ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceSubtle}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+        </Style>
+        <Style Selector="ListBox.options ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBox.options ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ChoiceSelected}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="ListBox.options ListBoxItem:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <Style Selector="c|SignaturePad">
+            <Setter Property="Height" Value="190" />
+        </Style>
+        <Style Selector="c|SignaturePad.initials">
+            <Setter Property="Width" Value="360" />
+            <Setter Property="Height" Value="150" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+            <Setter Property="Background" Value="{DynamicResource DangerTint}" />
+        </Style>
+        <Style Selector="Button.danger-fill">
+            <Setter Property="Background" Value="{DynamicResource DangerFill}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DangerFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource OnPrimary}" />
+        </Style>
+        <Style Selector="Button.danger-fill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Danger}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Danger}" />
+            <Setter Property="Foreground" Value="{DynamicResource OnPrimary}" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

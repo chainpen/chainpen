@@ -12,5 +12,8 @@ Fillsign uses the following third-party components. Each is distributed under it
 | CommunityToolkit.Mvvm | MVVM helpers | MIT | https://github.com/CommunityToolkit/dotnet |
 | Noto Sans | Bundled font, embedded as a subset in saved PDFs | SIL Open Font License 1.1 | https://github.com/notofonts |
 | Inter (Avalonia.Fonts.Inter) | Interface font | SIL Open Font License 1.1 | https://github.com/rsms/inter |
+| Caveat | Bundled font for typed signatures | SIL Open Font License 1.1 | https://github.com/googlefonts/caveat |
+| Dancing Script | Bundled font for typed signatures (Reserved Font Name "Dancing Script"; shipped unmodified) | SIL Open Font License 1.1 | https://github.com/googlefonts/DancingScript |
+| Kalam | Bundled font for typed signatures | SIL Open Font License 1.1 | https://github.com/itfoundry/kalam |
 
-Full licence texts for bundled fonts are shipped next to the font files (`OFL.txt`).
+Full licence texts for bundled fonts are shipped next to the font files (`OFL.txt`, and `*-OFL.txt` for the handwriting fonts) and in the app's `Licenses` folder.

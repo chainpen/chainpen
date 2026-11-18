@@ -16,6 +16,14 @@ internal static class UiTest
     internal static void Click(Control root, string content)
     {
         Button button = root.GetVisualDescendants().OfType<Button>().First(b => Equals(b.Content, content));
+
+        // Raising Click runs Click handlers but not a bound Command, so run the command as a real click would.
+        if (button.Command is { } command)
+        {
+            command.Execute(button.CommandParameter);
+            return;
+        }
+
         button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
     }
 

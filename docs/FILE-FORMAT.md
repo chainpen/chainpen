@@ -71,3 +71,43 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
 ## Versioning
 
 `version` changes whenever a reader of the previous version would misread a record. Readers reject versions they don't know, and the file then opens as a normal PDF.
+
+---
+
+# Saved signatures file (version 1)
+
+Signatures and initials the person chose to keep (FR-4.5) live in `signatures.dat` in the app data folder (`~/Library/Application Support/Fillsign`, `%APPDATA%\Fillsign`, `$XDG_CONFIG_HOME/Fillsign`). It never leaves the computer, and it isn't part of any PDF.
+
+Code: `src/Fillsign.App/Platform/Signatures/` (`SavedSignatureStore`, the key vaults).
+
+## Layout
+
+```
+"FSSIG" 0x01      magic and format version (6 bytes)
+mode              0 = plain JSON follows, 1 = encrypted (1 byte)
+mode 1 only:      nonce (12 bytes), tag (16 bytes), ciphertext
+```
+
+- Encryption is AES-256-GCM. The associated data is the 7-byte header, so the mode can't be changed without the tag failing.
+- The 32-byte key lives in the system's secret store: the login Keychain on macOS (generic password, service `Fillsign`, account `Saved signatures key`), a DPAPI-protected `signatures.key` beside the file on Windows, and the Secret Service via `secret-tool` on Linux (attributes `application=fillsign`, `purpose=saved-signatures-key`). Without a secret store (Linux with no keyring), the file is plain.
+- The file is created readable and writable by its owner only, and replaced atomically (written to `.tmp`, then moved).
+
+## Reading
+
+- **Key store locked or refused** (for example Keychain access denied): nothing is shown and the file is left untouched; keeping new signatures is off until the key is available again.
+- **No key can open it** (the tag fails, the key is gone, or the file is damaged): it's renamed `signatures.dat.unreadable` and the person starts with none.
+- A plain file is encrypted the next time it's written, once a secret store is available.
+
+## The JSON
+
+```json
+{
+  "items": [
+    { "id": "<32 hex>", "kind": "signature", "method": "drawn", "png": "<base64>", "pixelWidth": 480, "pixelHeight": 120, "lastUsed": "2026-11-18T02:15:00+00:00" }
+  ]
+}
+```
+
+- `kind` is `signature` or `initials`; `method` is `drawn`, `typed` or `photo`. Records with an unknown value, a bad id or size, or a PNG over 8 MB are skipped.
+- Up to 6 of each kind. Keeping a seventh drops the one with the oldest `lastUsed`, and placing a saved one updates its `lastUsed` (FR-4.6).
+- `id` is also the image id placed items refer to in a working copy, so a placed signature and its saved original share an id. Removing a saved one doesn't touch documents (FR-4.7).

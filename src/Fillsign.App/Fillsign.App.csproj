@@ -21,8 +21,12 @@
   <ItemGroup>
     <!-- The same font files the PDF writer embeds, so the screen and the export use identical glyphs. -->
     <AvaloniaResource Include="..\Fillsign.Pdf\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\Fillsign.Pdf\Fonts\Handwriting\*.ttf" Link="Assets\Fonts\Handwriting\%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\practice-form.pdf" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fillsign.App.Tests" />
   </ItemGroup>
 </Project>
