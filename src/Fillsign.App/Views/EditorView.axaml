@@ -3,6 +3,7 @@
              xmlns:vm="using:Fillsign.App.ViewModels"
              xmlns:c="using:Fillsign.App.Controls"
              xmlns:m="using:Fillsign.Core.Model"
+             xmlns:v="using:Fillsign.App.Views"
              x:Class="Fillsign.App.Views.EditorView"
              x:DataType="vm:EditorViewModel">
     <!-- 🎨 1: document status strip, toolbar, bar under the toolbar, pages + canvas, status bar. -->
@@ -33,6 +34,14 @@
                     <Button Classes="tool icon" Command="{Binding RedoCommand}" AutomationProperties.Name="Redo"
                             ToolTip.Tip="Redo (Mod+Shift+Z)" ToolTip.ShowOnDisabled="True">
                         <c:StrokeIcon Data="{StaticResource IconRedo}" />
+                    </Button>
+                    <Button x:Name="ShortcutsButton" Classes="tool icon" AutomationProperties.Name="Keyboard shortcuts" ToolTip.Tip="Keyboard shortcuts">
+                        <c:StrokeIcon Data="{StaticResource IconKeyboard}" />
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <v:ShortcutsPanel />
+                            </Flyout>
+                        </Button.Flyout>
                     </Button>
                     <Border Classes="separator" />
                     <Button Classes="tool" Click="OnOpen" ToolTip.Tip="Open a PDF or image (Mod+O)" AutomationProperties.Name="Open">
@@ -424,7 +433,7 @@
                         <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
                     </Button>
                     <Button DockPanel.Dock="Right" Classes="small" Margin="12,0" Content="Open final copy instead"
-                            Command="{Binding OpenAsFinalCopyCommand}"
+                            Command="{Binding OpenAsFinalCopyCommand}" IsVisible="{Binding CanOpenAsFinalCopy}"
                             ToolTip.Tip="Shows the pages as recipients see them. Your editable copy stays in the file." />
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
                         <c:StrokeIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource Accent}" />
@@ -628,6 +637,9 @@
                              HorizontalContentAlignment="Center" AutomationProperties.Name="Go to page"
                              Text="{Binding CurrentPageNumber, Mode=OneWay}" KeyDown="OnPageBoxKeyDown" LostFocus="OnPageBoxLostFocus" />
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding Pages.Count, StringFormat='of {0}'}" />
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="·" IsVisible="{Binding HasRecoveryStatus}" />
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding RecoveryStatus}" IsVisible="{Binding HasRecoveryStatus}"
+                               ToolTip.Tip="Unsaved changes are kept here in case Fillsign closes unexpectedly. It isn’t the file." />
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="·" IsVisible="{Binding HasDamagedPages}" />
                     <TextBlock FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource DamagedText}"
                                IsVisible="{Binding HasDamagedPages}" Text="{Binding DamagedStatus}" />

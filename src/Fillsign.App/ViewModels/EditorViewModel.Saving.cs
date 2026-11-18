@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Platform;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Export;
 using Fillsign.Pdf.Import;
@@ -64,6 +65,10 @@ public sealed partial class EditorViewModel
 
     public bool HasRestoredNotice => RestoredNotice is not null;
 
+    /// <summary>"Open final copy instead" is offered after restoring a working copy, not after recovering work.</summary>
+    [ObservableProperty]
+    public partial bool CanOpenAsFinalCopy { get; private set; }
+
     /// <summary>The working copy was changed in another app (D8): what restoring would bring back, until dismissed.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsChangedElsewhere), nameof(ChangedElsewhereDetail), nameof(DocumentStatus))]
@@ -99,6 +104,7 @@ public sealed partial class EditorViewModel
         _savedState = State;
         WorkingCopyPath = Source.Path;
         LastSavedAt = restore.SavedAt;
+        CanOpenAsFinalCopy = Source.Path is not null;
         RestoredNotice = restore.SavedAt is { } saved
             ? $"Your edits from {FormatWhen(saved)} were restored. You can move, change or delete anything you added."
             : "Your edits were restored. You can move, change or delete anything you added.";
@@ -185,6 +191,7 @@ public sealed partial class EditorViewModel
             await SaveAsync().ConfigureAwait(true);
         }
 
+        AppSettings.Update(settings => settings.WithRecent(choice.Path, DateTimeOffset.Now, isFinalCopy: true));
         Exported = new ExportedNotice(Path.GetFileName(choice.Path), Path.GetDirectoryName(choice.Path) ?? string.Empty, choice.Path, final.Pdf.Length);
         if (final.HaveFormsMoved)
         {
@@ -261,6 +268,13 @@ public sealed partial class EditorViewModel
         _savedState = saving;
         WorkingCopyPath = path;
         LastSavedAt = DateTimeOffset.Now;
+        if (!HasUnsavedChanges)
+        {
+            // Saved to the file, so there's nothing left to recover.
+            DiscardRecoveryCopy();
+        }
+
+        AppSettings.Update(settings => settings.WithRecent(path, DateTimeOffset.Now));
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(DocumentStatus));
         if (written.HaveFormsMoved)

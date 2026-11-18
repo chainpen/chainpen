@@ -69,6 +69,42 @@ public partial class EditorView : UserControl
         OrganiseLabel.IsVisible = !isCompact;
     }
 
+    /// <summary>
+    /// F6 (FS-708): moves focus to the next area — toolbar, page list, page, status bar — skipping hidden ones.
+    /// </summary>
+    public void FocusNextArea(bool backwards)
+    {
+        Control?[] areas =
+        [
+            Tools.IsEffectivelyVisible ? Tools.GetVisualDescendants().OfType<Button>().FirstOrDefault(button => button.IsEffectivelyVisible) : EditContentSwitch,
+            OrganiseList.IsEffectivelyVisible ? OrganiseList : PagesPanel.IsEffectivelyVisible ? PageList : null,
+            Scroller.IsEffectivelyVisible ? Scroller : null,
+            PageBox.IsEffectivelyVisible ? PageBox : null,
+        ];
+        Control[] visible = [.. areas.OfType<Control>()];
+        if (visible.Length == 0)
+        {
+            return;
+        }
+
+        IInputElement? focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+        int current = Array.FindIndex(visible, area => focused is Visual visual && (ReferenceEquals(area, visual) || area.IsVisualAncestorOf(visual)));
+        int next = current < 0 ? 0 : (current + (backwards ? visible.Length - 1 : 1)) % visible.Length;
+        Control target = visible[next];
+        if (target is ListBox list)
+        {
+            // Land on the selected or current page, as arrow keys then move from there.
+            int index = list.SelectedIndex >= 0 ? list.SelectedIndex : _editor?.CurrentPageIndex ?? 0;
+            if (list.ContainerFromIndex(index) is Control container)
+            {
+                container.Focus(NavigationMethod.Tab);
+                return;
+            }
+        }
+
+        target.Focus(NavigationMethod.Tab);
+    }
+
     /// <summary>Whether keyboard focus is on the page view (not the toolbar, bar or page list).</summary>
     public bool IsPageFocused(IInputElement? focused) =>
         focused is Visual visual && (ReferenceEquals(visual, Scroller) || Scroller.IsVisualAncestorOf(visual));

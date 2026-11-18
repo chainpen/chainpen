@@ -1,0 +1,109 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Fillsign.App.Controls"
+        xmlns:vm="using:Fillsign.App.ViewModels"
+        x:Class="Fillsign.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Fillsign settings" Width="820" Height="760" MinWidth="560" MinHeight="480"
+        WindowStartupLocation="CenterOwner">
+    <!-- 🎨 7: every change is saved as soon as it's made (FR-10.1). -->
+    <Panel>
+        <ScrollViewer Background="{DynamicResource SurfaceApp}">
+            <StackPanel Margin="32,28" Spacing="16" MaxWidth="760" HorizontalAlignment="Left">
+                <TextBlock Classes="muted" FontSize="13" Text="Changes are saved as soon as you make them." />
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="AppearanceHeading" Classes="heading-section" Text="Appearance" />
+                        <TextBlock Classes="muted" FontSize="13" Text="Match your computer, or choose one. Documents always show as they’ll print." />
+                        <Border Classes="segments" Margin="0,10,0,0" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #AppearanceHeading}">
+                                <RadioButton x:Name="MatchSystem" Classes="segment" GroupName="theme" Content="Match system" IsChecked="{Binding IsMatchSystem}" />
+                                <RadioButton x:Name="Light" Classes="segment" GroupName="theme" Content="Light" IsChecked="{Binding IsLight}" />
+                                <RadioButton x:Name="Dark" Classes="segment" GroupName="theme" Content="Dark" IsChecked="{Binding IsDark}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="heading-section" Text="Saved signatures and initials" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="Stored only on this computer. Removing one doesn’t change documents you’ve already saved." />
+                        <TextBlock Classes="muted" FontSize="13" Margin="0,10,0,0" IsVisible="{Binding !HasSaved}"
+                                   Text="None saved. Tick “Keep … on this computer” when you add one to see it here." />
+                        <TextBlock FontSize="13" Margin="0,10,0,0" Foreground="{DynamicResource Warning}" TextWrapping="Wrap" IsVisible="{Binding AreSignaturesLocked}"
+                                   Text="Saved signatures can’t be opened right now: the system’s keychain didn’t allow it." />
+                        <ItemsControl ItemsSource="{Binding Saved}" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SavedRowViewModel">
+                                    <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}" Padding="0,12">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="Remove…"
+                                                    Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveSignatureCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Description, StringFormat='Remove {0}'}" />
+                                            <Image DockPanel.Dock="Left" Width="150" Height="42" Stretch="Uniform" HorizontalAlignment="Left"
+                                                   Source="{Binding Thumbnail}" Margin="0,0,16,0" />
+                                            <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding Description}" />
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="RecoveryHeading" Classes="heading-section" Text="Recovery copies" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="If Fillsign closes unexpectedly, unsaved changes can be recovered. Copies are kept on this computer for:" />
+                        <DockPanel Margin="0,10,0,0">
+                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="Delete all recovery copies…"
+                                    Command="{Binding DeleteRecoveryCopiesCommand}" />
+                            <Border Classes="segments" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #RecoveryHeading}">
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="1 day" IsChecked="{Binding IsOneDay}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="7 days" IsChecked="{Binding IsSevenDays}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="30 days" IsChecked="{Binding IsThirtyDays}" />
+                                </StackPanel>
+                            </Border>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="heading-section" Text="Crash reports" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="Reports include the app version and what went wrong. They never include your documents, signatures or file names." />
+                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="Send crash reports" IsChecked="{Binding SendCrashReports}" />
+                        <RadioButton GroupName="crash" Content="Don’t send" IsChecked="{Binding DontSendCrashReports}" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock FontSize="13" Foreground="{DynamicResource TextMuted}" Text="{Binding Message}"
+                           AutomationProperties.LiveSetting="Polite" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Confirmations (D10, FR-10.4) show over the window, like the editor's dialogs. -->
+        <Border x:Name="DialogLayer" IsVisible="False" Background="{DynamicResource Overlay}">
+            <ContentControl x:Name="DialogHost" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,140,0,0" />
+        </Border>
+    </Panel>
+
+    <Window.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="24,20" />
+        </Style>
+        <Style Selector="Button.dangerText">
+            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+        </Style>
+    </Window.Styles>
+</Window>

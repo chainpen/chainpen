@@ -8,7 +8,11 @@
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">
     <Panel>
-        <ContentControl x:Name="Host" />
+        <DockPanel>
+            <!-- Windows and Linux show the menus here; on macOS they're in the system menu bar (FS-700). -->
+            <NativeMenuBar DockPanel.Dock="Top" />
+            <ContentControl x:Name="Host" />
+        </DockPanel>
 
         <!-- First-run tips (E1): shown once, not modal. -->
         <Border x:Name="FirstRunTips" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="300,150,0,0"

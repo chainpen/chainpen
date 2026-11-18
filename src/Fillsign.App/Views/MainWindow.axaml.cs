@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
@@ -38,6 +39,8 @@ public partial class MainWindow : Window, IEditorHost
     private static readonly Lazy<SavedSignatureStore> s_defaultSignatureStore = new(SavedSignatureStore.ForCurrentUser);
 
     private readonly MainWindowViewModel _viewModel;
+    // Writes the recovery copy while there are unsaved changes (FS-704).
+    private readonly Avalonia.Threading.DispatcherTimer _autosave = new() { Interval = EditorViewModel.AutosaveInterval };
     // Dialogs show one at a time: each waits for the one before it.
     private Task _previousDialog = Task.CompletedTask;
     private StartView? _startView;
@@ -53,12 +56,37 @@ public partial class MainWindow : Window, IEditorHost
         InitializeComponent();
         _viewModel = new MainWindowViewModel(isFirstLaunch);
         DataContext = _viewModel;
+        BuildMenu();
+        _viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainWindowViewModel.Editor))
+            {
+                UpdateMenuForDocument();
+            }
+        };
         ShowStart();
         AddHandler(DragDrop.DropEvent, OnWindowDrop);
         AddHandler(DragDrop.DragOverEvent, OnWindowDragOver);
         KeyDown += OnKeyDown;
         Closing += OnClosing;
-        Closed += (_, _) => _viewModel.Editor?.Dispose();
+        Closed += (_, _) =>
+        {
+            _autosave.Stop();
+            if (_viewModel.Editor is { } editor)
+            {
+                // Closing normally means the work was saved or deliberately discarded: nothing to recover.
+                editor.DiscardRecoveryCopy();
+                editor.Dispose();
+            }
+        };
+        _autosave.Tick += async (_, _) =>
+        {
+            if (_viewModel.Editor is { } editor)
+            {
+                await editor.AutosaveAsync().ConfigureAwait(true);
+            }
+        };
+        _autosave.Start();
         if (pathsToOpen.Count > 0)
         {
             Opened += async (_, _) => await OpenPathsAsync(pathsToOpen).ConfigureAwait(true);
@@ -95,7 +123,8 @@ public partial class MainWindow : Window, IEditorHost
         await OpenFilesAsync(files).ConfigureAwait(true);
     }
 
-    private async Task OpenFilesAsync(InputFile[] files, bool isPracticeForm = false, bool restoreRecord = true)
+    /// <summary>Opens files in this window and returns the editor, or null when nothing opened.</summary>
+    private async Task<EditorViewModel?> OpenFilesAsync(InputFile[] files, bool isPracticeForm = false, bool restoreRecord = true)
     {
         StartViewModel start = _viewModel.Start;
         start.IsOpening = true;
@@ -106,6 +135,10 @@ public partial class MainWindow : Window, IEditorHost
             var editor = new EditorViewModel(result.Source, this);
             editor.ApplyRestore(result.Restore);
             ReplaceEditor(editor);
+            if (files is [{ Path: { } path }])
+            {
+                AppSettings.Update(settings => settings.WithRecent(path, DateTimeOffset.Now));
+            }
             if (!result.Skipped.IsEmpty)
             {
                 await ShowProblemsAsync(result.Skipped, files.Length - result.Skipped.Length).ConfigureAwait(true);
@@ -115,6 +148,8 @@ public partial class MainWindow : Window, IEditorHost
             {
                 ShowFirstRunTipsOnce();
             }
+
+            return editor;
         }
         catch (DocumentOpenException ex)
         {
@@ -135,6 +170,8 @@ public partial class MainWindow : Window, IEditorHost
         {
             start.IsOpening = false;
         }
+
+        return null;
     }
 
     private async Task ChooseAndOpenAsync()
@@ -153,11 +190,62 @@ public partial class MainWindow : Window, IEditorHost
 
     private void ShowStart()
     {
+        _viewModel.Start.Refresh();
         _startView = new StartView { DataContext = _viewModel.Start };
         _startView.OpenRequested += async (_, _) => await ChooseAndOpenAsync().ConfigureAwait(true);
         _startView.PracticeFormRequested += async (_, _) => await OpenPracticeFormAsync().ConfigureAwait(true);
+        _startView.RecentRequested += async item =>
+        {
+            if (item.Recovery is { } copy)
+            {
+                await RecoverAsync(copy).ConfigureAwait(true);
+            }
+            else if (item.Path is { } path)
+            {
+                await OpenPathsAsync([path]).ConfigureAwait(true);
+            }
+        };
+        _startView.RecoverRequested += async copy => await RecoverAsync(copy).ConfigureAwait(true);
+        _startView.SettingsRequested += (_, _) => ShowSettings();
         Host.Content = _startView;
     }
+
+    /// <summary>Reopens unsaved work from its recovery copy (FR-8.12): every item, unsaved, saving back where it was.</summary>
+    public async Task RecoverAsync(RecoveryCopy copy)
+    {
+        ArgumentNullException.ThrowIfNull(copy);
+        byte[] bytes;
+        try
+        {
+            bytes = RecoveryStore.Read(copy.Id);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowMessageAsync("The changes can’t be recovered", $"The recovery copy couldn’t be read. ({ex.Message})").ConfigureAwait(true);
+            return;
+        }
+
+        if (await OpenFilesAsync([new InputFile(copy.Name, null, bytes)]).ConfigureAwait(true) is { } editor)
+        {
+            editor.MarkRecovered(copy);
+        }
+    }
+
+    /// <summary>Settings (FS-706): one window, brought to the front if it's already open.</summary>
+    public static void ShowSettings()
+    {
+        if (s_settingsWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        s_settingsWindow = new SettingsWindow();
+        s_settingsWindow.Closed += (_, _) => s_settingsWindow = null;
+        s_settingsWindow.Show();
+    }
+
+    private static SettingsWindow? s_settingsWindow;
 
     /// <summary>Shows a newly opened document, closing the one it replaces ("Open final copy instead", restoring edits).</summary>
     private void ReplaceEditor(EditorViewModel editor)
@@ -165,6 +253,7 @@ public partial class MainWindow : Window, IEditorHost
         EditorViewModel? previous = _viewModel.Editor;
         _viewModel.ShowEditor(editor);
         ShowEditor(editor);
+        previous?.DiscardRecoveryCopy();
         previous?.Dispose();
         _ = editor.LoadAsync();
     }
@@ -352,13 +441,23 @@ public partial class MainWindow : Window, IEditorHost
                 editor.SelectAllOnCurrentPage();
                 break;
             case Key.C when hasCommand && editor is not null && !isTyping:
-                editor.Copy();
+                _ = PutOnClipboardAsync(editor.CopyToClipboard());
                 break;
             case Key.X when hasCommand && editor is not null && !isTyping:
-                editor.Cut();
+                _ = CutAsync(editor);
                 break;
             case Key.V when hasCommand && editor is not null && !isTyping:
-                editor.Paste();
+                _ = PasteAsync(editor);
+                break;
+            case Key.OemComma when hasCommand:
+                ShowSettings();
+                break;
+            case Key.W when hasCommand:
+                Close();
+                break;
+            case Key.F6 when _editorView is not null:
+                // Toolbar → page list → page → status bar (INTERACTION-PATTERNS §11).
+                _editorView.FocusNextArea(backwards: hasShift);
                 break;
             case Key.D when hasCommand && editor is not null && !isTyping && editor.DuplicateSelectionCommand.CanExecute(null):
                 editor.DuplicateSelectionCommand.Execute(null);
@@ -376,6 +475,60 @@ public partial class MainWindow : Window, IEditorHost
         }
 
         e.Handled = true;
+    }
+
+    // ----- System clipboard (FS-702) -----
+
+    private static readonly DataFormat<byte[]> s_itemsFormat = DataFormat.CreateBytesApplicationFormat(EditorViewModel.ItemsFormat);
+
+    /// <summary>Puts copied items on the system clipboard: Fillsign's format, plus their text for other apps.</summary>
+    private async Task PutOnClipboardAsync(SystemClip? clip)
+    {
+        if (clip is null || Clipboard is not { } clipboard)
+        {
+            return;
+        }
+
+        var item = new DataTransferItem();
+        if (clip.Items is { } items)
+        {
+            item.Set(s_itemsFormat, items);
+        }
+
+        if (clip.Text is { } text)
+        {
+            item.SetText(text);
+        }
+
+        var transfer = new DataTransfer();
+        transfer.Add(item);
+        await clipboard.SetDataAsync(transfer).ConfigureAwait(true);
+    }
+
+    private async Task CutAsync(EditorViewModel editor) => await PutOnClipboardAsync(await editor.CutToClipboardAsync().ConfigureAwait(true)).ConfigureAwait(true);
+
+    /// <summary>Pastes Fillsign items, or another app's text; says so when the clipboard holds something else (FR-7.14).</summary>
+    internal async Task PasteAsync(EditorViewModel editor)
+    {
+        byte[]? items = null;
+        string? text = null;
+        bool hasOther = false;
+        if (!editor.IsOrganising && Clipboard is { } clipboard && await clipboard.TryGetDataAsync().ConfigureAwait(true) is { } data)
+        {
+            using (data as IDisposable)
+            {
+                items = data.Contains(s_itemsFormat) ? await data.TryGetValueAsync(s_itemsFormat).ConfigureAwait(true) : null;
+                text = items is null ? await data.TryGetTextAsync().ConfigureAwait(true) : null;
+                hasOther = data.Formats.Count > 0;
+            }
+        }
+
+        if (!editor.PasteFromClipboard(items, text) && hasOther && !editor.IsOrganising)
+        {
+            await ShowMessageAsync(
+                "That can’t be pasted yet",
+                "Fillsign can paste its own items and text from other apps. Pasting pictures is coming; for now, add a photo as a page with Add pages, or use it as a signature from the Sign tool.").ConfigureAwait(true);
+        }
     }
 
     /// <summary>Organise pages (FR-6, FR-7): the item shortcuts act on the selected pages instead.</summary>
@@ -399,8 +552,8 @@ public partial class MainWindow : Window, IEditorHost
                 editor.ShowEditContentCommand.Execute(null);
                 return true;
             case Key.C or Key.X or Key.V when hasCommand:
-                // Copying pages between documents isn't offered yet; don't let these reach the items.
-                return true;
+                // Pages are copied and pasted within this document (FR-7.1, 7.2); the window's handler does it.
+                return false;
             default:
                 return false;
         }
@@ -449,7 +602,7 @@ public partial class MainWindow : Window, IEditorHost
     /// <summary>Saved signatures and initials. Tests point this at a temporary folder.</summary>
     internal static SavedSignatureStore? SignatureStoreOverride { get; set; }
 
-    private static SavedSignatureStore SignatureStore => SignatureStoreOverride ?? s_defaultSignatureStore.Value;
+    internal static SavedSignatureStore SignatureStore => SignatureStoreOverride ?? s_defaultSignatureStore.Value;
 
     /// <summary>The signature dialog (FR-3.4, FR-4): choose a saved one or make one, then place it.</summary>
     public async Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync()
