@@ -27,7 +27,7 @@ public partial class EditorView : UserControl
 
     /// <summary>Widths below which the toolbar collapses (INTERACTION-PATTERNS §3); the smallest window (S2, 1024) has both.</summary>
     private const double CompactSwitchBelowWidth = 1480;
-    private const double IconsBelowWidth = 1180;
+    private const double IconsBelowWidth = 1340;
     private const double MoreMenuBelowWidth = 1100;
 
     /// <summary>The person asked to open files (Open… or Mod+O).</summary>

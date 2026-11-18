@@ -117,6 +117,11 @@ public static class ItemEdits
     public static Item ResizeFromCorner(Item original, Corner corner, PagePoint dragTo, ITextMeasurer measurer)
     {
         ArgumentNullException.ThrowIfNull(original);
+        if (original is ShapeItem { IsLine: true } line)
+        {
+            return MoveLineEnd(line, corner, dragTo);
+        }
+
         PageRect box = ItemGeometry.Bounds(original, measurer);
         bool isLeft = corner is Corner.TopLeft or Corner.BottomLeft;
         bool isTop = corner is Corner.TopLeft or Corner.TopRight;
@@ -128,6 +133,20 @@ public static class ItemEdits
         Item resized = Resize(original, width, height, measurer);
         PageSize size = ItemGeometry.Size(resized, measurer);
         return ItemGeometry.MoveTo(resized, new PagePoint(isLeft ? anchor.X - size.Width : anchor.X, isTop ? anchor.Y - size.Height : anchor.Y));
+    }
+
+    /// <summary>
+    /// Moves the end of a line at <paramref name="corner"/> to <paramref name="dragTo"/>; the other end stays put, so
+    /// the line can swing all the way round it. An arrow keeps its head at the same end.
+    /// </summary>
+    private static ShapeItem MoveLineEnd(ShapeItem line, Corner corner, PagePoint dragTo)
+    {
+        var (startOffset, endOffset) = ItemPaths.LineEnds(line.Width, line.Height, line.FlipX, line.FlipY);
+        PagePoint start = line.Position + startOffset;
+        PagePoint end = line.Position + endOffset;
+        return corner == ItemGeometry.LineEndCorners(line).Start
+            ? ItemGeometry.WithLineEnds(line, dragTo, end)
+            : ItemGeometry.WithLineEnds(line, start, dragTo);
     }
 
     /// <summary>Sets the colour of everything selected that has one (FR-5.5). Highlights and whiteout keep theirs.</summary>

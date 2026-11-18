@@ -3,8 +3,9 @@ using Fillsign.Core.Model;
 namespace Fillsign.Core.Geometry;
 
 /// <summary>
-/// Which item is under a point. Outlined shapes and drawings are only grabbed by their lines, so whatever sits inside
-/// them can still be selected (FR-3.7).
+/// Which item is under a point. Anything under the point wins over an outlined rectangle or ellipse around it, so
+/// what sits inside can still be selected (FR-3.7); a click on empty space inside the outline grabs the shape.
+/// Drawings and lines are only grabbed by their strokes.
 /// </summary>
 public static class ItemHitTest
 {
@@ -22,6 +23,16 @@ public static class ItemHitTest
             if (item.Page == page && Hits(item, point, tolerance, measurer))
             {
                 return item;
+            }
+        }
+
+        for (int i = document.Items.Count - 1; i >= 0; i--)
+        {
+            if (document.Items[i] is ShapeItem { Kind: ShapeKind.Rectangle or ShapeKind.Ellipse } outline
+                && outline.Page == page
+                && new PageRect(outline.X, outline.Y, outline.Width, outline.Height).Contains(point))
+            {
+                return outline;
             }
         }
 

@@ -19,7 +19,7 @@ public sealed record RecentFile(string Path, DateTimeOffset LastOpened, bool IsF
 /// <summary>
 /// App preferences kept in the OS app data folder (FR-10.1): the launch count (first-launch screen, FR-1.8), whether
 /// the first-run tips were shown, the appearance, how long recovery copies are kept, the crash-report choice and the
-/// Recent list. Unreadable settings fall back to defaults. Changes take effect immediately and are saved straight away.
+/// Recent list, and the last ink colour chosen (#rrggbb). Unreadable settings fall back to defaults. Changes take effect immediately and are saved straight away.
 /// </summary>
 public sealed record AppSettings(
     int LaunchCount = 0,
@@ -27,7 +27,8 @@ public sealed record AppSettings(
     AppearanceChoice Appearance = AppearanceChoice.MatchSystem,
     int RecoveryDays = AppSettings.DefaultRecoveryDays,
     bool? SendCrashReports = null,
-    ImmutableArray<RecentFile> RecentFiles = default)
+    ImmutableArray<RecentFile> RecentFiles = default,
+    string? InkColour = null)
 {
     public const int DefaultRecoveryDays = 7;
     public const int MaxRecentFiles = 10;
@@ -64,6 +65,9 @@ public sealed record AppSettings(
     }
 
     public ImmutableArray<RecentFile> Recent => RecentFiles.IsDefault ? [] : RecentFiles;
+
+    /// <summary>The ink colour new items start with: the last one chosen, or black.</summary>
+    public Core.Model.InkColor Ink => Core.Model.InkColor.TryParseHex(InkColour, out Core.Model.InkColor colour) ? colour : Core.Model.InkColor.Default;
 
     private static string FilePath => Path.Combine(Folder, "settings.json");
 

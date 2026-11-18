@@ -74,8 +74,13 @@ public partial class MainWindow : Window, IEditorHost
             _autosave.Stop();
             if (_viewModel.Editor is { } editor)
             {
-                // Closing normally means the work was saved or deliberately discarded: nothing to recover.
-                editor.DiscardRecoveryCopy();
+                // Closing normally means the work was saved or deliberately discarded: nothing to recover. Before an
+                // update the copy is kept, to be offered back after the restart.
+                if (!_isKeptForUpdate)
+                {
+                    editor.DiscardRecoveryCopy();
+                }
+
                 editor.Dispose();
             }
         };
@@ -210,6 +215,17 @@ public partial class MainWindow : Window, IEditorHost
         Host.Content = _startView;
     }
 
+    /// <summary>Keeps this window's unsaved work as a recovery copy before an update restarts the app.</summary>
+    public async Task KeepForUpdateAsync()
+    {
+        if (_viewModel.Editor is { HasUnsavedChanges: true } editor)
+        {
+            await editor.AutosaveAsync(isForUpdate: true).ConfigureAwait(true);
+            _isCloseConfirmed = true;
+            _isKeptForUpdate = true;
+        }
+    }
+
     /// <summary>Reopens unsaved work from its recovery copy (FR-8.12): every item, unsaved, saving back where it was.</summary>
     public async Task RecoverAsync(RecoveryCopy copy)
     {
@@ -261,6 +277,7 @@ public partial class MainWindow : Window, IEditorHost
     // ----- Closing (D4, FR-8.11) -----
 
     private bool _isCloseConfirmed;
+    private bool _isKeptForUpdate;
 
     /// <summary>Closes without asking about unsaved changes. Tests use this to tidy up.</summary>
     internal void CloseWithoutAsking()
@@ -648,7 +665,7 @@ public partial class MainWindow : Window, IEditorHost
         return file?.TryGetLocalPath();
     }
 
-    public Task<ExportChoice?> AskExportAsync(ExportRequest request) =>
+    public Task<ExportDecision?> AskExportAsync(ExportRequest request) =>
         ShowDialogAsync(new ExportDialog(request), dialog => dialog.Result, top: 64);
 
     public async Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt)

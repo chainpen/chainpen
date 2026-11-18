@@ -244,6 +244,46 @@ public sealed class DesktopFitTests : IDisposable
         await s.Window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
         await Pump(() => save.IsEnabled);
         Assert.Equal(new KeyGesture(Key.S, s_command == RawInputModifiers.Meta ? KeyModifiers.Meta : KeyModifiers.Control), save.Gesture);
+
+        // About and Settings: in the Fillsign app menu on macOS (not "About Avalonia"), in File and Help elsewhere.
+        IEnumerable<object?> Headers(string top) =>
+            menu.Items.OfType<NativeMenuItem>().First(item => (string?)item.Header == top).Menu!.Items.OfType<NativeMenuItem>().Select(item => item.Header);
+        if (OperatingSystem.IsMacOS())
+        {
+            Assert.DoesNotContain("Settings…", Headers("File"));
+            Assert.DoesNotContain("About Fillsign", Headers("Help"));
+            NativeMenu appMenu = App.MacAppMenu(() => s.Window);
+            Assert.Equal(["About Fillsign", "Settings…", "Check for Updates…"], appMenu.Items.OfType<NativeMenuItem>().Where(item => item is not NativeMenuItemSeparator).Select(item => item.Header));
+        }
+        else
+        {
+            Assert.Contains("Settings…", Headers("File"));
+            Assert.Contains("About Fillsign", Headers("Help"));
+            Assert.Contains("Check for updates…", Headers("Help"));
+        }
+    }
+
+    [Fact]
+    public void Check_for_updates_says_what_it_found()
+    {
+        Assert.Equal("You’re up to date", AppUpdates.Describe(UpdateCheck.UpToDate, "1.2.0", null).Title);
+        Assert.Contains("1.3.0", AppUpdates.Describe(UpdateCheck.Ready, "1.2.0", new UpdateReady("1.3.0", [])).Message, StringComparison.Ordinal);
+        Assert.Contains("can’t update itself", AppUpdates.Describe(UpdateCheck.NotInstalled, "1.2.0", null).Message, StringComparison.Ordinal);
+        Assert.Equal("Couldn’t check for updates", AppUpdates.Describe(UpdateCheck.Failed, "1.2.0", null).Title);
+    }
+
+    [AvaloniaFact]
+    public async Task Check_for_updates_from_source_explains_this_copy_cant_update()
+    {
+        using var s = await Session.StartAsync();
+        AppUpdates.Instance.ShowReady(null); // Another test may have shown one.
+        Task checking = s.Window.CheckForUpdatesAsync();
+        await Pump(() => s.Dialog<MessageDialog>() is not null);
+        await Pump(() => true);
+        string shown = string.Join(" ", s.Dialog<MessageDialog>()!.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+        Assert.True(shown.Contains("can’t update itself", StringComparison.Ordinal), shown);
+        Click(s.Dialog<MessageDialog>()!, "Got it");
+        await checking;
     }
 
     [AvaloniaFact]

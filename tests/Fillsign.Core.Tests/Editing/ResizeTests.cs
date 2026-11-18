@@ -41,6 +41,27 @@ public sealed class ResizeTests
     }
 
     [Fact]
+    public void A_line_end_swings_all_the_way_round_the_other_end()
+    {
+        // A line from (100, 100) to (200, 160); the arrow head is at the end.
+        ShapeItem line = TestData.Rectangle(s_page, x: 100, y: 100, w: 100, h: 60) with { Kind = ShapeKind.Arrow };
+        (Corner start, Corner end) = ItemGeometry.LineEndCorners(line);
+        Assert.Equal((Corner.TopLeft, Corner.BottomRight), (start, end));
+
+        // Drag the end up and to the left of the start: the line now points the other way.
+        var swung = (ShapeItem)ItemEdits.ResizeFromCorner(line, end, new PagePoint(40, 70), s_measurer);
+        var (from, to) = ItemPaths.LineEnds(swung.Width, swung.Height, swung.FlipX, swung.FlipY);
+        Assert.Equal(new PagePoint(100, 100), swung.Position + from);
+        Assert.Equal(new PagePoint(40, 70), swung.Position + to);
+
+        // Then drag the start below it; the head stays at (40, 70).
+        var again = (ShapeItem)ItemEdits.ResizeFromCorner(swung, ItemGeometry.LineEndCorners(swung).Start, new PagePoint(60, 200), s_measurer);
+        (from, to) = ItemPaths.LineEnds(again.Width, again.Height, again.FlipX, again.FlipY);
+        Assert.Equal(new PagePoint(60, 200), again.Position + from);
+        Assert.Equal(new PagePoint(40, 70), again.Position + to);
+    }
+
+    [Fact]
     public void Signature_size_steps_keep_proportions_within_limits()
     {
         SignatureItem signature = TestData.Signature(s_page);

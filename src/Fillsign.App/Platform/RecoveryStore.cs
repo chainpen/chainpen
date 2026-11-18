@@ -12,7 +12,8 @@ namespace Fillsign.App.Platform;
 /// <param name="OpenedFrom">The file the document was opened from, to match it in Recent.</param>
 /// <param name="SavedAt">When the copy was written.</param>
 /// <param name="IsDismissed">The person chose "Not now": it stays recoverable from Recent but isn't offered again.</param>
-public sealed record RecoveryCopy(Guid Id, string Name, string? WorkingCopyPath, string? OpenedFrom, DateTimeOffset SavedAt, bool IsDismissed = false);
+/// <param name="IsForUpdate">Kept on purpose before restarting to update, rather than left by a crash.</param>
+public sealed record RecoveryCopy(Guid Id, string Name, string? WorkingCopyPath, string? OpenedFrom, DateTimeOffset SavedAt, bool IsDismissed = false, bool IsForUpdate = false);
 
 /// <summary>
 /// Recovery copies in the app data folder (FS-704): each is a working copy (so recovering restores every item) plus a

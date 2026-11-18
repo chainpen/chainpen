@@ -56,11 +56,11 @@
 
                 <!-- The chosen saved signature, as it will look. -->
                 <Border IsVisible="{Binding IsSavedSelected}" Margin="0,16,0,0" Padding="20" CornerRadius="{StaticResource RadiusLarge}"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource SurfaceSubtle}">
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Page}">
                     <StackPanel Spacing="8" HorizontalAlignment="Center">
                         <Image Source="{Binding SelectedSaved.Thumbnail, FallbackValue={x:Null}}" MaxWidth="260" MaxHeight="72" Stretch="Uniform"
                                AutomationProperties.Name="{Binding SelectedSaved.AccessibleName, FallbackValue=''}" />
-                        <TextBlock Classes="caption" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                        <TextBlock Classes="caption" Foreground="#4a505a" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
                                    Text="{Binding PlaceLabel, StringFormat='After you choose {0}, click where it should go on the page.'}" />
                     </StackPanel>
                 </Border>
@@ -121,7 +121,8 @@
                                                FontWeight="{Binding FontWeight}" FontSize="{Binding PreviewSize}"
                                                Foreground="{Binding $parent[UserControl].((vm:SignatureDialogViewModel)DataContext).InkBrush}"
                                                Text="{Binding $parent[UserControl].((vm:SignatureDialogViewModel)DataContext).TypedPreview}"
-                                               TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                               TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Padding="12,4" ClipToBounds="False" />
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -202,7 +203,7 @@
             <StackPanel IsVisible="{Binding IsConfirmingRemove}">
                 <TextBlock Classes="heading-dialog" Text="{Binding RemoveTitle}" />
                 <Border Margin="0,14,0,0" Padding="14" CornerRadius="{StaticResource RadiusLarge}" BorderThickness="1"
-                        BorderBrush="{DynamicResource BorderSubtle}">
+                        BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Page}">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <Image Source="{Binding SelectedSaved.Thumbnail, FallbackValue={x:Null}}" MaxWidth="150" MaxHeight="42" Stretch="Uniform" />
                         <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding SelectedSaved.Description, FallbackValue=''}" />
@@ -271,7 +272,8 @@
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
-            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <!-- Signatures are ink on paper: the cards stay paper-coloured in the dark appearance too. -->
+            <Setter Property="Background" Value="{DynamicResource Page}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
@@ -282,11 +284,11 @@
             <Setter Property="Margin" Value="5,0" />
         </Style>
         <Style Selector="ListBox.options ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SurfaceSubtle}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+            <Setter Property="Background" Value="{DynamicResource Page}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
         </Style>
         <Style Selector="ListBox.options ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBox.options ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChoiceSelected}" />
+            <Setter Property="Background" Value="{DynamicResource Page}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>

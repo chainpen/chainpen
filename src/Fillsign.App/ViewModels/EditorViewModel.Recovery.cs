@@ -28,11 +28,17 @@ public sealed partial class EditorViewModel
 
     public bool HasRecoveryStatus => RecoveryKeptAt is not null;
 
+    /// <summary>Downloaded updates, for the status bar's "Update ready" (🎨 10). An instance property so the view can bind to it.</summary>
+#pragma warning disable CA1822 // Compiled bindings need an instance member.
+    public AppUpdates Updates => AppUpdates.Instance;
+#pragma warning restore CA1822
+
     /// <summary>
     /// Writes the recovery copy if the work has changed since the last one, or removes it once nothing is unsaved.
     /// Runs the writing off the UI thread.
     /// </summary>
-    public async Task AutosaveAsync()
+    /// <param name="isForUpdate">The app is about to restart to update; the start screen says so instead of "closed unexpectedly".</param>
+    public async Task AutosaveAsync(bool isForUpdate = false)
     {
         if (!HasUnsavedChanges)
         {
@@ -40,7 +46,7 @@ public sealed partial class EditorViewModel
             return;
         }
 
-        if (IsLoading || State.Equals(_autosavedState))
+        if (IsLoading || (State.Equals(_autosavedState) && !isForUpdate))
         {
             return;
         }
@@ -50,7 +56,7 @@ public sealed partial class EditorViewModel
         {
             byte[] bytes = await Task.Run(() => DocumentWriter.WorkingCopy(CleanSource(), SourcePages(), state).Pdf).ConfigureAwait(true);
             DateTimeOffset now = DateTimeOffset.Now;
-            RecoveryStore.Write(new RecoveryCopy(RecoveryId, Title, WorkingCopyPath, Source.Path, now), bytes);
+            RecoveryStore.Write(new RecoveryCopy(RecoveryId, Title, WorkingCopyPath, Source.Path, now, IsForUpdate: isForUpdate), bytes);
             _autosavedState = state;
             RecoveryKeptAt = now;
         }

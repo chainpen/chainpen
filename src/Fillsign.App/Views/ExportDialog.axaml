@@ -16,6 +16,18 @@
             <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="Makes a copy to send. It looks the same in any PDF reader and can’t be changed. Your working copy stays as it is." />
 
+            <!-- Possible gaps (FS-609, FR-8.3): hints, never a verdict. -->
+            <Border x:Name="GapsSection" Margin="0,18,0,0" IsVisible="False" CornerRadius="12" ClipToBounds="True"
+                    BorderThickness="1" BorderBrush="{DynamicResource BorderControl}">
+                <StackPanel>
+                    <StackPanel Background="{DynamicResource SurfaceSubtle}" Spacing="2" Margin="0">
+                        <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps we spotted" />
+                        <TextBlock x:Name="GapsNote" Classes="muted" Margin="14,0,14,12" FontSize="13" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel x:Name="GapRows" />
+                </StackPanel>
+            </Border>
+
             <TextBlock x:Name="NameLabel" Margin="0,20,0,6" FontWeight="SemiBold" Text="File name" />
             <TextBox x:Name="FileName" FontSize="14" AutomationProperties.LabeledBy="{Binding #NameLabel}" KeyDown="OnNameKeyDown" />
             <DockPanel Margin="0,8,0,0">

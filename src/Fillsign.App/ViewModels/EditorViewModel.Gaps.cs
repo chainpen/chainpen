@@ -1,0 +1,195 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Fillsign.Core.Gaps;
+using Fillsign.Core.Model;
+using Fillsign.Pdf.Export;
+
+namespace Fillsign.App.ViewModels;
+
+/// <summary>
+/// Possible gaps before export (FS-609, FR-8.3, 🎨 6 and E10): boxes and blanks on the pages the person worked on
+/// that nothing was placed in. Export lists them; Show me opens the checking mode, which steps through them with the
+/// right tool ready and goes back to export when done. Hints, never a verdict.
+/// </summary>
+public sealed partial class EditorViewModel
+{
+    // Source pages don't change while a document is open, so each page's boxes and blanks are read once.
+    private readonly Dictionary<int, IReadOnlyList<FormSpot>> _spotsBySourcePage = [];
+    private readonly Lock _spotsLock = new();
+
+    /// <summary>Raised to scroll a page's area into view: the page index and the area in its display coordinates.</summary>
+    public event Action<int, PageRect>? ScrollToAreaRequested;
+
+    /// <summary>The gap being looked at in the checking mode, outlined on the page; null when not checking.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCheckingGaps), nameof(CheckingText), nameof(CheckingBadge))]
+    public partial Gap? CheckingGap { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckingText))]
+    private partial GapReport CheckingReport { get; set; } = GapReport.None;
+
+    public bool IsCheckingGaps => CheckingGap is not null || _isCheckingDone;
+
+    private bool _isCheckingDone;
+
+    /// <summary>The checking bar's words: which gap, and what to do about it.</summary>
+    public string CheckingText
+    {
+        get
+        {
+            if (CheckingGap is not { } gap)
+            {
+                return "Checking before export · no more gaps spotted. Look over each page before you send it.";
+            }
+
+            int position = CheckingReport.Gaps.ToList().FindIndex(other => SameGap(other, gap)) + 1;
+            string where = position > 0 ? $"gap {position} of {CheckingReport.Gaps.Count}" : "gap";
+            return $"Checking before export · {where}: {DescribeForChecking(gap)}";
+        }
+    }
+
+    /// <summary>The short label beside the outlined gap ("Not ticked", "Empty").</summary>
+    public string CheckingBadge => CheckingGap?.Kind == GapKind.Unticked ? "Not ticked" : "Empty";
+
+    /// <summary>
+    /// Finds the possible gaps now. Reads the text of pages with items on them, so it's run off the UI thread with the
+    /// final copy.
+    /// </summary>
+    public GapReport FindGaps() => FindGaps(State);
+
+    private GapReport FindGaps(DocumentState state) =>
+        GapFinder.Find(
+            state,
+            entry => GapFinder.Turn(SpotsOn(entry.SourceIndex), Source.GetPage(entry.SourceIndex), entry.Rotation),
+            Measurer);
+
+    private IReadOnlyList<FormSpot> SpotsOn(int sourceIndex)
+    {
+        lock (_spotsLock)
+        {
+            if (_spotsBySourcePage.TryGetValue(sourceIndex, out IReadOnlyList<FormSpot>? known))
+            {
+                return known;
+            }
+        }
+
+        IReadOnlyList<FormSpot> spots = Source.IsPageLoaded(sourceIndex) && !Source.DamagedPages.Contains(sourceIndex)
+            ? FormSpotReader.Read(Source.Pdf, sourceIndex, Source.GetPage(sourceIndex))
+            : [];
+        lock (_spotsLock)
+        {
+            _spotsBySourcePage[sourceIndex] = spots;
+        }
+
+        return spots;
+    }
+
+    /// <summary>Show me: closes export and steps to this gap with the tool for it ready (E10).</summary>
+    public void StartChecking(GapReport report, int gapIndex)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        if (gapIndex < 0 || gapIndex >= report.Gaps.Count)
+        {
+            return;
+        }
+
+        _isCheckingDone = false;
+        CheckingReport = report;
+        ShowGap(report.Gaps[gapIndex]);
+    }
+
+    /// <summary>Next gap: looks again, as the last one may have been filled, and moves to the next one still open.</summary>
+    [RelayCommand]
+    private void NextGap()
+    {
+        Gap? current = CheckingGap;
+        FinishTyping();
+        CheckingReport = FindGaps();
+        IReadOnlyList<Gap> open = CheckingReport.Gaps;
+        Gap? next = current is null
+            ? (open.Count > 0 ? open[0] : null)
+            : open.FirstOrDefault(gap => Comes(gap, after: current)) ?? open.FirstOrDefault(gap => !SameGap(gap, current));
+        if (next is null)
+        {
+            _isCheckingDone = true;
+            CheckingGap = null;
+            SwitchTool(EditorTool.Select);
+            return;
+        }
+
+        ShowGap(next);
+    }
+
+    /// <summary>Back to export: leaves the checking mode and opens Export final copy again, with the gaps looked at afresh.</summary>
+    [RelayCommand]
+    private async Task BackToExportAsync()
+    {
+        StopChecking();
+        await ExportCommand.ExecuteAsync(null).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private void StopChecking()
+    {
+        _isCheckingDone = false;
+        CheckingGap = null;
+        CheckingReport = GapReport.None;
+        OnPropertyChanged(nameof(IsCheckingGaps));
+    }
+
+    private void ShowGap(Gap gap)
+    {
+        // The tool that fills it is ready: Tick for boxes, Date for dates, Text for other blanks.
+        EditorTool tool = gap.Kind == GapKind.Unticked ? EditorTool.Tick
+            : gap.BlankKind == BlankKind.Date ? EditorTool.Date
+            : gap.BlankKind is BlankKind.Signature or BlankKind.Initials ? EditorTool.Select
+            : EditorTool.Text;
+        SwitchTool(tool);
+        CheckingGap = gap;
+        int index = State.IndexOf(gap.Page);
+        if (index >= 0)
+        {
+            ScrollToAreaRequested?.Invoke(index, gap.Area);
+        }
+
+        Changed();
+    }
+
+    /// <summary>What the checking bar says about a gap.</summary>
+    private static string DescribeForChecking(Gap gap) => gap.Kind switch
+    {
+        GapKind.Unticked => "a box isn’t ticked. The Tick tool is ready if you want to tick it.",
+        _ => gap.BlankKind switch
+        {
+            BlankKind.Date => "a line that may need a date. The Date tool is ready.",
+            BlankKind.Signature => "a space that may need a signature. Choose Sign to add yours.",
+            BlankKind.Initials => "a space that may need initials. Choose Sign, then Initials.",
+            _ => gap.Label.Length > 0 ? $"nothing after “{gap.Label}”. The Text tool is ready." : "an empty line. The Text tool is ready.",
+        },
+    };
+
+    /// <summary>How export lists a gap: what it is and where.</summary>
+    public static string DescribeForExport(Gap gap)
+    {
+        ArgumentNullException.ThrowIfNull(gap);
+        string what = gap.Kind switch
+        {
+            GapKind.Unticked => "Box not ticked",
+            _ => gap.BlankKind switch
+            {
+                BlankKind.Date => "Line that may need a date",
+                BlankKind.Signature => "Space that may need a signature",
+                BlankKind.Initials => "Space that may need initials",
+                _ => gap.Label.Length > 0 ? $"Nothing after “{gap.Label}”" : "Empty line",
+            },
+        };
+        return $"{what} on page {gap.PageNumber}";
+    }
+
+    private static bool SameGap(Gap a, Gap b) => a.Page == b.Page && a.Kind == b.Kind && Math.Abs(a.Area.Y - b.Area.Y) < 1 && Math.Abs(a.Area.X - b.Area.X) < 1;
+
+    private static bool Comes(Gap gap, Gap after) =>
+        gap.PageNumber > after.PageNumber
+        || (gap.PageNumber == after.PageNumber && (gap.Area.Y > after.Area.Y + 1 || (Math.Abs(gap.Area.Y - after.Area.Y) <= 1 && gap.Area.X > after.Area.X + 1)));
+}

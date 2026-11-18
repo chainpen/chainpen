@@ -8,11 +8,26 @@ using Fillsign.Pdf.Import;
 
 namespace Fillsign.App.ViewModels;
 
-/// <summary>What the export dialog offers (FS-608, 🎨 6): a suggested name and folder, and the final copy's size.</summary>
-public sealed record ExportRequest(string SuggestedName, string Folder, long Size, bool ContainsSignature, bool CanSaveWorkingCopy);
+/// <summary>
+/// What the export dialog offers (FS-608, 🎨 6): a suggested name and folder, the final copy's size, and possible gaps
+/// to look at first (FS-609).
+/// </summary>
+public sealed record ExportRequest(string SuggestedName, string Folder, long Size, bool ContainsSignature, bool CanSaveWorkingCopy)
+{
+    public Fillsign.Core.Gaps.GapReport Gaps { get; init; } = Fillsign.Core.Gaps.GapReport.None;
+
+    /// <summary>Pages in the document, so the dialog can say when only some were checked.</summary>
+    public int PageCount { get; init; }
+}
+
+/// <summary>What the person chose in the export dialog.</summary>
+public abstract record ExportDecision;
 
 /// <summary>Where the person chose to put the final copy, and whether to save the working copy too.</summary>
-public sealed record ExportChoice(string Path, bool AlsoSaveWorkingCopy);
+public sealed record ExportChoice(string Path, bool AlsoSaveWorkingCopy) : ExportDecision;
+
+/// <summary>Show me: look at this possible gap before exporting.</summary>
+public sealed record CheckGapChoice(int GapIndex) : ExportDecision;
 
 /// <summary>The green notice after exporting (🎨 8).</summary>
 public sealed record ExportedNotice(string FileName, string Folder, string Path, long Size)
@@ -159,11 +174,14 @@ public sealed partial class EditorViewModel
             return;
         }
 
+        StopChecking();
         WrittenDocument final;
+        Fillsign.Core.Gaps.GapReport gaps;
         IsSaving = true;
         try
         {
-            final = await Task.Run(() => DocumentWriter.FinalCopy(CleanSource(), SourcePages(), State)).ConfigureAwait(true);
+            DocumentState state = State;
+            (final, gaps) = await Task.Run(() => (DocumentWriter.FinalCopy(CleanSource(), SourcePages(), state), FindGaps(state))).ConfigureAwait(true);
         }
         catch (InvalidOperationException ex)
         {
@@ -175,8 +193,19 @@ public sealed partial class EditorViewModel
             IsSaving = false;
         }
 
-        var request = new ExportRequest(FinalName(), SuggestedFolder(), final.Pdf.Length, State.ContainsSignature, CanSaveWorkingCopy: true);
-        if (await _host.AskExportAsync(request).ConfigureAwait(true) is not { } choice)
+        var request = new ExportRequest(FinalName(), SuggestedFolder(), final.Pdf.Length, State.ContainsSignature, CanSaveWorkingCopy: true)
+        {
+            Gaps = gaps,
+            PageCount = State.Pages.Length,
+        };
+        ExportDecision? decision = await _host.AskExportAsync(request).ConfigureAwait(true);
+        if (decision is CheckGapChoice check)
+        {
+            StartChecking(gaps, check.GapIndex);
+            return;
+        }
+
+        if (decision is not ExportChoice choice)
         {
             return;
         }

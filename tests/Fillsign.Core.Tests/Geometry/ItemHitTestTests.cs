@@ -53,14 +53,25 @@ public sealed class ItemHitTestTests
     }
 
     [Fact]
-    public void A_tick_inside_a_rectangle_is_found_rather_than_the_rectangle()
+    public void A_tick_inside_a_rectangle_is_found_and_empty_space_inside_grabs_the_rectangle()
     {
         ShapeItem rectangle = TestData.Rectangle(s_page, x: 100, y: 100, w: 100, h: 60);
         MarkItem tick = TestData.Tick(s_page, x: 140, y: 120);
         var document = DocumentState.ForSourcePages(1) with { Items = [tick, rectangle] };
         Assert.Equal(tick, ItemHitTest.TopmostAt(document, s_page, new PagePoint(147, 127), 2, s_measurer));
-        Assert.Null(ItemHitTest.TopmostAt(document, s_page, new PagePoint(120, 150), 2, s_measurer));
+        Assert.Equal(rectangle, ItemHitTest.TopmostAt(document, s_page, new PagePoint(120, 150), 2, s_measurer));
         Assert.Equal(rectangle, ItemHitTest.TopmostAt(document, s_page, new PagePoint(100, 150), 2, s_measurer));
+        Assert.Null(ItemHitTest.TopmostAt(document, s_page, new PagePoint(220, 150), 2, s_measurer));
+    }
+
+    [Fact]
+    public void Empty_space_inside_an_ellipse_grabs_it_but_not_inside_a_line_or_drawing_box()
+    {
+        ShapeItem ellipse = TestData.Rectangle(s_page, x: 0, y: 0, w: 200, h: 100) with { Kind = ShapeKind.Ellipse };
+        ShapeItem line = TestData.Rectangle(s_page, x: 300, y: 0, w: 100, h: 100) with { Kind = ShapeKind.Line };
+        var document = DocumentState.ForSourcePages(1) with { Items = [ellipse, line] };
+        Assert.Equal(ellipse, ItemHitTest.TopmostAt(document, s_page, new PagePoint(100, 50), 2, s_measurer));
+        Assert.Null(ItemHitTest.TopmostAt(document, s_page, new PagePoint(380, 20), 2, s_measurer));
     }
 
     [Fact]

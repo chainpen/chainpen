@@ -30,9 +30,15 @@ public partial class MainWindow
             Item("Save as…", () => _ = Editor?.SaveAsCommand.ExecuteAsync(null), Keys(Key.S, KeyModifiers.Shift), requiresDocument: true),
             Item("Export final copy…", () => _ = Editor?.ExportCommand.ExecuteAsync(null), Keys(Key.E), requiresDocument: true),
             new NativeMenuItemSeparator(),
-            Item("Settings…", ShowSettings, Keys(Key.OemComma)),
-            new NativeMenuItemSeparator(),
             Item("Close window", Close, Keys(Key.W)));
+
+        // On macOS, About and Settings live in the Fillsign app menu (App.MacAppMenu); elsewhere, in File and Help.
+        if (!OperatingSystem.IsMacOS())
+        {
+            NativeMenu fileItems = file.Menu!;
+            fileItems.Items.Insert(fileItems.Items.Count - 1, Item("Settings…", ShowSettings, Keys(Key.OemComma)));
+            fileItems.Items.Insert(fileItems.Items.Count - 1, new NativeMenuItemSeparator());
+        }
 
         var edit = Menu("Edit",
             Item("Undo", () => Editor?.UndoCommand.Execute(null), Keys(Key.Z), requiresDocument: true),
@@ -70,6 +76,12 @@ public partial class MainWindow
         var help = Menu("Help",
             Item("Keyboard shortcuts", () => _ = ShowShortcutsAsync()),
             Item("How Fillsign works", ShowHowItWorks));
+        if (!OperatingSystem.IsMacOS())
+        {
+            help.Menu!.Items.Add(new NativeMenuItemSeparator());
+            help.Menu.Items.Add(Item("Check for updates…", () => _ = CheckForUpdatesAsync()));
+            help.Menu.Items.Add(Item("About Fillsign", ShowAbout));
+        }
 
         var menu = new NativeMenu();
         foreach (NativeMenuItem item in (NativeMenuItem[])[file, edit, view, page, help])
@@ -201,6 +213,21 @@ public partial class MainWindow
 
     private Task<bool> ShowShortcutsAsync() =>
         ShowDialogAsync(new ShortcutsDialog(), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default), top: 60);
+
+    /// <summary>Check for Updates: checks now and says what was found, unlike the quiet check at start-up (FR-10.2).</summary>
+    public async Task CheckForUpdatesAsync()
+    {
+        Platform.AppUpdates updates = Platform.AppUpdates.Instance;
+        Platform.UpdateCheck result = await updates.CheckAsync().ConfigureAwait(true);
+        (string title, string message) = Platform.AppUpdates.Describe(result, App.DisplayVersion, updates.Ready);
+        await ShowMessageAsync(title, message).ConfigureAwait(true);
+    }
+
+    /// <summary>About Fillsign: the version, and that it works offline.</summary>
+    public void ShowAbout() =>
+        _ = ShowMessageAsync(
+            "About Fillsign",
+            $"Version {App.DisplayVersion}. Fill in and sign PDF forms on this computer. Your documents never leave it.");
 
     private void ShowHowItWorks() =>
         _ = ShowMessageAsync(

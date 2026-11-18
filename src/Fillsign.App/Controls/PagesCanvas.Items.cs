@@ -100,9 +100,30 @@ public sealed partial class PagesCanvas
             {
                 _painter.Draw(context, editor.SignatureAt(page.Id, cursor.Point, placing.Image, placing.Kind), opacity: 0.55);
             }
+
+            // Tick and Cross: a faint preview of the mark, exactly where a click would place it.
+            if (editor.MarkPreview is { } mark && mark.Page == page.Id)
+            {
+                _painter.Draw(context, mark, opacity: 0.45);
+            }
         }
 
         DrawOverlays(context, page, rect);
+    }
+
+    /// <summary>The possible gap being checked (E10): an amber outline with a label beside it.</summary>
+    private void DrawCheckingGap(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge)
+    {
+        var amber = Color.FromRgb(0xc2, 0x41, 0x0c);
+        var outline = new Rect(pageRect.X + (area.X * Zoom), pageRect.Y + (area.Y * Zoom), area.Width * Zoom, area.Height * Zoom).Inflate(6);
+        context.DrawRectangle(new SolidColorBrush(amber, 0.06), new Pen(new SolidColorBrush(amber), 2), outline, 6, 6);
+
+        var text = new FormattedText(badge, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold), 12, Brushes.White);
+        // Above the outline: beside it would cover the words that go with a box.
+        double width = text.Width + 16, height = text.Height + 4;
+        var pill = new Rect(Math.Min(outline.X, pageRect.Right - width - 4), outline.Y - height - 4, width, height);
+        context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x92, 0x40, 0x0e)), null, pill, height / 2, height / 2);
+        context.DrawText(text, new Point(pill.X + 8, pill.Y + 2));
     }
 
     /// <summary>Selection and focus on the page use the light-theme blue, even in dark mode (INTERACTION-PATTERNS §4).</summary>
@@ -112,6 +133,11 @@ public sealed partial class PagesCanvas
         IBrush blue = Brush("SelectionOnPage", Brushes.RoyalBlue);
         Color blueColour = blue is ISolidColorBrush solid ? solid.Color : Colors.RoyalBlue;
         var tint = new SolidColorBrush(blueColour, 0.06);
+
+        if (editor.CheckingGap is { } gap && gap.Page == page.Id)
+        {
+            DrawCheckingGap(context, rect, gap.Area, editor.CheckingBadge);
+        }
 
         foreach (Item item in editor.SelectedItems())
         {
@@ -125,7 +151,7 @@ public sealed partial class PagesCanvas
         if (SingleSelected() is { } single && single.Page == page.Id)
         {
             var handlePen = new Pen(blue, 2);
-            foreach (Point corner in HandleCentres(ViewBox(single, rect).Inflate(OutlineGap)))
+            foreach ((_, Point corner) in Handles(single, rect))
             {
                 var handle = new Rect(corner.X - (HandleSize / 2), corner.Y - (HandleSize / 2), HandleSize, HandleSize);
                 context.DrawRectangle(Brushes.White, handlePen, handle.Deflate(1), 3, 3);
@@ -187,7 +213,30 @@ public sealed partial class PagesCanvas
     private Rect ToView(PageRect box, Rect pageRect) =>
         new(pageRect.X + (box.X * Zoom), pageRect.Y + (box.Y * Zoom), box.Width * Zoom, box.Height * Zoom);
 
-    private static Point[] HandleCentres(Rect box) => [box.TopLeft, box.TopRight, box.BottomLeft, box.BottomRight];
+    /// <summary>
+    /// Resize handles: one at each corner, just outside the item. A line or arrow has one on each end instead, so an
+    /// end can be swung to any angle (FR-5.4).
+    /// </summary>
+    private (Corner Corner, Point Centre)[] Handles(Item item, Rect pageRect)
+    {
+        if (item is ShapeItem { IsLine: true } line)
+        {
+            Rect ends = ViewBox(line, pageRect);
+            (Corner start, Corner end) = ItemGeometry.LineEndCorners(line);
+            return [(start, CornerOf(ends, start)), (end, CornerOf(ends, end))];
+        }
+
+        Rect box = ViewBox(item, pageRect).Inflate(OutlineGap);
+        return [.. s_corners.Select(corner => (corner, CornerOf(box, corner)))];
+    }
+
+    private static Point CornerOf(Rect box, Corner corner) => corner switch
+    {
+        Corner.TopLeft => box.TopLeft,
+        Corner.TopRight => box.TopRight,
+        Corner.BottomLeft => box.BottomLeft,
+        _ => box.BottomRight,
+    };
 
     private static readonly Corner[] s_corners = [Corner.TopLeft, Corner.TopRight, Corner.BottomLeft, Corner.BottomRight];
 
@@ -325,12 +374,11 @@ public sealed partial class PagesCanvas
             return null;
         }
 
-        Point[] centres = HandleCentres(ViewBox(item, PageRect(index)).Inflate(OutlineGap));
-        for (int i = 0; i < centres.Length; i++)
+        foreach ((Corner corner, Point centre) in Handles(item, PageRect(index)))
         {
-            if (Math.Abs(position.X - centres[i].X) <= HandleReach && Math.Abs(position.Y - centres[i].Y) <= HandleReach)
+            if (Math.Abs(position.X - centre.X) <= HandleReach && Math.Abs(position.Y - centre.Y) <= HandleReach)
             {
-                return s_corners[i];
+                return corner;
             }
         }
 

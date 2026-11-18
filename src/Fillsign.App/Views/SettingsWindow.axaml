@@ -4,7 +4,7 @@
         xmlns:vm="using:Fillsign.App.ViewModels"
         x:Class="Fillsign.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Title="Fillsign settings" Width="820" Height="760" MinWidth="560" MinHeight="480"
+        Title="Fillsign settings" Icon="avares://Fillsign.App/Assets/Icon/fillsign-256.png" Width="820" Height="760" MinWidth="560" MinHeight="480"
         WindowStartupLocation="CenterOwner">
     <!-- 🎨 7: every change is saved as soon as it's made (FR-10.1). -->
     <Panel>
@@ -43,8 +43,9 @@
                                             <Button DockPanel.Dock="Right" Classes="small dangerText" Content="Remove…"
                                                     Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveSignatureCommand}"
                                                     CommandParameter="{Binding}" AutomationProperties.Name="{Binding Description, StringFormat='Remove {0}'}" />
-                                            <Image DockPanel.Dock="Left" Width="150" Height="42" Stretch="Uniform" HorizontalAlignment="Left"
-                                                   Source="{Binding Thumbnail}" Margin="0,0,16,0" />
+                                            <Border DockPanel.Dock="Left" Margin="0,0,16,0" Padding="6" CornerRadius="6" Background="{DynamicResource Page}">
+                                                <Image Width="150" Height="42" Stretch="Uniform" HorizontalAlignment="Left" Source="{Binding Thumbnail}" />
+                                            </Border>
                                             <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding Description}" />
                                         </DockPanel>
                                     </Border>

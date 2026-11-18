@@ -20,6 +20,58 @@ public sealed class EditingTests(ITestOutputHelper output)
     private static readonly RawInputModifiers s_command = OperatingSystem.IsMacOS() ? RawInputModifiers.Meta : RawInputModifiers.Control;
 
     [AvaloniaFact]
+    public async Task Tick_and_cross_show_a_preview_where_a_click_would_place_them()
+    {
+        using var e = await EditorSession.OpenAsync();
+        e.Editor.SelectToolCommand.Execute(EditorTool.Tick);
+        Assert.Null(e.Editor.MarkPreview);
+
+        e.Move(100, 150);
+        MarkItem preview = Assert.IsType<MarkItem>(e.Editor.MarkPreview);
+        Assert.Equal(MarkKind.Tick, preview.Kind);
+        await Pump(() => true);
+        Save(e.Window, "editing-tick-preview");
+
+        // The click lands exactly where the preview showed.
+        e.Click(100, 150);
+        MarkItem placed = Assert.Single(e.Editor.State.Items.OfType<MarkItem>());
+        Assert.Equal((preview.X, preview.Y, preview.Size), (placed.X, placed.Y, placed.Size));
+
+        e.Editor.SelectToolCommand.Execute(EditorTool.Cross);
+        e.Move(200, 150);
+        Assert.Equal(MarkKind.Cross, e.Editor.MarkPreview?.Kind);
+
+        // Leaving the page, or picking another tool, hides it.
+        e.Editor.PointerExited();
+        Assert.Null(e.Editor.MarkPreview);
+        e.Move(200, 150);
+        e.Editor.SelectToolCommand.Execute(EditorTool.Select);
+        Assert.Null(e.Editor.MarkPreview);
+    }
+
+    [AvaloniaFact]
+    public async Task Ink_starts_black_and_the_last_colour_chosen_is_remembered()
+    {
+        using (var first = await EditorSession.OpenAsync())
+        {
+            Assert.Equal(InkColor.Black, first.Editor.DefaultColour);
+            first.Editor.SetColourCommand.Execute(InkColor.Red);
+        }
+
+        Assert.Equal("#b42318", Platform.AppSettings.Load().InkColour);
+
+        // A new window (or a restart) starts with red. OpenAsync resets the setting, so open this one directly.
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+        window.Show();
+        await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
+        EditorViewModel next = Editor(window);
+        Assert.Equal(InkColor.Red, next.DefaultColour);
+        Assert.True(next.IsRedChosen);
+        window.CloseWithoutAsking();
+        Platform.AppSettings.Update(settings => settings with { InkColour = null });
+    }
+
+    [AvaloniaFact]
     public async Task Tick_is_centred_on_the_click_and_the_tool_stays_on()
     {
         using var e = await EditorSession.OpenAsync();
@@ -32,7 +84,7 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.All(ticks, tick => Assert.Equal(MarkKind.Tick, tick.Kind));
         Assert.Equal(100, ticks[0].X + (ticks[0].Size / 2), 0.5);
         Assert.Equal(150, ticks[0].Y + (ticks[0].Size / 2), 0.5);
-        Assert.Equal(InkColor.Blue, ticks[0].Color);
+        Assert.Equal(InkColor.Black, ticks[0].Color);
         Assert.Equal(EditorTool.Tick, e.Editor.Tool);
         Assert.True(e.Editor.Pages[0].HasEdits);
         Assert.Equal(ContextMode.ToolOptions, e.Editor.ContextMode);
@@ -80,6 +132,9 @@ public sealed class EditingTests(ITestOutputHelper output)
     public async Task Text_being_typed_sits_exactly_where_the_page_draws_it()
     {
         using var e = await EditorSession.OpenAsync();
+
+        // The ink is found by its blue, so type in blue.
+        e.Editor.SetColourCommand.Execute(InkColor.Blue);
         e.Editor.SelectToolCommand.Execute(EditorTool.Text);
         e.Click(150, 120);
         await Pump(() => e.TypingBox?.IsFocused == true);
@@ -103,7 +158,7 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
-    public async Task Double_click_edits_text_with_the_Select_tool()
+    public async Task Placing_a_date_returns_to_Select_with_the_date_selected_and_double_click_edits_it()
     {
         using var e = await EditorSession.OpenAsync();
         e.Editor.SelectToolCommand.Execute(EditorTool.Date);
@@ -111,8 +166,9 @@ public sealed class EditingTests(ITestOutputHelper output)
         TextItem date = Assert.Single(e.Editor.State.Items.OfType<TextItem>());
         Assert.Matches(@"^\d\d/\d\d/\d{4}$", date.Text);
         Assert.Null(e.Editor.TypingItem);
+        Assert.Equal(EditorTool.Select, e.Editor.Tool);
+        Assert.Equal([date.Id], e.Editor.SelectedIds);
 
-        e.Editor.SelectToolCommand.Execute(EditorTool.Select);
         double x = date.X + 5, y = date.Y + 5;
         e.Click(x, y);
         e.Click(x, y, clickCount: 2);
@@ -154,7 +210,7 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
-    public async Task Things_inside_an_outlined_shape_can_still_be_selected()
+    public async Task Things_inside_an_outlined_shape_can_still_be_selected_and_empty_space_inside_moves_it()
     {
         using var e = await EditorSession.OpenAsync();
         e.Editor.ChooseShapeCommand.Execute(ShapeKind.Rectangle);
@@ -167,11 +223,19 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.Click(350, 130);
         Assert.Equal([tick.Id], e.Editor.SelectedIds);
 
-        // Inside the rectangle but away from the tick is empty page; the outline itself grabs the rectangle.
+        // Inside the rectangle but away from the tick grabs the rectangle, as the outline does.
         e.Click(320, 150);
+        ShapeItem rectangle = Assert.IsType<ShapeItem>(Assert.Single(e.Editor.SelectedItems()));
+        e.Click(150, 300);
         Assert.Empty(e.Editor.SelectedIds);
         e.Click(300, 140);
-        Assert.IsType<ShapeItem>(Assert.Single(e.Editor.SelectedItems()));
+        Assert.Equal([rectangle.Id], e.Editor.SelectedIds);
+
+        // Dragging from empty space inside moves it.
+        e.Drag((320, 150), (340, 170));
+        ShapeItem moved = Assert.IsType<ShapeItem>(e.Editor.State.FindItem(rectangle.Id));
+        Assert.Equal(rectangle.X + 20, moved.X, 3);
+        Assert.Equal(rectangle.Y + 20, moved.Y, 3);
     }
 
     [AvaloniaFact]
@@ -312,6 +376,65 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task The_next_signature_and_initials_are_placed_at_the_size_last_resized_to()
+    {
+        using var e = await EditorSession.OpenAsync();
+        double zoom = e.Editor.Zoom;
+        foreach ((SignatureKind kind, double startWidth, double x) in new[]
+        {
+            (SignatureKind.Signature, EditorViewModel.SignatureWidth, 200.0),
+            (SignatureKind.Initials, EditorViewModel.InitialsWidth, 420.0),
+        })
+        {
+            e.Editor.BeginPlacingSignature(TestSignature(), kind);
+            e.Click(x, 200);
+            SignatureItem placed = e.Editor.State.Items.OfType<SignatureItem>().Last();
+            Assert.Equal(startWidth, placed.Width, 3);
+
+            // Drag the bottom-right handle 30 pt wider.
+            Point corner = e.ToWindow(placed.X + placed.Width, placed.Y + placed.Height) + new Point(3, 3);
+            e.Window.MouseDown(corner, MouseButton.Left, RawInputModifiers.None);
+            e.Window.MouseMove(corner + new Point(30 * zoom, 30 * zoom), RawInputModifiers.None);
+            e.Window.MouseUp(corner + new Point(30 * zoom, 30 * zoom), MouseButton.Left, RawInputModifiers.None);
+            double resizedWidth = e.Editor.State.FindItem(placed.Id) is SignatureItem resized ? resized.Width : 0;
+            Assert.True(resizedWidth > startWidth + 1, $"{kind} was not resized");
+
+            e.Editor.BeginPlacingSignature(TestSignature(), kind);
+            e.Click(x, 500);
+            SignatureItem next = e.Editor.State.Items.OfType<SignatureItem>().Last();
+            Assert.Equal(resizedWidth, next.Width, 3);
+        }
+
+        // Each kind keeps its own size.
+        Assert.NotEqual(e.Editor.DefaultSignatureWidth, e.Editor.DefaultInitialsWidth);
+    }
+
+    [AvaloniaFact]
+    public async Task The_next_date_is_placed_at_the_size_the_last_one_was_resized_to()
+    {
+        using var e = await EditorSession.OpenAsync();
+        e.Editor.SelectToolCommand.Execute(EditorTool.Date);
+        e.Click(200, 150);
+        TextItem date = Assert.Single(e.Editor.State.Items.OfType<TextItem>());
+        Assert.Equal(TextItem.DefaultFontSize, date.FontSize, 3);
+
+        // Placing a date leaves it selected, so its bottom-right handle can be dragged straight away.
+        PageRect bounds = Fillsign.Core.Geometry.ItemGeometry.Bounds(date, e.Editor.Measurer);
+        Point corner = e.ToWindow(bounds.Right, bounds.Bottom) + new Point(3, 3);
+        double zoom = e.Editor.Zoom;
+        e.Window.MouseDown(corner, MouseButton.Left, RawInputModifiers.None);
+        e.Window.MouseMove(corner + new Point(40 * zoom, 10 * zoom), RawInputModifiers.None);
+        e.Window.MouseUp(corner + new Point(40 * zoom, 10 * zoom), MouseButton.Left, RawInputModifiers.None);
+        double resizedSize = ((TextItem)e.Editor.State.FindItem(date.Id)!).FontSize;
+        Assert.True(resizedSize > TextItem.DefaultFontSize, "The date was not resized");
+
+        e.Editor.SelectToolCommand.Execute(EditorTool.Date);
+        e.Click(200, 400);
+        TextItem next = e.Editor.State.Items.OfType<TextItem>().Last();
+        Assert.Equal(resizedSize, next.FontSize, 3);
+    }
+
+    [AvaloniaFact]
     public async Task Colour_and_size_apply_to_the_selection_and_become_the_default()
     {
         using var e = await EditorSession.OpenAsync();
@@ -413,6 +536,8 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         public static async Task<EditorSession> OpenAsync(double width = 1280)
         {
+            // Each test starts from the default ink, not whatever the last test chose.
+            Platform.AppSettings.Update(settings => settings with { InkColour = null });
             var window = new MainWindow(isFirstLaunch: false, []) { Width = width, Height = 860 };
             window.Show();
             await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);

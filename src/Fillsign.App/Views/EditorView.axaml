@@ -238,7 +238,7 @@
                                 <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Whiteout}">
                                     <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconWhiteout}" /></MenuItem.Icon>
                                     <MenuItem.Header>
-                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Whiteout" /><TextBlock Classes="muted" FontSize="12" Text="Cover marks or mistakes on a scan" /></StackPanel>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Whiteout" /><TextBlock Classes="muted" FontSize="12" Text="Cover and remove: gone from the final copy" /></StackPanel>
                                     </MenuItem.Header>
                                 </MenuItem>
                             </MenuFlyout>
@@ -424,8 +424,24 @@
             </Panel>
         </Border>
 
-        <!-- Notices that stay until dismissed: restored (🎨 5), changed elsewhere (D8), exported (🎨 8). -->
+        <!-- Notices that stay until dismissed: checking before export (E10), restored (🎨 5), changed elsewhere (D8), exported (🎨 8). -->
         <StackPanel Grid.Row="3">
+            <Border x:Name="CheckingBar" Classes="notice warning" IsVisible="{Binding IsCheckingGaps}" AutomationProperties.LiveSetting="Polite">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent" Margin="8,0,0,0"
+                            Command="{Binding StopCheckingCommand}" AutomationProperties.Name="Stop checking" ToolTip.Tip="Stop checking">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                    <Button DockPanel.Dock="Right" Classes="small primary" Margin="8,0,0,0" Content="Back to export"
+                            Command="{Binding BackToExportCommand}" />
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Content="Next gap"
+                            Command="{Binding NextGapCommand}" IsVisible="{Binding CheckingGap, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding CheckingText}" />
+                    </Grid>
+                </DockPanel>
+            </Border>
             <Border Classes="notice info" IsVisible="{Binding HasRestoredNotice}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent"
@@ -620,6 +636,36 @@
             <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding IsOrganising}" Text="{Binding OrganiseHint}" />
+                <!-- 🎨 10: updates never interrupt; a quiet pill, details on click (FS-804). -->
+                <Button DockPanel.Dock="Right" Classes="updatePill" Margin="12,0,0,0" IsVisible="{Binding Updates.IsReady}"
+                        AutomationProperties.Name="Update ready">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:StrokeIcon Data="{StaticResource IconDownload}" Size="14" />
+                        <TextBlock Text="Update ready" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="TopEdgeAlignedRight">
+                            <StackPanel Width="360" Spacing="10">
+                                <TextBlock Classes="heading-section" TextWrapping="Wrap" Text="{Binding Updates.Title}" />
+                                <ItemsControl ItemsSource="{Binding Updates.Ready.Notes, FallbackValue={x:Null}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock FontSize="13" TextWrapping="Wrap" Text="{Binding StringFormat='•  {0}'}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock FontSize="13" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="Your unsaved changes come back after the restart." />
+                                    <Run Foreground="{DynamicResource TextMuted}" Text=" Restarting takes a few seconds." />
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Classes="primary" Content="Restart and update" Command="{Binding Updates.RestartAndUpdateCommand}" />
+                                    <Button Content="When I close Fillsign" Command="{Binding Updates.UpdateWhenClosedCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
                     <Button Classes="tool icon small" Click="OnZoomOut" AutomationProperties.Name="Zoom out" ToolTip.Tip="Zoom out (Mod+−)">
                         <c:StrokeIcon Data="{StaticResource IconZoomOut}" />
@@ -751,6 +797,17 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource Accent}" />
         </Style>
+        <Style Selector="Button.updatePill">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
         <Style Selector="Border.notice">
             <Setter Property="Padding" Value="20,10" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
@@ -772,12 +829,15 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
-            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
             <Setter Property="Height" Value="36" />
         </Style>
+        <!-- The two halves are transparent and rounded on their outer side, so the outline's corners show (and hover fills
+             follow them). 7 is the outline's radius less its 1 px border. -->
         <Style Selector="Button.split">
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="7,0,0,7" />
             <Setter Property="MinHeight" Value="34" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="12,0" />
@@ -785,6 +845,7 @@
         </Style>
         <Style Selector="Button.split.icon">
             <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="0,7,7,0" />
         </Style>
         <Style Selector="Button.menuRow">
             <Setter Property="HorizontalAlignment" Value="Stretch" />

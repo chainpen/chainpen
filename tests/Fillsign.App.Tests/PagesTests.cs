@@ -164,6 +164,35 @@ public sealed class PagesTests
     }
 
     [AvaloniaFact]
+    public async Task Move_to_takes_a_typed_page_number_and_explains_one_that_is_not_a_page()
+    {
+        using var s = await Session.OpenAsync(organise: true);
+        PageId[] start = [.. Enumerable.Range(1, 6).Select(s.PageId)];
+        s.Editor.SetPageSelection([start[5]]);
+        await s.ClickButton("Move to…");
+        await Pump(() => s.Dialog<MoveToDialog>() is not null);
+        MoveToDialog dialog = s.Dialog<MoveToDialog>()!;
+        await Pump(() => true);
+        TextBox pageNumber = dialog.FindControl<TextBox>("PageNumber")!;
+        RadioButton afterPage = dialog.FindControl<RadioButton>("AfterPage")!;
+        Control error = dialog.FindControl<Control>("Error")!;
+
+        // Typing picks "After page"; a number past the last page is explained, not guessed at.
+        pageNumber.Text = "9";
+        await Pump(() => afterPage.IsChecked == true);
+        Click(dialog, "Move");
+        await Pump(() => true);
+        Assert.True(error.IsVisible);
+        Assert.NotNull(s.Dialog<MoveToDialog>());
+
+        pageNumber.Text = "2";
+        await Pump(() => !error.IsVisible);
+        Click(dialog, "Move");
+        await Pump(() => s.Dialog<MoveToDialog>() is null);
+        Assert.Equal([start[0], start[1], start[5], start[2], start[3], start[4]], s.Editor.State.Pages.Select(entry => entry.Id));
+    }
+
+    [AvaloniaFact]
     public async Task Dragging_in_the_grid_moves_the_selected_pages_where_the_marker_shows()
     {
         using var s = await Session.OpenAsync(organise: true);
@@ -209,6 +238,35 @@ public sealed class PagesTests
 
         Assert.Equal([start[1], start[2], start[0]], s.Editor.State.Pages.Take(3).Select(entry => entry.Id));
         Assert.Equal(start[0], s.Editor.State.Pages[s.Editor.CurrentPageIndex].Id);
+    }
+
+    [AvaloniaFact]
+    public async Task Clicking_a_page_in_the_Pages_panel_goes_to_it_even_when_already_selected()
+    {
+        using var s = await Session.OpenAsync();
+        ListBox list = s.Find<ListBox>("PageList");
+        Point Centre(int number)
+        {
+            var container = (Control)list.ContainerFromIndex(number - 1)!;
+            return container.TranslatePoint(new Point(container.Bounds.Width / 2, container.Bounds.Height / 2), s.Window)!.Value;
+        }
+
+        void ClickThumbnail(int number)
+        {
+            s.Window.MouseDown(Centre(number), MouseButton.Left, RawInputModifiers.None);
+            s.Window.MouseUp(Centre(number), MouseButton.Left, RawInputModifiers.None);
+        }
+
+        ClickThumbnail(3);
+        await Pump(() => s.Editor.CurrentPageIndex == 2);
+
+        // Scroll elsewhere, then click the same (still selected) page again.
+        s.Editor.GoToPageCommand.Execute(1);
+        await Pump(() => s.Editor.CurrentPageIndex == 0);
+        Assert.Contains(s.PageId(3), s.Editor.SelectedPages);
+        await Task.Delay(600); // apart enough not to count as a double-click
+        ClickThumbnail(3);
+        await Pump(() => s.Editor.CurrentPageIndex == 2);
     }
 
     [AvaloniaFact]

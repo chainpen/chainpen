@@ -317,4 +317,38 @@
         <Setter Property="Padding" Value="28,24" />
     </Style>
 
+    <!-- A large radio choice with a heading and detail: Open or add (D5) and Move to (FR-6.4). -->
+    <Style Selector="RadioButton.choice">
+        <Setter Property="Padding" Value="12,12,16,12" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+        <Setter Property="Background" Value="{DynamicResource Surface}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <Grid Width="18" Height="18" VerticalAlignment="Top" Margin="0,2,0,0">
+                            <Ellipse Stroke="{DynamicResource BorderControl}" StrokeThickness="1.5" />
+                            <Ellipse x:Name="Dot" Width="9" Height="9" Fill="{DynamicResource Accent}" IsVisible="False" />
+                        </Grid>
+                        <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.choice:checked">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Padding" Value="11,11,15,11" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+        <Setter Property="Background" Value="{DynamicResource ChoiceSelected}" />
+    </Style>
+    <Style Selector="RadioButton.choice:checked /template/ Ellipse#Dot">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+
 </Styles>

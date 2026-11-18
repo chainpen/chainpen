@@ -7,6 +7,12 @@ namespace Fillsign.Pdf.Pdfium;
 /// <summary>A font loaded into one document. Valid until the document is disposed.</summary>
 public readonly record struct PdfiumFont(nint Handle);
 
+/// <summary>A character and its box in PDF user space (y up).</summary>
+public readonly record struct PdfCharacter(int Code, double Left, double Bottom, double Right, double Top);
+
+/// <summary>An object added to a page. Valid while the page is being edited.</summary>
+public readonly record struct PdfiumObject(nint Handle);
+
 /// <summary>
 /// Writing through PDFium's editing API (FS-024 spike, the basis for FS-607). Coordinates are PDF user space:
 /// points from the bottom-left of the unrotated page; converting from Fillsign's display coordinates is
@@ -120,6 +126,135 @@ public sealed partial class PdfiumDocument
     public int GetAnnotationCount(int pageIndex) => WithPage(pageIndex, FPDFPage_GetAnnotCount);
 
     public int GetObjectCount(int pageIndex) => WithPage(pageIndex, FPDFPage_CountObjects);
+
+    /// <summary>What's on a page, bottom to top: "text", "path", "image", "shading" or "form". For checks and tests.</summary>
+    public IReadOnlyList<string> GetObjectKinds(int pageIndex) => WithPage(pageIndex, page =>
+        (IReadOnlyList<string>)[.. Enumerable.Range(0, FPDFPage_CountObjects(page)).Select(index => FPDFPageObj_GetType(FPDFPage_GetObject(page, index)) switch
+        {
+            FPDF_PAGEOBJ_TEXT => "text",
+            FPDF_PAGEOBJ_PATH => "path",
+            FPDF_PAGEOBJ_IMAGE => "image",
+            FPDF_PAGEOBJ_SHADING => "shading",
+            FPDF_PAGEOBJ_FORM => "form",
+            _ => "unknown",
+        })]);
+
+    /// <summary>
+    /// The stored pixels of the <paramref name="nth"/> picture on a page as lightness (0 black – 255 white), row by row
+    /// from the top, or null when it can't be read. Shows what's in the file, not what's drawn over it.
+    /// </summary>
+    public (int Width, int Height, byte[] Lightness)? ReadImage(int pageIndex, int nth) => WithPage(pageIndex, page =>
+    {
+        nint[] images = [.. Enumerable.Range(0, FPDFPage_CountObjects(page)).Select(index => FPDFPage_GetObject(page, index)).Where(obj => FPDFPageObj_GetType(obj) == FPDF_PAGEOBJ_IMAGE)];
+        if (nth >= images.Length)
+        {
+            return ((int, int, byte[])?)null;
+        }
+
+        nint bitmap = FPDFImageObj_GetBitmap(images[nth]);
+        if (bitmap == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            int format = FPDFBitmap_GetFormat(bitmap);
+            int bytesPerPixel = format switch { FPDFBitmap_Gray => 1, FPDFBitmap_BGR => 3, _ => 4 };
+            int width = FPDFBitmap_GetWidth(bitmap), height = FPDFBitmap_GetHeight(bitmap), stride = FPDFBitmap_GetStride(bitmap);
+            var raw = new byte[stride * height];
+            Marshal.Copy(FPDFBitmap_GetBuffer(bitmap), raw, 0, raw.Length);
+            var lightness = new byte[width * height];
+            for (int row = 0; row < height; row++)
+            {
+                for (int column = 0; column < width; column++)
+                {
+                    int at = (row * stride) + (column * bytesPerPixel);
+                    lightness[(row * width) + column] = bytesPerPixel == 1 ? raw[at] : (byte)((raw[at] + raw[at + 1] + raw[at + 2]) / 3);
+                }
+            }
+
+            return (width, height, lightness);
+        }
+        finally
+        {
+            FPDFBitmap_Destroy(bitmap);
+        }
+    });
+
+    /// <summary>
+    /// Every character on a page with its box in PDF user space, in the page's text order. Spaces PDFium infers between
+    /// words come with an empty box; the line breaks it infers are left out.
+    /// </summary>
+    public IReadOnlyList<PdfCharacter> GetCharacters(int pageIndex) => WithPage(pageIndex, page =>
+    {
+        nint textPage = FPDFText_LoadPage(page);
+        if (textPage == 0)
+        {
+            return (IReadOnlyList<PdfCharacter>)[];
+        }
+
+        try
+        {
+            int count = FPDFText_CountChars(textPage);
+            var characters = new List<PdfCharacter>(Math.Max(0, count));
+            for (int index = 0; index < count; index++)
+            {
+                int code = (int)FPDFText_GetUnicode(textPage, index);
+                if (FPDFText_IsGenerated(textPage, index) != 0)
+                {
+                    // A space PDFium inferred between words still separates them; its line breaks don't matter.
+                    if (code == ' ')
+                    {
+                        characters.Add(new PdfCharacter(code, 0, 0, 0, 0));
+                    }
+
+                    continue;
+                }
+
+                if (FPDFText_GetLooseCharBox(textPage, index, out FsRectF box))
+                {
+                    characters.Add(new PdfCharacter(code, box.Left, box.Bottom, box.Right, box.Top));
+                }
+            }
+
+            return characters;
+        }
+        finally
+        {
+            FPDFText_ClosePage(textPage);
+        }
+    });
+
+    /// <summary>
+    /// Small outlined squares drawn on a page, in PDF user space: the tick boxes of forms that draw them rather than
+    /// using a ☐ character. Only the page's own paths count, not those inside embedded forms.
+    /// </summary>
+    public IReadOnlyList<PdfCharacter> GetDrawnBoxes(int pageIndex) => WithPage(pageIndex, page =>
+    {
+        var boxes = new List<PdfCharacter>();
+        int count = FPDFPage_CountObjects(page);
+        for (int index = 0; index < count; index++)
+        {
+            nint obj = FPDFPage_GetObject(page, index);
+            if (FPDFPageObj_GetType(obj) != FPDF_PAGEOBJ_PATH
+                || !FPDFPageObj_GetBounds(obj, out float left, out float bottom, out float right, out float top)
+                || !FPDFPath_GetDrawMode(obj, out _, out bool stroke) || !stroke)
+            {
+                continue;
+            }
+
+            float width = right - left, height = top - bottom;
+            int segments = FPDFPath_CountSegments(obj);
+            bool isSquare = width is >= 5 and <= 24 && height is >= 5 and <= 24 && Math.Abs(width - height) <= Math.Max(1.5f, width * 0.15f);
+            if (isSquare && segments is >= 4 and <= 6)
+            {
+                boxes.Add(new PdfCharacter(0x2610, left, bottom, right, top));
+            }
+        }
+
+        return boxes;
+    });
 
     /// <summary>The page's extractable text: what search and copy in a PDF reader will see.</summary>
     public string GetText(int pageIndex) => WithPage(pageIndex, page =>
@@ -287,7 +422,7 @@ public sealed partial class PdfiumDocument
 }
 
 /// <summary>Creates page objects on one open page. Colours are 0–255 RGBA.</summary>
-public sealed class PdfiumPageEditor
+public sealed partial class PdfiumPageEditor
 {
     private readonly nint _document;
     private readonly nint _page;
@@ -314,7 +449,7 @@ public sealed class PdfiumPageEditor
     }
 
     /// <summary>Adds a path built by <paramref name="build"/>. Pass a fill colour, a stroke, or both.</summary>
-    public void AddPath(
+    public PdfiumObject AddPath(
         float startX,
         float startY,
         Action<PathBuilder> build,
@@ -329,6 +464,7 @@ public sealed class PdfiumPageEditor
         Style(obj, fill, stroke, strokeWidth, blendMode);
         Check(FPDFPath_SetDrawMode(obj, fill is null ? FPDF_FILLMODE_NONE : FPDF_FILLMODE_WINDING, stroke is not null), "set draw mode");
         Insert(obj);
+        return new PdfiumObject(obj);
     }
 
     /// <summary>Places a BGRA (premultiplied is fine for opaque; alpha becomes a soft mask) image into a rectangle.</summary>

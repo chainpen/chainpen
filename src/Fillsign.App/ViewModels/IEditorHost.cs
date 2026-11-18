@@ -41,8 +41,8 @@ public interface IEditorHost
     /// <summary>Asks where to save the working copy (FR-8.1). Null when cancelled.</summary>
     Task<string?> AskWorkingCopyPathAsync(string suggestedName, string folder);
 
-    /// <summary>The Export final copy dialog (FS-608, 🎨 6). Null when the person keeps editing.</summary>
-    Task<ExportChoice?> AskExportAsync(ExportRequest request);
+    /// <summary>The Export final copy dialog (FS-608, 🎨 6): export, or look at a possible gap. Null when the person keeps editing.</summary>
+    Task<ExportDecision?> AskExportAsync(ExportRequest request);
 
     /// <summary>D8: restoring Fillsign edits removes another app's changes, so ask first.</summary>
     Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt);

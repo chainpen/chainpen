@@ -22,6 +22,45 @@ public static class ItemGeometry
         return new PageRect(item.X, item.Y, size.Width, size.Height);
     }
 
+    /// <summary>
+    /// The corners of a line's box where its start and end sit. A line only has handles there, so either end can be
+    /// dragged anywhere around the other (FR-5.4).
+    /// </summary>
+    public static (Corner Start, Corner End) LineEndCorners(ShapeItem line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        Corner start = (line.FlipX, line.FlipY) switch
+        {
+            (false, false) => Corner.TopLeft,
+            (true, false) => Corner.TopRight,
+            (false, true) => Corner.BottomLeft,
+            (true, true) => Corner.BottomRight,
+        };
+        Corner end = start switch
+        {
+            Corner.TopLeft => Corner.BottomRight,
+            Corner.TopRight => Corner.BottomLeft,
+            Corner.BottomLeft => Corner.TopRight,
+            _ => Corner.TopLeft,
+        };
+        return (start, end);
+    }
+
+    /// <summary>A line or arrow running from <paramref name="start"/> to <paramref name="end"/>, at any angle.</summary>
+    public static ShapeItem WithLineEnds(ShapeItem line, PagePoint start, PagePoint end)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        return line with
+        {
+            X = Math.Min(start.X, end.X),
+            Y = Math.Min(start.Y, end.Y),
+            Width = Math.Abs(end.X - start.X),
+            Height = Math.Abs(end.Y - start.Y),
+            FlipX = end.X < start.X,
+            FlipY = end.Y < start.Y,
+        };
+    }
+
     public static PageSize Size(Item item, ITextMeasurer measurer) => item switch
     {
         TextItem text => TextSize(text, measurer),

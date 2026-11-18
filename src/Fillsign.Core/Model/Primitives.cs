@@ -101,8 +101,10 @@ public readonly record struct InkColor(byte R, byte G, byte B)
     public static readonly InkColor Red = new(0xb4, 0x23, 0x18);
     public static readonly InkColor White = new(0xff, 0xff, 0xff);
 
-    /// <summary>Blue reads as "added by hand" on forms, so it's the default everywhere (INTERACTION-PATTERNS §3).</summary>
-    public static InkColor Default => Blue;
+    /// <summary>
+    /// Black until the person picks another colour; the app then remembers their last choice (INTERACTION-PATTERNS §3).
+    /// </summary>
+    public static InkColor Default => Black;
 
     public string ToHex() => $"#{R:x2}{G:x2}{B:x2}";
 

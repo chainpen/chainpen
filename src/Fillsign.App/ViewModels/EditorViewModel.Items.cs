@@ -15,9 +15,15 @@ namespace Fillsign.App.ViewModels;
 /// </summary>
 public sealed partial class EditorViewModel
 {
-    /// <summary>Signatures are placed 150 pt wide and initials 50 pt wide (E3, FS-405).</summary>
+    /// <summary>The first signature is placed 150 pt wide and the first initials 50 pt wide (E3, FS-405).</summary>
     public const double SignatureWidth = 150;
     public const double InitialsWidth = 50;
+
+    /// <summary>Width the next signature is placed at: the size the last one was resized to, so repeat signing matches.</summary>
+    public double DefaultSignatureWidth { get; private set; } = SignatureWidth;
+
+    /// <summary>Width the next initials are placed at, remembered the same way as <see cref="DefaultSignatureWidth"/>.</summary>
+    public double DefaultInitialsWidth { get; private set; } = InitialsWidth;
 
     /// <summary>Keyboard placing cursor steps in points (NFR-4: every drag and click has a keyboard way).</summary>
     public const double CursorStep = 4;
@@ -55,7 +61,7 @@ public sealed partial class EditorViewModel
     /// <summary>Colour for new items, and the last colour chosen (FR-5.5). Blue by default (FR-3.9).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentColour))]
-    public partial InkColor DefaultColour { get; private set; } = InkColor.Default;
+    public partial InkColor DefaultColour { get; private set; } = Platform.AppSettings.Load().Ink;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SizeLabel), nameof(SizeTip))]
@@ -131,7 +137,7 @@ public sealed partial class EditorViewModel
         EditorTool.Text => "Click where the text should start, then type.",
         EditorTool.Tick => "Click each box to tick it. Tick stays on until you pick another tool · Esc to stop",
         EditorTool.Cross => "Click each box to cross it. Cross stays on until you pick another tool · Esc to stop",
-        EditorTool.Date => "Click to add today’s date (DD/MM/YYYY) · Esc to stop",
+        EditorTool.Date => "Click to add today’s date (DD/MM/YYYY) · Esc to cancel",
         EditorTool.Shape => "Drag on the page to draw it. Click instead for a standard size · Esc to stop",
         EditorTool.Draw => "Strokes join into one drawing until you’re done.",
         _ => "Nothing selected. Pick a tool, then click on the page: Tick for boxes, Text for lines, Sign for the signature.",
@@ -241,7 +247,8 @@ public sealed partial class EditorViewModel
 
     /// <summary>
     /// Esc: back out one level (FR-7.7). Cancels a drag, finishes typing, cancels placing, finishes drawing,
-    /// clears the selection, then returns to the Select tool. Returns false when there's nothing to back out of.
+    /// clears the selection, returns to the Select tool, then stops checking for gaps. Returns false when there's
+    /// nothing to back out of.
     /// </summary>
     public bool BackOut()
     {
@@ -268,6 +275,10 @@ public sealed partial class EditorViewModel
         else if (Tool != EditorTool.Select)
         {
             SwitchTool(EditorTool.Select);
+        }
+        else if (IsCheckingGaps)
+        {
+            StopChecking();
         }
         else
         {
@@ -339,8 +350,14 @@ public sealed partial class EditorViewModel
                 PlaceMark(page, point, Tool == EditorTool.Tick ? MarkKind.Tick : MarkKind.Cross);
                 break;
             case EditorTool.Date:
-                AddText(page, point, DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), startTyping: false);
+            {
+                TextItem date = AddText(page, point, DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), startTyping: false);
+
+                // A form needs one date, so go back to Select with the date selected, ready to nudge into place (FR-3.3).
+                SwitchTool(EditorTool.Select);
+                Selection = new ItemSelection([date.Id]);
                 break;
+            }
             case EditorTool.Sign:
                 PlaceSignature(page, point);
                 break;
@@ -482,6 +499,12 @@ public sealed partial class EditorViewModel
 
             case Resizing resizing:
                 Record(resizing.Before);
+                // The next item of the same kind is placed at the size just chosen, as with the size buttons.
+                if (State.FindItem(resizing.Original.Id) is { } resizedItem)
+                {
+                    RememberSizes([resizedItem]);
+                }
+
                 break;
 
             case DrawingShape shape:
@@ -666,6 +689,12 @@ public sealed partial class EditorViewModel
     [RelayCommand]
     private void SetColour(InkColor colour)
     {
+        if (DefaultColour != colour)
+        {
+            // Remembered for next time and for other windows' new documents.
+            Platform.AppSettings.Update(settings => settings with { InkColour = colour.ToHex() });
+        }
+
         DefaultColour = colour;
         _joiningInk = null;
         if (TypingItem is { } typing)
@@ -773,7 +802,7 @@ public sealed partial class EditorViewModel
         _gesture = new MovingItems(hit.Id, point, State, wasSelected, isAdditive, HasMoved: false);
     }
 
-    private void AddText(PageId page, PagePoint point, string text, bool startTyping)
+    private TextItem AddText(PageId page, PagePoint point, string text, bool startTyping)
     {
         // The click marks the middle of the first line, where the caret appears.
         double lineHeight = DefaultFontSize * TextItem.LineHeight;
@@ -789,16 +818,32 @@ public sealed partial class EditorViewModel
         {
             Change(ItemEdits.Add(State, item));
         }
+
+        return item;
     }
 
-    private void PlaceMark(PageId page, PagePoint point, MarkKind kind)
+    private void PlaceMark(PageId page, PagePoint point, MarkKind kind) => Change(ItemEdits.Add(State, MarkAt(page, point, kind)));
+
+    /// <summary>
+    /// The tick or cross a click at <paramref name="point"/> would place: centred where the click lands, so a click in
+    /// a checkbox fills it (FR-3.2), and kept on the page.
+    /// </summary>
+    private MarkItem MarkAt(PageId page, PagePoint point, MarkKind kind)
     {
-        // Centred where the click lands, so a click in a checkbox fills it (FR-3.2).
         double size = DefaultMarkSize;
         var box = new PageRect(point.X - (size / 2), point.Y - (size / 2), size, size);
         PagePoint position = ItemGeometry.ClampToPage(box, PageSizeOf(page));
-        Change(ItemEdits.Add(State, new MarkItem(ItemId.New(), page, position.X, position.Y, kind, size, DefaultColour)));
+        return new MarkItem(ItemId.New(), page, position.X, position.Y, kind, size, DefaultColour);
     }
+
+    /// <summary>
+    /// With Tick or Cross on, the mark a click would place, drawn faintly under the pointer (or the keyboard cursor) so
+    /// you can see exactly where it will land.
+    /// </summary>
+    public MarkItem? MarkPreview =>
+        Tool is EditorTool.Tick or EditorTool.Cross && Cursor is { } cursor && _gesture is null && TypingItem is null
+            ? MarkAt(cursor.Page, cursor.Point, Tool == EditorTool.Tick ? MarkKind.Tick : MarkKind.Cross)
+            : null;
 
     private void PlaceSignature(PageId page, PagePoint point)
     {
@@ -813,11 +858,11 @@ public sealed partial class EditorViewModel
         Selection = new ItemSelection([item.Id]);
     }
 
-    /// <summary>A signature centred on <paramref name="centre"/> at its default width, kept on the page.</summary>
+    /// <summary>A signature centred on <paramref name="centre"/> at the remembered width for its kind, kept on the page.</summary>
     public SignatureItem SignatureAt(PageId page, PagePoint centre, SignatureImage image, SignatureKind kind)
     {
         ArgumentNullException.ThrowIfNull(image);
-        double width = kind == SignatureKind.Initials ? InitialsWidth : SignatureWidth;
+        double width = kind == SignatureKind.Initials ? DefaultInitialsWidth : DefaultSignatureWidth;
         double height = width * image.PixelHeight / Math.Max(1, image.PixelWidth);
         var box = new PageRect(centre.X - (width / 2), centre.Y - (height / 2), width, height);
         PagePoint position = ItemGeometry.ClampToPage(box, PageSizeOf(page));
@@ -895,6 +940,12 @@ public sealed partial class EditorViewModel
                     break;
                 case InkItem ink:
                     DefaultStrokeWidth = ink.StrokeWidth;
+                    break;
+                case SignatureItem { Kind: SignatureKind.Initials } initials:
+                    DefaultInitialsWidth = initials.Width;
+                    break;
+                case SignatureItem signature:
+                    DefaultSignatureWidth = signature.Width;
                     break;
             }
         }

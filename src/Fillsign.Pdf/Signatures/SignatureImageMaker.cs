@@ -182,7 +182,7 @@ public static class SignatureImageMaker
     /// <summary>Shapes with HarfBuzz so the handwriting fonts' kerning and joins apply.</summary>
     private static (ushort[] Glyphs, SKPoint[] Positions, float Advance) Shape(byte[] fontFile, string text, float fontSize)
     {
-        using Blob blob = Blob.FromStream(new MemoryStream(fontFile));
+        using Blob blob = NativeFontBlob.Create(fontFile);
         using var face = new Face(blob, 0);
         using var font = new HarfBuzzSharp.Font(face);
         int unitsPerEm = face.UnitsPerEm;

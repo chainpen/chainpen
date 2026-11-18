@@ -2,13 +2,15 @@
 
 Fill in and sign documents, especially scanned paper forms with no fillable fields. A native desktop app for Windows, macOS and Linux, built with .NET 11 and Avalonia.
 
-> Status: pre-alpha (Phase 0 spikes). The repository is private until the public beta. Outside contributions aren't accepted yet.
+> Status: pre-beta (Phases 0–8 built; see the [kanban](docs/KANBAN.md)). The repository is private until the public beta. Outside contributions aren't accepted yet ([CONTRIBUTING](CONTRIBUTING.md)).
 
 ## Docs
 
 - [Requirements](docs/REQUIREMENTS.md): what Fillsign must do
 - [Implementation plan](docs/PLAN.md): stack, architecture, phases
 - [Kanban board](docs/KANBAN.md): current work
+- [User guide](docs/USER-GUIDE.md) and [installing](docs/INSTALL.md) (including first-run warnings on unsigned builds)
+- [Working-copy file format](docs/FILE-FORMAT.md)
 
 ## Build
 
@@ -20,6 +22,10 @@ dotnet test
 dotnet run --project src/Fillsign.App
 ```
 
+## Release builds
+
+`build/package.sh <rid> <version>` publishes a self-contained build and packs it with Velopack into `artifacts/releases/<rid>/` (installer, portable copy and update feed). Run it on the matching OS. Pushing a `v*.*.*` tag runs `.github/workflows/release.yml`, which builds all six platforms and publishes a GitHub release that installed copies update from. The app icon is drawn by `build/icon/make-icon.py`.
+
 ## Layout
 
 | Path | Contents |
@@ -29,6 +35,7 @@ dotnet run --project src/Fillsign.App
 | `src/Fillsign.App` | Avalonia desktop app. |
 | `tests/` | xUnit v3 tests for each project. |
 | `spikes/` | Phase 0 go/no-go experiments (not shipped). |
+| `build/` | Packaging script, macOS Info.plist, app icon, corpus download. |
 
 ## Licence
 

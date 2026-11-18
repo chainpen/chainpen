@@ -1,0 +1,85 @@
+name: Release
+
+# Builds installers for every platform and publishes them on GitHub Releases (FS-800–803), where installed copies
+# find their updates (FS-804). Start it by pushing a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build, e.g. 0.1.0 (a draft release is made; nothing is published)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: package (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: windows-latest, rid: win-arm64 }
+          - { os: macos-latest, rid: osx-arm64 }
+          - { os: macos-15-intel, rid: osx-x64 }
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: ubuntu-24.04-arm, rid: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version
+        id: version
+        shell: bash
+        run: |
+          version="${{ github.event.inputs.version }}"
+          if [[ -z "$version" ]]; then version="${GITHUB_REF_NAME#v}"; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Tests run where the package's own architecture can run them; win-arm64 is built on an x64 runner.
+      - name: Test
+        if: matrix.rid != 'win-arm64'
+        shell: bash
+        run: |
+          ./build/fetch-corpus.sh
+          dotnet test -c Release
+
+      - name: Package
+        shell: bash
+        run: ./build/package.sh ${{ matrix.rid }} ${{ steps.version.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.rid }}
+          path: artifacts/releases/${{ matrix.rid }}/
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: releases
+          pattern: release-*
+          merge-multiple: true
+
+      # Each platform is its own Velopack channel, so their update files never clash. Tag pushes publish; a manual run
+      # makes a draft to look over first.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.event.inputs.version) }}
+          DRAFT: ${{ github.ref_type == 'tag' && '' || '--draft' }}
+        run: |
+          gh release create "$TAG" releases/* --repo "$GITHUB_REPOSITORY" --title "Fillsign ${TAG#v}" \
+            --notes-file <(echo "See docs/INSTALL.md for first-run steps on unsigned builds.") $DRAFT

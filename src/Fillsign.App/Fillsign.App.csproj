@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>Fillsign.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Icon\fillsign.ico</ApplicationIcon>
+    <Product>Fillsign</Product>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- The render service writes PDFium output straight into bitmap memory. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -17,6 +19,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Velopack" />
   </ItemGroup>
   <ItemGroup>
     <!-- The same font files the PDF writer embeds, so the screen and the export use identical glyphs. -->
@@ -25,6 +28,7 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\practice-form.pdf" />
+    <AvaloniaResource Include="Assets\Icon\fillsign-256.png" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Fillsign.App.Tests" />

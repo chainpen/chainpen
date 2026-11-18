@@ -34,7 +34,7 @@ public static class DocumentWriter
         ArgumentNullException.ThrowIfNull(cleanSource);
         using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
         bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
-        Draw(pdf, sourcePages, document);
+        Draw(pdf, sourcePages, document, redactUnderWhiteout: true);
         return new WrittenDocument(pdf.SaveCopy(removeSecurity: true), haveFormsMoved);
     }
 
@@ -49,7 +49,9 @@ public static class DocumentWriter
         ArgumentNullException.ThrowIfNull(sourcePages);
         using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
         bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
-        Draw(pdf, sourcePages, document);
+
+        // The working copy keeps what's under whiteout, so the whiteout can still be moved or deleted (FR-9.2).
+        Draw(pdf, sourcePages, document, redactUnderWhiteout: false);
         byte[] finished = pdf.SaveIncremental();
         if (!ByteStamp.Of(cleanSource).MatchesPrefixOf(finished))
         {
@@ -144,8 +146,12 @@ public static class DocumentWriter
         }
     }
 
-    /// <summary>Draws each page's items into it as PDF content.</summary>
-    private static void Draw(PdfiumDocument pdf, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
+    /// <summary>
+    /// Draws each page's items into it as PDF content. With <paramref name="redactUnderWhiteout"/>, what a whiteout
+    /// covers is then removed from the page (FS-614); where only part of something is covered and it can't be cut,
+    /// that page becomes a picture instead.
+    /// </summary>
+    private static void Draw(PdfiumDocument pdf, IReadOnlyList<SourcePage> sourcePages, DocumentState document, bool redactUnderWhiteout)
     {
         string characters = string.Concat(document.Items.OfType<TextItem>().Select(text => text.Text.Replace("\n", string.Empty, StringComparison.Ordinal)));
         PdfiumFont? font = characters.Length > 0 ? pdf.LoadSubsetFont(BundledFonts.Load(BundledFonts.RegularFace), characters) : null;
@@ -160,17 +166,41 @@ public static class DocumentWriter
             }
 
             var transform = new PageTransform(sourcePages[entry.SourceIndex], entry.Rotation);
+            PdfBox cropBox = sourcePages[entry.SourceIndex].CropBox;
             pdf.EditPage(i, page =>
             {
+                var whiteouts = new List<RedactionArea>();
                 foreach (Item item in items)
                 {
-                    DrawItem(pdf, page, transform, font, item);
+                    PdfiumObject? drawn = DrawItem(pdf, page, transform, font, item);
+                    if (redactUnderWhiteout && item is ShapeItem { Kind: ShapeKind.Whiteout } && drawn is { } cover)
+                    {
+                        whiteouts.Add(new RedactionArea(cover, AreaInPdf(transform, item)));
+                    }
+                }
+
+                if (whiteouts.Count > 0 && !page.RemoveUnder(whiteouts))
+                {
+                    page.FlattenToPicture(cropBox);
                 }
             });
         }
     }
 
-    private static void DrawItem(PdfiumDocument pdf, PdfiumPageEditor page, PageTransform transform, PdfiumFont? font, Item item)
+    /// <summary>The box an item covers, in PDF user space. Pages turn in quarter turns, so it stays a rectangle.</summary>
+    private static PdfBox AreaInPdf(PageTransform transform, Item item)
+    {
+        Affine itemToPdf = transform.ItemToPdf(new PagePoint(item.X, item.Y));
+        PageSize size = item is ShapeItem shape ? new PageSize(shape.Width, shape.Height) : default;
+        (double X, double Y)[] corners =
+        [
+            itemToPdf.Apply(0, 0), itemToPdf.Apply(size.Width, 0), itemToPdf.Apply(0, size.Height), itemToPdf.Apply(size.Width, size.Height),
+        ];
+        return new PdfBox(corners.Min(c => c.X), corners.Min(c => c.Y), corners.Max(c => c.X), corners.Max(c => c.Y));
+    }
+
+    /// <summary>Draws one item; returns the path object for a whiteout, so what it covers can be found.</summary>
+    private static PdfiumObject? DrawItem(PdfiumDocument pdf, PdfiumPageEditor page, PageTransform transform, PdfiumFont? font, Item item)
     {
         Affine itemToPdf = transform.ItemToPdf(new PagePoint(item.X, item.Y));
         switch (item)
@@ -187,8 +217,7 @@ public static class DocumentWriter
                 DrawPath(page, itemToPdf, ItemPaths.ShapePath(highlight), HighlightOnWhite(), stroke: null, 0, "Multiply");
                 break;
             case ShapeItem { Kind: ShapeKind.Whiteout } whiteout:
-                DrawPath(page, itemToPdf, ItemPaths.ShapePath(whiteout), (255, 255, 255, 255), stroke: null, 0);
-                break;
+                return DrawPath(page, itemToPdf, ItemPaths.ShapePath(whiteout), (255, 255, 255, 255), stroke: null, 0);
             case ShapeItem shape:
                 DrawPath(page, itemToPdf, ItemPaths.ShapePath(shape), fill: null, Rgba(shape.Color), shape.StrokeWidth);
                 break;
@@ -199,6 +228,8 @@ public static class DocumentWriter
                 DrawSignature(page, itemToPdf, signature);
                 break;
         }
+
+        return null;
     }
 
     /// <summary>
@@ -225,7 +256,7 @@ public static class DocumentWriter
     }
 
     /// <summary>Writes an item-local path list (the same one the screen draws) as one PDF path object.</summary>
-    private static void DrawPath(
+    private static PdfiumObject? DrawPath(
         PdfiumPageEditor page,
         Affine itemToPdf,
         IReadOnlyList<PathCommand> commands,
@@ -236,7 +267,7 @@ public static class DocumentWriter
     {
         if (commands.Count == 0 || commands[0] is not MoveTo start)
         {
-            return;
+            return null;
         }
 
         (float X, float Y) ToPdf(PagePoint point)
@@ -246,7 +277,7 @@ public static class DocumentWriter
         }
 
         (float startX, float startY) = ToPdf(start.To);
-        page.AddPath(
+        return page.AddPath(
             startX,
             startY,
             path =>

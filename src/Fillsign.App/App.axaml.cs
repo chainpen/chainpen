@@ -13,7 +13,20 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+
+        // Avalonia reads the app menu once, straight after Initialize, and puts in "About Avalonia" if there's none,
+        // so it has to be set here rather than when the first window opens.
+        if (OperatingSystem.IsMacOS())
+        {
+            NativeMenu.SetMenu(this, MacAppMenu(FrontWindow));
+        }
     }
+
+    /// <summary>The window in front, which About and update messages open over.</summary>
+    private MainWindow? FrontWindow() =>
+        ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.Windows.OfType<MainWindow>().FirstOrDefault(window => window.IsActive) ?? desktop.MainWindow as MainWindow
+            : null;
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -34,6 +47,10 @@ public partial class App : Application
             string[] paths = [.. (desktop.Args ?? []).Where(File.Exists)];
             desktop.MainWindow = new MainWindow(isFirstLaunch, paths);
 
+            // Updates: check quietly once the first window is up; before restarting, keep every window's unsaved work.
+            AppUpdates.Instance.KeepUnsavedWork = () => Task.WhenAll(desktop.Windows.OfType<MainWindow>().Select(window => window.KeepForUpdateAsync()));
+            Avalonia.Threading.DispatcherTimer.RunOnce(() => _ = AppUpdates.Instance.CheckAsync(), TimeSpan.FromSeconds(10));
+
             // Files opened from Finder or Explorer while Fillsign is running ("Open with", FS-705).
             if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
             {
@@ -49,6 +66,44 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// The macOS app menu (the one named Fillsign): About, Settings and Check for Updates sit there, as on every Mac app, rather than
+    /// Avalonia's default "About Avalonia". macOS adds Services, Hide and Quit itself.
+    /// </summary>
+    /// <param name="frontWindow">The window About opens over.</param>
+    internal static NativeMenu MacAppMenu(Func<MainWindow?> frontWindow)
+    {
+        var menu = new NativeMenu();
+        menu.Items.Add(new NativeMenuItem("About Fillsign")
+        {
+            Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => frontWindow()?.ShowAbout()),
+        });
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(new NativeMenuItem("Settings…")
+        {
+            Command = new CommunityToolkit.Mvvm.Input.RelayCommand(MainWindow.ShowSettings),
+            Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.OemComma, Avalonia.Input.KeyModifiers.Meta),
+        });
+        menu.Items.Add(new NativeMenuItem("Check for Updates…")
+        {
+            Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => _ = frontWindow()?.CheckForUpdatesAsync()),
+        });
+        return menu;
+    }
+
+    /// <summary>The version people see: the release number, without build details.</summary>
+    public static string DisplayVersion
+    {
+        get
+        {
+            string? version = typeof(App).Assembly
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion;
+            return version?.Split('+')[0] ?? "unknown";
+        }
     }
 
     /// <summary>Match system, light or dark (FR-10.1). The page is never recoloured (NFR-10).</summary>

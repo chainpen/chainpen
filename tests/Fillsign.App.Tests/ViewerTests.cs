@@ -172,7 +172,8 @@ public sealed class ViewerTests(ITestOutputHelper output)
     [AvaloniaFact]
     public async Task Dark_appearance_themes_the_app_but_not_the_page()
     {
-        Avalonia.Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+        Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.Dark });
+        await Pump(() => Avalonia.Application.Current!.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
         try
         {
             var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
@@ -181,11 +182,12 @@ public sealed class ViewerTests(ITestOutputHelper output)
             EditorViewModel editor = Editor(window);
             await Pump(() => !editor.IsLoading && editor.Renderer.TryGet(0, Rotation.None, editor.Zoom) is not null);
             Save(window, "editor-dark");
+            Assert.Equal(Avalonia.Styling.ThemeVariant.Dark, window.ActualThemeVariant);
             window.CloseWithoutAsking();
         }
         finally
         {
-            Avalonia.Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
+            Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
         }
     }
 }

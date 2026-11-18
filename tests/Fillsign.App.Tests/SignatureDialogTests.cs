@@ -69,6 +69,23 @@ public sealed class SignatureDialogTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Typed_initials_show_whole_in_every_style()
+    {
+        using var s = await Session.OpenSignAsync();
+        s.Dialog.IsInitials = true;
+        s.Dialog.IsTypeTab = true;
+        s.Dialog.TypedName = "TR";
+        await Pump(() => true);
+        Save(s.Window, "phase4-initials-type");
+
+        // Handwriting swashes reach past the letters' boxes; the previews leave room so nothing is cut off.
+        foreach (TextBlock preview in s.View.GetVisualDescendants().OfType<TextBlock>().Where(text => text.Text == "TR"))
+        {
+            Assert.True(preview.Padding.Left >= 8 && preview.Padding.Right >= 8, "style previews need room for swashes");
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Clear_empties_the_pad()
     {
         using var s = await Session.OpenSignAsync();

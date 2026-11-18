@@ -41,8 +41,10 @@ public sealed partial class StartViewModel : ObservableObject
 
     /// <summary>Unsaved work found at start-up that hasn't been recovered or put off (🎨 2).</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasRecovery), nameof(RecoveryText))]
+    [NotifyPropertyChangedFor(nameof(HasRecovery), nameof(RecoveryText), nameof(RecoveryTitle))]
     public partial RecoveryCopy? Recovery { get; private set; }
+
+    public string RecoveryTitle => Recovery is { IsForUpdate: true } ? "Fillsign was updated." : "Fillsign closed unexpectedly.";
 
     public bool HasRecovery => Recovery is not null;
 

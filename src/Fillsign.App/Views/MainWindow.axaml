@@ -4,6 +4,7 @@
         x:Class="Fillsign.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Title}"
+        Icon="avares://Fillsign.App/Assets/Icon/fillsign-256.png"
         Width="1280" Height="860" MinWidth="1024" MinHeight="720"
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">

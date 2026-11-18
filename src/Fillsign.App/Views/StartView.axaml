@@ -31,7 +31,7 @@
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" VerticalAlignment="Center">
                     <c:StrokeIcon Data="{StaticResource IconClock}" Foreground="{DynamicResource Warning}" />
                     <TextBlock Grid.Column="1" TextWrapping="Wrap">
-                        <Run FontWeight="SemiBold" Text="Fillsign closed unexpectedly." />
+                        <Run FontWeight="SemiBold" Text="{Binding RecoveryTitle}" />
                         <Run Text="{Binding RecoveryText}" />
                     </TextBlock>
                 </Grid>

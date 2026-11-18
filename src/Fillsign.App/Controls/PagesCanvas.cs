@@ -63,6 +63,7 @@ public sealed partial class PagesCanvas : Panel
         _renderZoom = editor.Zoom;
         editor.PagesChanged += OnPagesChanged;
         editor.ScrollToPageRequested += ScrollToPage;
+        editor.ScrollToAreaRequested += ScrollToArea;
         editor.Renderer.PageRendered += _ => _layer.InvalidateVisual();
         AttachItems(editor);
         scroller.ScrollChanged += (_, _) =>
@@ -156,6 +157,20 @@ public sealed partial class PagesCanvas : Panel
         }
 
         _scroller.Offset = new Vector(_scroller.Offset.X, Math.Max(0, PageTop(index) - 16));
+    }
+
+    /// <summary>Brings an area of a page into view, a third of the way down, as when stepping to a possible gap.</summary>
+    public void ScrollToArea(int index, Fillsign.Core.Model.PageRect area)
+    {
+        if (_scroller is null || index < 0 || index >= _tops.Length)
+        {
+            return;
+        }
+
+        Rect page = PageRect(index);
+        double y = PageTop(index) + (area.Y * Zoom) - (_scroller.Viewport.Height / 3);
+        double x = page.Width > _scroller.Viewport.Width ? page.X + (area.X * Zoom) - (_scroller.Viewport.Width / 3) : _scroller.Offset.X;
+        _scroller.Offset = new Vector(Math.Max(0, x), Math.Max(0, y));
     }
 
     protected override Size MeasureOverride(Size availableSize)

@@ -218,6 +218,14 @@ public partial class EditorView
             return;
         }
 
+        // A plain click on a page in the Pages panel goes to it, even when it's already selected (Shift and Mod clicks
+        // only change the selection).
+        if (_press is { } press && ReferenceEquals(press.List, PageList) && _editor is not null
+            && (e.KeyModifiers & (KeyModifiers.Shift | KeyModifiers.Control | KeyModifiers.Meta)) == KeyModifiers.None)
+        {
+            _editor.GoToPageCommand.Execute(press.Page.Number);
+        }
+
         EndPageDrag();
     }
 

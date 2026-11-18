@@ -24,7 +24,7 @@ public sealed class NotoTextMeasurer : ITextMeasurer, IDisposable
     private NotoTextMeasurer()
     {
         byte[] bytes = BundledFonts.Load(BundledFonts.RegularFace);
-        _blob = Blob.FromStream(new MemoryStream(bytes));
+        _blob = NativeFontBlob.Create(bytes);
         _face = new Face(_blob, 0);
         _font = new Font(_face);
         UnitsPerEm = _face.UnitsPerEm;

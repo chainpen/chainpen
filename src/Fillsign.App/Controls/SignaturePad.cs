@@ -148,9 +148,10 @@ public sealed class SignaturePad : Control
     public override void Render(DrawingContext context)
     {
         var bounds = new Rect(Bounds.Size);
-        IBrush surface = Brush("SurfaceSubtle", Brushes.White);
+        // Paper in both appearances: the ink colours are chosen for a light page.
+        IBrush surface = Brush("Page", Brushes.White);
         IBrush border = HasError ? Brush("Danger", Brushes.Red) : Brush("BorderControl", Brushes.Gray);
-        IBrush muted = Brush("TextMuted", Brushes.Gray);
+        IBrush muted = new SolidColorBrush(Color.FromRgb(0x4a, 0x50, 0x5a));
         context.DrawRectangle(surface, new Pen(border, HasError ? 2 : 1), bounds.Deflate(HasError ? 1 : 0.5), 10, 10);
 
         double lineY = bounds.Height - LineFromBottom;
