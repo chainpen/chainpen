@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fillsign.App.ViewModels"
+             xmlns:c="using:Fillsign.App.Controls"
+             x:Class="Fillsign.App.Views.StartView"
+             x:DataType="vm:StartViewModel">
+    <!-- 🎨 2 / 9: the start screen. Recent files (FR-1.7) arrive with FS-703. -->
+    <ScrollViewer Background="{DynamicResource SurfaceApp}">
+        <StackPanel MaxWidth="880" Margin="24,56,24,40" Spacing="24">
+            <StackPanel Spacing="8">
+                <TextBlock Classes="heading-page" Text="Fill in and sign a document" />
+                <TextBlock Classes="muted" FontSize="16" TextWrapping="Wrap"
+                           Text="Open a PDF, or a photo or scan of a paper form. Your files stay on this computer." />
+            </StackPanel>
+
+            <!-- D6: what went wrong with the last open. -->
+            <Border IsVisible="{Binding HasProblem}" Background="{DynamicResource DangerTint}"
+                    BorderBrush="{DynamicResource DangerBorder}" BorderThickness="4,1,1,1"
+                    CornerRadius="12" Padding="20,18" AutomationProperties.LiveSetting="Assertive">
+                <Grid ColumnDefinitions="24,*" ColumnSpacing="14">
+                    <c:StrokeIcon Data="{StaticResource IconFileX}" Size="24" Foreground="{DynamicResource Danger}" VerticalAlignment="Top" />
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock FontSize="16" FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Problem.Title, FallbackValue=''}" />
+                        <TextBlock TextWrapping="Wrap" Text="{Binding Problem.Message, FallbackValue=''}" />
+                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                            <Button Classes="primary" Content="Choose another file…" Click="OnOpen" />
+                            <Button Content="Dismiss" Click="OnDismissProblem" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Drop zone. Dropping anywhere on the window works too. -->
+            <Grid>
+                <Rectangle Stroke="{DynamicResource DropZoneBorder}" StrokeThickness="2" StrokeDashArray="3,2"
+                           RadiusX="14" RadiusY="14" Fill="{DynamicResource Surface}" />
+                <WrapPanel Margin="32,36" ItemSpacing="24" LineSpacing="16" VerticalAlignment="Center">
+                    <Border Width="64" Height="64" CornerRadius="14" Background="{DynamicResource AccentTint}">
+                        <c:StrokeIcon Data="{StaticResource IconFileUpload}" Size="32" Foreground="{DynamicResource Accent}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Width="420" Spacing="4">
+                        <TextBlock FontSize="17" FontWeight="SemiBold" Text="Drop files here to open them" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding DropHint}" />
+                    </StackPanel>
+                    <Button Classes="primary" VerticalAlignment="Center" Click="OnOpen" IsEnabled="{Binding !IsOpening}"
+                            ToolTip.Tip="Open a PDF or image (Mod+O)">
+                        <StackPanel Classes="content">
+                            <c:StrokeIcon Data="{StaticResource IconFolder}" />
+                            <TextBlock Text="Open…" />
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+            </Grid>
+
+            <!-- First launch: how it works, and a practice form (FR-1.8). -->
+            <StackPanel IsVisible="{Binding IsFirstLaunch}" Spacing="10">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" MinHeight="36" FontSize="13" Click="OnPracticeForm"
+                            Content="Try it with a practice form"
+                            ToolTip.Tip="Opens “Practice form”. Nothing is saved unless you choose to." />
+                    <TextBlock Classes="heading-section" VerticalAlignment="Center" Text="How it works" />
+                </DockPanel>
+                <UniformGrid Columns="3" ColumnSpacing="12">
+                    <Border Padding="16" CornerRadius="12" BorderThickness="1"
+                            BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Surface}">
+                        <StackPanel Spacing="6">
+                            <Border Classes="badge"><TextBlock Text="1" /></Border>
+                            <TextBlock FontWeight="SemiBold" Text="Open your form" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A PDF, or a photo of a paper form." />
+                        </StackPanel>
+                    </Border>
+                    <Border Padding="16" CornerRadius="12" BorderThickness="1"
+                            BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Surface}">
+                        <StackPanel Spacing="6">
+                            <Border Classes="badge"><TextBlock Text="2" /></Border>
+                            <TextBlock FontWeight="SemiBold" Text="Tick, type and sign" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Click on the page where each answer goes." />
+                        </StackPanel>
+                    </Border>
+                    <Border Padding="16" CornerRadius="12" BorderThickness="1"
+                            BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Surface}">
+                        <StackPanel Spacing="6">
+                            <Border Classes="badge"><TextBlock Text="3" /></Border>
+                            <TextBlock FontWeight="SemiBold" Text="Export a final copy" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A file that looks the same for whoever you send it to." />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+                <TextBlock Classes="muted" FontSize="13" Text="Documents you open will be listed here next time." />
+            </StackPanel>
+
+            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                       Text="Nothing leaves this computer: Fillsign doesn’t need an account or an internet connection." />
+        </StackPanel>
+    </ScrollViewer>
+
+    <UserControl.Styles>
+        <Style Selector="Border.badge">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="CornerRadius" Value="13" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <Style Selector="Border.badge > TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

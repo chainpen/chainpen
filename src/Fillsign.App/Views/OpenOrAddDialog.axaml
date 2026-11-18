@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Fillsign.App.Views.OpenOrAddDialog"
+             Width="520">
+    <!-- D5: opening never replaces the current document. -->
+    <Border Classes="dialog">
+        <StackPanel>
+            <TextBlock x:Name="Heading" Classes="heading-dialog" />
+            <TextBlock x:Name="Body" Classes="muted" Margin="0,8,0,16" TextWrapping="Wrap" />
+            <StackPanel Spacing="10">
+                <RadioButton x:Name="NewWindow" Classes="choice" GroupName="open" IsChecked="True">
+                    <StackPanel Spacing="2">
+                        <TextBlock FontWeight="SemiBold" Text="Open in a new window" />
+                        <TextBlock Classes="muted" FontSize="13" Text="Work on the two documents separately." />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="AddPages" Classes="choice" GroupName="open">
+                    <StackPanel Spacing="2">
+                        <TextBlock FontWeight="SemiBold" Text="Add its pages to this document" />
+                        <TextBlock x:Name="AddDetail" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                    </StackPanel>
+                </RadioButton>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,22,0,0">
+                <Button Content="Cancel" Click="OnCancel" />
+                <Button x:Name="OpenButton" Classes="primary" Content="Open" Click="OnOpen" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+    <UserControl.Styles>
+        <Style Selector="RadioButton.choice">
+            <Setter Property="Padding" Value="12,12,16,12" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Grid Width="18" Height="18" VerticalAlignment="Top" Margin="0,2,0,0">
+                                <Ellipse Stroke="{DynamicResource BorderControl}" StrokeThickness="1.5" />
+                                <Ellipse x:Name="Dot" Width="9" Height="9" Fill="{DynamicResource Accent}" IsVisible="False" />
+                            </Grid>
+                            <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.choice:checked">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Padding" Value="11,11,15,11" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource ChoiceSelected}" />
+        </Style>
+        <Style Selector="RadioButton.choice:checked /template/ Ellipse#Dot">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

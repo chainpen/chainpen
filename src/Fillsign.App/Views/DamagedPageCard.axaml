@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fillsign.App.ViewModels"
+             xmlns:c="using:Fillsign.App.Controls"
+             x:Class="Fillsign.App.Views.DamagedPageCard"
+             x:DataType="vm:PageViewModel"
+             Width="420">
+    <!-- D13: one bad page never blocks the rest. -->
+    <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+            CornerRadius="14" Padding="24,22" BoxShadow="0 2 8 0 #0f000000">
+        <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <c:StrokeIcon Data="{StaticResource IconWarning}" Size="22" Foreground="{DynamicResource DamagedText}" />
+                <TextBlock FontSize="17" FontWeight="SemiBold" Text="{Binding Number, StringFormat='Page {0} can’t be shown'}" />
+            </StackPanel>
+            <TextBlock x:Name="Explanation" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                       Text="{Binding Number, StringFormat='If you keep it, page {0} goes into your copies exactly as it is in the original file, without your edits. If someone sent you this file, ask them for a new copy.'}" />
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                <Button MinHeight="36" Content="Keep page as it is" Click="OnKeep" />
+                <Button MinHeight="36" Content="{Binding Number, StringFormat='Remove page {0}'}" Click="OnRemove" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pure logic: no UI and no PDF library dependencies (see docs/PLAN.md §2). -->
+  <PropertyGroup>
+    <RootNamespace>Fillsign.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

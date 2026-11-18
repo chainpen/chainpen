@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Authors>The Fillsign Authors</Authors>
+    <Copyright>Copyright 2026 The Fillsign Authors</Copyright>
+    <PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit v3 runs on Microsoft.Testing.Platform (see global.json), which reports a crashed test host as a failure. -->
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+  </PropertyGroup>
+</Project>
