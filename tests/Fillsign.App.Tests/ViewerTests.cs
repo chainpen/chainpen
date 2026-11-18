@@ -24,7 +24,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
         Save(window, "start-first-launch");
         var start = (StartViewModel)((MainWindowViewModel)window.DataContext!).Content;
         Assert.True(start.IsFirstLaunch);
-        window.Close();
+        window.CloseWithoutAsking();
     }
 
     [AvaloniaFact]
@@ -46,7 +46,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
         editor.GoToPageCommand.Execute(3);
         await Pump(() => editor.CurrentPageIndex == 2);
         Assert.True(editor.Pages[2].IsCurrent);
-        window.Close();
+        window.CloseWithoutAsking();
     }
 
     [AvaloniaFact]
@@ -72,7 +72,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
         }
 
         Assert.Equal(0.5, editor.Zoom, 3);
-        window.Close();
+        window.CloseWithoutAsking();
     }
 
     [AvaloniaFact]
@@ -93,7 +93,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
         editor.UndoCommand.Execute(null);
         Assert.Equal(4, editor.Pages.Count);
         Assert.Equal("Working copy · no changes yet", editor.DocumentStatus);
-        window.Close();
+        window.CloseWithoutAsking();
     }
 
     [AvaloniaFact]
@@ -118,7 +118,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
         int before = editor.Pages.Count;
         editor.RemovePageCommand.Execute(damaged);
         await Pump(() => editor.Pages.Count == before - 1 || before == 1);
-        window.Close();
+        window.CloseWithoutAsking();
     }
 
     [AvaloniaFact]
@@ -136,7 +136,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
             Assert.EndsWith("is damaged and can’t be opened", start.Problem!.Title.Replace('\'', '’'), StringComparison.Ordinal);
             await Pump(() => true);
             Save(window, "start-open-error");
-            window.Close();
+            window.CloseWithoutAsking();
         }
         finally
         {
@@ -166,7 +166,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
         Click(openDialog, "Open");
         Assert.Equal(OpenChoice.AddPages, await choice);
         Assert.False(window.FindControl<Border>("DialogLayer")!.IsVisible);
-        window.Close();
+        window.CloseWithoutAsking();
     }
 
     [AvaloniaFact]
@@ -181,7 +181,7 @@ public sealed class ViewerTests(ITestOutputHelper output)
             EditorViewModel editor = Editor(window);
             await Pump(() => !editor.IsLoading && editor.Renderer.TryGet(0, Rotation.None, editor.Zoom) is not null);
             Save(window, "editor-dark");
-            window.Close();
+            window.CloseWithoutAsking();
         }
         finally
         {

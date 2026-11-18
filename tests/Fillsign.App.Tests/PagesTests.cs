@@ -344,6 +344,6 @@ public sealed class PagesTests
             Editor.SelectToolCommand.Execute(EditorTool.Select);
         }
 
-        public void Dispose() => Window.Close();
+        public void Dispose() => Window.CloseWithoutAsking();
     }
 }

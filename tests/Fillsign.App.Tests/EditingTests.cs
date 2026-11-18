@@ -484,6 +484,6 @@ public sealed class EditingTests(ITestOutputHelper output)
             Save(Window, name);
         }
 
-        public void Dispose() => Window.Close();
+        public void Dispose() => Window.CloseWithoutAsking();
     }
 }

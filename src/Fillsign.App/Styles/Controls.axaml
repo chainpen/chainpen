@@ -298,6 +298,17 @@
         <Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" />
     </Style>
 
+    <!-- The red button of a destructive confirmation ("Remove signature"). -->
+    <Style Selector="Button.danger-fill">
+        <Setter Property="Background" Value="{DynamicResource DangerFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerFill}" />
+        <Setter Property="Foreground" Value="{DynamicResource OnPrimary}" />
+    </Style>
+    <Style Selector="Button.danger-fill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Danger}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Danger}" />
+        <Setter Property="Foreground" Value="{DynamicResource OnPrimary}" />
+    </Style>
     <!-- A dialog card over a dimmed window. -->
     <Style Selector="Border.dialog">
         <Setter Property="Background" Value="{DynamicResource Surface}" />

@@ -109,6 +109,7 @@ internal static partial class PdfiumNative
     public static partial void FPDF_RenderPageBitmap(nint bitmap, nint page, int startX, int startY, int sizeX, int sizeY, int rotate, int flags);
 
     // FPDF_SaveAsCopy flags (fpdf_save.h).
+    public const uint FPDF_INCREMENTAL = 1;
     public const uint FPDF_NO_INCREMENTAL = 2;
     public const uint FPDF_REMOVE_SECURITY = 3;
 
@@ -191,6 +192,20 @@ internal static partial class PdfiumNative
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial void FPDFPageObj_Transform(nint pageObject, double a, double b, double c, double d, double e, double f);
+
+    // Line caps and joins (fpdf_edit.h): 1 is round for both.
+    public const int FPDF_LINECAP_ROUND = 1;
+    public const int FPDF_LINEJOIN_ROUND = 1;
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFPageObj_SetLineCap(nint pageObject, int lineCap);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFPageObj_SetLineJoin(nint pageObject, int lineJoin);
 
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

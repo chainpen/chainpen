@@ -334,6 +334,6 @@ public sealed class SignatureDialogTests : IDisposable
             Window.MouseUp(ToWindow(path[^1]), MouseButton.Left, RawInputModifiers.None);
         }
 
-        public void Dispose() => Window.Close();
+        public void Dispose() => Window.CloseWithoutAsking();
     }
 }

@@ -6,10 +6,12 @@ Code: `src/Fillsign.Core/Session/` (`SessionStore`, `SessionJson`, `SessionRecor
 
 ## Where the record lives
 
-The record is the last **incremental update** in the file:
+The record is the last **incremental update** in the file. Before it, the file holds the clean original and PDFium's incremental update with the finished pages, so other readers show every item drawn in:
 
 ```
-<the PDF as Fillsign saved it>          ← "content": length + SHA-256 in the record
+<the clean original>                    ← "base": every opened and added page, unencrypted, nothing drawn in
+<PDFium's incremental update>           ← pages reordered, rotated and duplicated; items drawn in as PDF content
+                                           (the two together are "content")
 N 0 obj
 <</Type/FillsignSession/Filter/FlateDecode/Length L>>
 stream
@@ -28,7 +30,8 @@ X
 
 - `/FillsignSession` is a private trailer key. Other readers ignore it, and the update adds no visible object, so nothing shows in attachment panels.
 - `/Root`, `/Info`, `/ID` and `/Encrypt` are copied from the previous trailer. `/Prev` points at the previous cross-reference section (classic table or xref stream).
-- Saving again strips Fillsign's update first, so the file doesn't keep growing (FR-9.8).
+- Saving again starts from the clean original, not from the last save, so the file doesn't keep growing (FR-9.8).
+- Code that writes it: `src/Fillsign.Pdf/Export/DocumentWriter.cs`. A final copy (Export) is written by the same code as a full, compact file with no record and none of the original's unused pages (FR-9.4).
 
 ## Detecting changes by other apps (FR-9.6)
 

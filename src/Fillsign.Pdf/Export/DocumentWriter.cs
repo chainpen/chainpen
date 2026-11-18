@@ -1,0 +1,326 @@
+using Fillsign.Core.Geometry;
+using Fillsign.Core.Model;
+using Fillsign.Core.Session;
+using Fillsign.Pdf.Fonts;
+using Fillsign.Pdf.Pdfium;
+using SkiaSharp;
+
+namespace Fillsign.Pdf.Export;
+
+/// <summary>What was written, and anything the person should know about it.</summary>
+/// <param name="Pdf">The file's bytes.</param>
+/// <param name="HaveFormsMoved">
+/// PDFium refused to reorder the pages in place, so they were copied in the new order instead. Fillable fields and
+/// links may no longer work (FR-8.9); the caller says so.
+/// </param>
+public sealed record WrittenDocument(byte[] Pdf, bool HaveFormsMoved);
+
+/// <summary>
+/// Writes a document exactly as the editor shows it (FR-8.6–8.9): the page list (order, rotation, duplicates,
+/// deletions) and every item drawn into the pages as real PDF content. Text is real text in an embedded Noto subset,
+/// so it can be searched and copied; marks, shapes and drawings are vector paths; signatures are images with a soft
+/// mask. Item positions go through <see cref="PageTransform"/>, the same conversion the screen uses (FR-8.8).
+/// </summary>
+public static class DocumentWriter
+{
+    /// <summary>
+    /// The final copy to send (FR-8.2): a fresh, compact file with no editable record (FR-9.4) and none of the
+    /// original's unused pages.
+    /// </summary>
+    /// <param name="cleanSource">The source document as Fillsign holds it: all opened and added pages, unencrypted.</param>
+    /// <param name="sourcePages">Crop box and /Rotate of each source page.</param>
+    public static WrittenDocument FinalCopy(byte[] cleanSource, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
+    {
+        ArgumentNullException.ThrowIfNull(cleanSource);
+        using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
+        bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
+        Draw(pdf, sourcePages, document);
+        return new WrittenDocument(pdf.SaveCopy(removeSecurity: true), haveFormsMoved);
+    }
+
+    /// <summary>
+    /// The working copy (FR-8.1, FR-9.1): the clean source unchanged, then an incremental update with the finished
+    /// pages (what other readers show), then Fillsign's editable record. Reopening it in Fillsign restores the clean
+    /// pages and every item (FR-9.2); saving again rewrites it from the clean source, so it doesn't grow (FR-9.8).
+    /// </summary>
+    public static WrittenDocument WorkingCopy(byte[] cleanSource, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
+    {
+        ArgumentNullException.ThrowIfNull(cleanSource);
+        ArgumentNullException.ThrowIfNull(sourcePages);
+        using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
+        bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
+        Draw(pdf, sourcePages, document);
+        byte[] finished = pdf.SaveIncremental();
+        if (!ByteStamp.Of(cleanSource).MatchesPrefixOf(finished))
+        {
+            throw new InvalidOperationException("PDFium didn't keep the clean original at the start of the working copy.");
+        }
+
+        byte[] withRecord = SessionStore.Append(finished, ByteStamp.Of(cleanSource), sourcePages.Count, document);
+        return new WrittenDocument(withRecord, haveFormsMoved);
+    }
+
+    /// <summary>
+    /// Puts the pages in the document's order with its rotations: unused pages are deleted, pages used more than once
+    /// are copied in, and the rest are moved in place so form fields and links keep working (FR-8.9). If PDFium won't
+    /// move them, every page is copied in, in order, and the originals deleted. Returns whether that happened.
+    /// </summary>
+    private static bool Arrange(PdfiumDocument pdf, byte[] cleanSource, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
+    {
+        if (pdf.PageCount != sourcePages.Count)
+        {
+            throw new ArgumentException($"The source has {pdf.PageCount} pages but {sourcePages.Count} page descriptions.", nameof(sourcePages));
+        }
+
+        // Each entry gets a page of its own: the source page the first time it's used, a copy after that.
+        var pageOf = new int[document.Pages.Length];
+        var used = new HashSet<int>();
+        PdfiumDocument? copies = null;
+        try
+        {
+            for (int i = 0; i < document.Pages.Length; i++)
+            {
+                int source = document.Pages[i].SourceIndex;
+                if (used.Add(source))
+                {
+                    pageOf[i] = source;
+                    continue;
+                }
+
+                copies ??= PdfiumDocument.Open(cleanSource);
+                pdf.ImportPages(copies, [source], pdf.PageCount);
+                pageOf[i] = pdf.PageCount - 1;
+            }
+        }
+        finally
+        {
+            copies?.Dispose();
+        }
+
+        // Delete pages nothing uses, from the end so earlier indices stay put.
+        int[] unused = [.. Enumerable.Range(0, sourcePages.Count).Where(index => !used.Contains(index)).OrderDescending()];
+        foreach (int index in unused)
+        {
+            pdf.DeletePage(index);
+        }
+
+        int[] order = [.. pageOf.Select(page => page - unused.Count(deleted => deleted < page))];
+        bool haveFormsMoved = false;
+        if (!order.SequenceEqual(Enumerable.Range(0, order.Length)))
+        {
+            try
+            {
+                pdf.MovePages(order, 0);
+            }
+            catch (InvalidOperationException)
+            {
+                ReplaceWithCopiesInOrder(pdf, cleanSource, document);
+                haveFormsMoved = true;
+            }
+        }
+
+        for (int i = 0; i < document.Pages.Length; i++)
+        {
+            PageEntry entry = document.Pages[i];
+            Rotation total = sourcePages[entry.SourceIndex].Rotate + entry.Rotation;
+            if (total != sourcePages[entry.SourceIndex].Rotate)
+            {
+                pdf.SetRotation(i, total.QuarterTurns);
+            }
+        }
+
+        return haveFormsMoved;
+    }
+
+    /// <summary>The fallback for pages PDFium won't move: copy every page in, in order, then delete what was there.</summary>
+    private static void ReplaceWithCopiesInOrder(PdfiumDocument pdf, byte[] cleanSource, DocumentState document)
+    {
+        using PdfiumDocument copies = PdfiumDocument.Open(cleanSource);
+        int existing = pdf.PageCount;
+        pdf.ImportPages(copies, [.. document.Pages.Select(entry => entry.SourceIndex)], existing);
+        for (int index = existing - 1; index >= 0; index--)
+        {
+            pdf.DeletePage(index);
+        }
+    }
+
+    /// <summary>Draws each page's items into it as PDF content.</summary>
+    private static void Draw(PdfiumDocument pdf, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
+    {
+        string characters = string.Concat(document.Items.OfType<TextItem>().Select(text => text.Text.Replace("\n", string.Empty, StringComparison.Ordinal)));
+        PdfiumFont? font = characters.Length > 0 ? pdf.LoadSubsetFont(BundledFonts.Load(BundledFonts.RegularFace), characters) : null;
+
+        for (int i = 0; i < document.Pages.Length; i++)
+        {
+            PageEntry entry = document.Pages[i];
+            Item[] items = [.. document.ItemsOn(entry.Id)];
+            if (items.Length == 0)
+            {
+                continue;
+            }
+
+            var transform = new PageTransform(sourcePages[entry.SourceIndex], entry.Rotation);
+            pdf.EditPage(i, page =>
+            {
+                foreach (Item item in items)
+                {
+                    DrawItem(pdf, page, transform, font, item);
+                }
+            });
+        }
+    }
+
+    private static void DrawItem(PdfiumDocument pdf, PdfiumPageEditor page, PageTransform transform, PdfiumFont? font, Item item)
+    {
+        Affine itemToPdf = transform.ItemToPdf(new PagePoint(item.X, item.Y));
+        switch (item)
+        {
+            case TextItem text when font is { } loaded:
+                DrawText(pdf, page, itemToPdf, loaded, text);
+                break;
+            case MarkItem mark:
+                DrawPath(page, itemToPdf, ItemPaths.MarkPath(mark), fill: null, Rgba(mark.Color), ItemPaths.MarkStrokeWidth(mark));
+                break;
+            case ShapeItem { Kind: ShapeKind.Highlight } highlight:
+                // Multiplied onto the page, so text under it stays readable (FR-8.6). The colour is the screen's
+                // see-through yellow as it looks on white paper.
+                DrawPath(page, itemToPdf, ItemPaths.ShapePath(highlight), HighlightOnWhite(), stroke: null, 0, "Multiply");
+                break;
+            case ShapeItem { Kind: ShapeKind.Whiteout } whiteout:
+                DrawPath(page, itemToPdf, ItemPaths.ShapePath(whiteout), (255, 255, 255, 255), stroke: null, 0);
+                break;
+            case ShapeItem shape:
+                DrawPath(page, itemToPdf, ItemPaths.ShapePath(shape), fill: null, Rgba(shape.Color), shape.StrokeWidth);
+                break;
+            case InkItem ink:
+                DrawPath(page, itemToPdf, ItemPaths.InkPath(ink), fill: null, Rgba(ink.Color), ink.StrokeWidth);
+                break;
+            case SignatureItem signature:
+                DrawSignature(page, itemToPdf, signature);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// One text object per line. Lines are 1.2 × the font size apart and each baseline sits at the line's top plus the
+    /// font's ascent, exactly as the editor lays them out (docs/FILE-FORMAT.md).
+    /// </summary>
+    private static void DrawText(PdfiumDocument pdf, PdfiumPageEditor page, Affine itemToPdf, PdfiumFont font, TextItem text)
+    {
+        float size = (float)text.FontSize;
+        double ascent = pdf.GetAscent(font, size);
+        string[] lines = text.Lines;
+        for (int line = 0; line < lines.Length; line++)
+        {
+            if (lines[line].Length == 0)
+            {
+                continue;
+            }
+
+            // Text space has y up; item space has y down from the item's top.
+            double baseline = (line * text.FontSize * TextItem.LineHeight) + ascent;
+            Affine matrix = Affine.Compose(new Affine(1, 0, 0, -1, 0, baseline), itemToPdf);
+            page.AddText(font, size, lines[line], (matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F), (text.Color.R, text.Color.G, text.Color.B));
+        }
+    }
+
+    /// <summary>Writes an item-local path list (the same one the screen draws) as one PDF path object.</summary>
+    private static void DrawPath(
+        PdfiumPageEditor page,
+        Affine itemToPdf,
+        IReadOnlyList<PathCommand> commands,
+        (byte R, byte G, byte B, byte A)? fill,
+        (byte R, byte G, byte B, byte A)? stroke,
+        double strokeWidth,
+        string? blendMode = null)
+    {
+        if (commands.Count == 0 || commands[0] is not MoveTo start)
+        {
+            return;
+        }
+
+        (float X, float Y) ToPdf(PagePoint point)
+        {
+            (double x, double y) = itemToPdf.Apply(point.X, point.Y);
+            return ((float)x, (float)y);
+        }
+
+        (float startX, float startY) = ToPdf(start.To);
+        page.AddPath(
+            startX,
+            startY,
+            path =>
+            {
+                PagePoint current = start.To;
+                PagePoint figureStart = start.To;
+                foreach (PathCommand command in commands.Skip(1))
+                {
+                    switch (command)
+                    {
+                        case MoveTo move:
+                            (float mx, float my) = ToPdf(move.To);
+                            path.MoveTo(mx, my);
+                            current = figureStart = move.To;
+                            break;
+                        case LineTo line:
+                            (float lx, float ly) = ToPdf(line.To);
+                            path.LineTo(lx, ly);
+                            current = line.To;
+                            break;
+                        case QuadTo quad:
+                            // A quadratic curve is the cubic whose controls sit two thirds of the way to its control.
+                            var c1 = new PagePoint(current.X + (2.0 / 3 * (quad.Control.X - current.X)), current.Y + (2.0 / 3 * (quad.Control.Y - current.Y)));
+                            var c2 = new PagePoint(quad.To.X + (2.0 / 3 * (quad.Control.X - quad.To.X)), quad.To.Y + (2.0 / 3 * (quad.Control.Y - quad.To.Y)));
+                            AddCurve(path, ToPdf(c1), ToPdf(c2), ToPdf(quad.To));
+                            current = quad.To;
+                            break;
+                        case CubicTo cubic:
+                            AddCurve(path, ToPdf(cubic.Control1), ToPdf(cubic.Control2), ToPdf(cubic.To));
+                            current = cubic.To;
+                            break;
+                        case ClosePath:
+                            path.Close();
+                            current = figureStart;
+                            break;
+                    }
+                }
+            },
+            fill,
+            stroke,
+            (float)strokeWidth,
+            blendMode);
+    }
+
+    private static void AddCurve(PdfiumPageEditor.PathBuilder path, (float X, float Y) c1, (float X, float Y) c2, (float X, float Y) to) =>
+        path.CurveTo(c1.X, c1.Y, c2.X, c2.Y, to.X, to.Y);
+
+    /// <summary>The signature's PNG with its transparency, stretched over its box and kept upright (FR-6.5).</summary>
+    private static void DrawSignature(PdfiumPageEditor page, Affine itemToPdf, SignatureItem signature)
+    {
+        using SKBitmap? decoded = SKBitmap.Decode(signature.Image.Png.AsSpan());
+        if (decoded is null)
+        {
+            // A damaged image is left out rather than failing the whole export; the editor draws nothing for it too.
+            return;
+        }
+
+        using SKBitmap straight = new(new SKImageInfo(decoded.Width, decoded.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul));
+        if (!decoded.CopyTo(straight, SKColorType.Bgra8888))
+        {
+            return;
+        }
+
+        // The image's unit square has y up; its top-left goes to the item's top-left.
+        Affine matrix = Affine.Compose(new Affine(signature.Width, 0, 0, -signature.Height, 0, signature.Height), itemToPdf);
+        page.AddImage(straight.GetPixelSpan(), straight.Width, straight.Height, (matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F));
+    }
+
+    private static (byte R, byte G, byte B, byte A) Rgba(InkColor color) => (color.R, color.G, color.B, 255);
+
+    private static (byte R, byte G, byte B, byte A) HighlightOnWhite()
+    {
+        InkColor yellow = ItemPaths.HighlightColor;
+        static byte Mix(byte channel) => (byte)Math.Round((channel * ItemPaths.HighlightOpacity) + (255 * (1 - ItemPaths.HighlightOpacity)));
+        return (Mix(yellow.R), Mix(yellow.G), Mix(yellow.B), 255);
+    }
+}

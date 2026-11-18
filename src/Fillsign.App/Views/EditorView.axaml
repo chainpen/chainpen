@@ -6,7 +6,7 @@
              x:Class="Fillsign.App.Views.EditorView"
              x:DataType="vm:EditorViewModel">
     <!-- 🎨 1: document status strip, toolbar, bar under the toolbar, pages + canvas, status bar. -->
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
         <!-- Document status strip (FS-211, FR-2.6). -->
         <Border Grid.Row="0" Height="{StaticResource TitleStripHeight}" Background="{DynamicResource Surface}"
                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
@@ -38,7 +38,70 @@
                     <Button Classes="tool" Click="OnOpen" ToolTip.Tip="Open a PDF or image (Mod+O)" AutomationProperties.Name="Open">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconFolder}" />
-                            <TextBlock x:Name="OpenLabel" Text="Open…" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OpenLabel" Text="Open…" VerticalAlignment="Center" IsVisible="False" />
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="separator" />
+                    <!-- Save keeps the working copy; Export final copy makes the file to send (INTERACTION-PATTERNS §1). -->
+                    <Border Classes="splitButton">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="SaveButton" Classes="split" Command="{Binding SaveCommand}"
+                                    ToolTip.Tip="Save your working copy (Mod+S)" AutomationProperties.Name="Save">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <c:StrokeIcon Data="{StaticResource IconSave}" />
+                                    <TextBlock Text="Save" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Border Width="1" Background="{DynamicResource BorderControl}" />
+                            <Button x:Name="SaveMenuButton" Classes="split icon" Width="30" AutomationProperties.Name="More save options"
+                                    ToolTip.Tip="More save options">
+                                <c:StrokeIcon Data="{StaticResource IconChevronDown}" Size="14" />
+                                <Button.Flyout>
+                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Width="380" Spacing="2">
+                                            <Button Classes="menuRow" Command="{Binding SaveCommand}" Click="OnCloseSaveMenu">
+                                                <Grid ColumnDefinitions="26,*,Auto">
+                                                    <c:StrokeIcon Data="{StaticResource IconSave}" VerticalAlignment="Top" />
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock FontWeight="SemiBold" Text="Save" />
+                                                        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                                                   Text="Keeps your edits changeable next time you open it in Fillsign." />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="Mod S" /></Border>
+                                                </Grid>
+                                            </Button>
+                                            <Button Classes="menuRow" Command="{Binding SaveAsCommand}" Click="OnCloseSaveMenu">
+                                                <Grid ColumnDefinitions="26,*,Auto">
+                                                    <c:StrokeIcon Data="{StaticResource IconFilePlus}" VerticalAlignment="Top" />
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock FontWeight="SemiBold" Text="Save as…" />
+                                                        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                                                   Text="Save a copy with a new name or in another folder." />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="Mod Shift S" /></Border>
+                                                </Grid>
+                                            </Button>
+                                            <!-- FS-610: a working copy with a signature isn't the file to send. -->
+                                            <Border Classes="signatureNote" IsVisible="{Binding ShowsSignatureReminder}">
+                                                <Grid ColumnDefinitions="26,*">
+                                                    <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" VerticalAlignment="Top" />
+                                                    <TextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap" LineHeight="18">
+                                                        <Run FontWeight="SemiBold" Text="This document contains your signature." />
+                                                        <Run Text=" Your working copy can be edited by anyone with Fillsign. To send it, use Export final copy: it makes a copy that can’t be changed." />
+                                                    </TextBlock>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <Button x:Name="ExportButton" Classes="primary" MinHeight="36" Height="36" Padding="14,0" Command="{Binding ExportCommand}"
+                            ToolTip.Tip="Make the copy to send (Mod+E)" AutomationProperties.Name="Export final copy">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconTick}" StrokeThickness="2" />
+                            <TextBlock x:Name="ExportLabel" Text="Export final copy…" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -352,7 +415,61 @@
             </Panel>
         </Border>
 
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*">
+        <!-- Notices that stay until dismissed: restored (🎨 5), changed elsewhere (D8), exported (🎨 8). -->
+        <StackPanel Grid.Row="3">
+            <Border Classes="notice info" IsVisible="{Binding HasRestoredNotice}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent"
+                            Command="{Binding DismissRestoredCommand}" AutomationProperties.Name="Dismiss">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0" Content="Open final copy instead"
+                            Command="{Binding OpenAsFinalCopyCommand}"
+                            ToolTip.Tip="Shows the pages as recipients see them. Your editable copy stays in the file." />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource Accent}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding RestoredNotice}" />
+                    </Grid>
+                </DockPanel>
+            </Border>
+            <Border Classes="notice warning" IsVisible="{Binding IsChangedElsewhere}" AutomationProperties.LiveSetting="Assertive">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                    <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                        <Run FontWeight="SemiBold" Text="This file was changed in another app after you saved it in Fillsign." />
+                        <Run Text=" We’ve opened it as it is now, so nothing from the other app is lost." />
+                    </TextBlock>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                        <Button Classes="small" Content="Restore my Fillsign edits…" Command="{Binding RestoreChangedEditsCommand}" />
+                        <Button Classes="small primary" Content="Keep as it is" Command="{Binding KeepAsItIsCommand}" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{Binding ChangedElsewhereDetail}" />
+                </Grid>
+            </Border>
+            <Border Classes="notice success" IsVisible="{Binding HasExportedNotice}" AutomationProperties.LiveSetting="Polite">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent"
+                            Command="{Binding DismissExportedCommand}" AutomationProperties.Name="Dismiss">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0" Command="{Binding ShowExportedInFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconFolder}" Size="16" />
+                            <TextBlock Text="Show in folder" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconTickCircle}" Foreground="{DynamicResource Success}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                            <Run FontWeight="SemiBold" Text="Final copy exported:" />
+                            <Run Text="{Binding Exported.Text, FallbackValue=''}" />
+                        </TextBlock>
+                    </Grid>
+                </DockPanel>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="4" ColumnDefinitions="Auto,*">
             <!-- Pages panel (FS-206). -->
             <Border x:Name="PagesPanel" Width="{StaticResource PagesPanelWidth}" IsVisible="{Binding ShowsPagesPanel}"
                     Background="{DynamicResource SurfaceSubtle}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,1,0"
@@ -489,7 +606,7 @@
         </Grid>
 
         <!-- Status bar. -->
-        <Border Grid.Row="4" Height="{StaticResource StatusBarHeight}" Background="{DynamicResource Surface}"
+        <Border Grid.Row="5" Height="{StaticResource StatusBarHeight}" Background="{DynamicResource Surface}"
                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="16,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
@@ -621,6 +738,55 @@
         <Style Selector="TextBlock.caption.current">
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+        </Style>
+        <Style Selector="Border.notice">
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+        <Style Selector="Border.notice.info">
+            <Setter Property="Background" Value="{DynamicResource InfoTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+        </Style>
+        <Style Selector="Border.notice.warning">
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBorder}" />
+        </Style>
+        <Style Selector="Border.notice.success">
+            <Setter Property="Background" Value="{DynamicResource SuccessTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+        </Style>
+        <!-- Save with its menu, as one bordered control (🎨 5). -->
+        <Style Selector="Border.splitButton">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+        <Style Selector="Button.split">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.split.icon">
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Button.menuRow">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <Style Selector="Border.signatureNote">
+            <Setter Property="Margin" Value="2,6,2,2" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
         </Style>
         <Style Selector="Border.contextBar">
             <Setter Property="Background" Value="{DynamicResource SurfaceSubtle}" />

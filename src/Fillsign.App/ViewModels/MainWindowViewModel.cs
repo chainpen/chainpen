@@ -21,5 +21,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string Title => Editor is { } editor ? $"{editor.Title} – Fillsign" : "Fillsign";
 
-    public void ShowEditor(EditorViewModel editor) => Content = editor;
+    public void ShowEditor(EditorViewModel editor)
+    {
+        ArgumentNullException.ThrowIfNull(editor);
+        Content = editor;
+
+        // The window title follows the document's name, which Save as… can change.
+        editor.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(EditorViewModel.Title) && ReferenceEquals(Editor, editor))
+            {
+                OnPropertyChanged(nameof(Title));
+            }
+        };
+    }
 }

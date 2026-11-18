@@ -177,7 +177,15 @@ public sealed partial class PdfiumDocument : IDisposable
     /// when <paramref name="removeSecurity"/> is set, encryption is removed. Used to normalise files that
     /// the writer can't open directly.
     /// </summary>
-    public byte[] SaveCopy(bool removeSecurity)
+    public byte[] SaveCopy(bool removeSecurity) => Save(removeSecurity ? FPDF_REMOVE_SECURITY : FPDF_NO_INCREMENTAL);
+
+    /// <summary>
+    /// Saves the original bytes unchanged, followed by an incremental update holding only what changed. Used for the
+    /// working copy, whose clean original must stay at the start of the file (FR-9.2).
+    /// </summary>
+    public byte[] SaveIncremental() => Save(FPDF_INCREMENTAL);
+
+    private byte[] Save(uint flags)
     {
         using var output = new MemoryStream();
         var handle = GCHandle.Alloc(output);
@@ -189,7 +197,7 @@ public sealed partial class PdfiumDocument : IDisposable
                 lock (PdfiumLibrary.Sync)
                 {
                     ObjectDisposedException.ThrowIf(_document == 0, this);
-                    if (!FPDF_SaveAsCopy(_document, &writer, removeSecurity ? FPDF_REMOVE_SECURITY : FPDF_NO_INCREMENTAL))
+                    if (!FPDF_SaveAsCopy(_document, &writer, flags))
                     {
                         throw new InvalidOperationException("PDFium could not save a copy of the document.");
                     }

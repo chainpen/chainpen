@@ -38,6 +38,24 @@ public interface IEditorHost
     /// </summary>
     Task<int?> AskMovePositionAsync(int count, int pageCount);
 
+    /// <summary>Asks where to save the working copy (FR-8.1). Null when cancelled.</summary>
+    Task<string?> AskWorkingCopyPathAsync(string suggestedName, string folder);
+
+    /// <summary>The Export final copy dialog (FS-608, 🎨 6). Null when the person keeps editing.</summary>
+    Task<ExportChoice?> AskExportAsync(ExportRequest request);
+
+    /// <summary>D8: restoring Fillsign edits removes another app's changes, so ask first.</summary>
+    Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt);
+
+    /// <summary>Shows a file in Finder, Explorer or the file manager (FR-8.5).</summary>
+    void ShowInFolder(string path);
+
+    /// <summary>"Open final copy instead" (🎨 5): reopens the working copy as other readers show it, without restoring.</summary>
+    Task OpenAsFinalCopyAsync(string path);
+
+    /// <summary>Reopens the clean original from a working copy with its Fillsign edits (FR-9.6).</summary>
+    Task RestoreEditsAsync(Fillsign.Pdf.Import.WorkingCopyRestore restore);
+
     /// <summary>Opens files in a separate window, leaving this document unchanged (FR-1.5).</summary>
     void OpenInNewWindow(IReadOnlyList<string> paths);
 }

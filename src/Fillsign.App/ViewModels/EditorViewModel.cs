@@ -24,7 +24,9 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     private readonly UndoHistory _history = new();
     private readonly CancellationTokenSource _loading = new();
     private readonly HashSet<PageId> _keptDamaged = [];
-    private readonly DocumentState _initialState;
+    // The state last written to the working copy, or as opened; null when the file on disk doesn't match any state
+    // (edits restored over another app's changes).
+    private DocumentState? _savedState;
 
     public EditorViewModel(SourceDocument source, IEditorHost host)
     {
@@ -34,7 +36,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         Renderer.PageFailed += OnPageFailed;
         Thumbnails = new ThumbnailRequests(Renderer);
         State = DocumentState.ForSourcePages(source.PageCount);
-        _initialState = State;
+        _savedState = State;
         RebuildPages();
     }
 
@@ -51,7 +53,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     public event Action<int>? ScrollToPageRequested;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DocumentStatus), nameof(HasUnsavedChanges))]
+    [NotifyPropertyChangedFor(nameof(DocumentStatus), nameof(HasUnsavedChanges), nameof(ShowsSignatureReminder))]
     [NotifyCanExecuteChangedFor(nameof(UndoCommand), nameof(RedoCommand))]
     public partial DocumentState State { get; private set; }
 
@@ -79,7 +81,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(PageStatus), nameof(DamagedStatus), nameof(HasDamagedPages))]
     public partial int DamagedPageCount { get; private set; }
 
-    public string Title => Source.Name;
+    public string Title => WorkingCopyPath is { } path ? Path.GetFileName(path) : Source.Name;
 
     public string ZoomText => Zoom.ToString("P0", CultureInfo.InvariantCulture).Replace(" ", string.Empty, StringComparison.Ordinal);
 
@@ -95,14 +97,33 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
 
     public double LoadingFraction => Source.PageCount == 0 ? 1 : (double)LoadedPageCount / Source.PageCount;
 
-    public bool HasUnsavedChanges => !State.Equals(_initialState);
+    public bool HasUnsavedChanges => !State.Equals(_savedState);
 
-    /// <summary>The line under the file name (INTERACTION-PATTERNS §1).</summary>
-    public string DocumentStatus => IsLoading
-        ? $"Opening · {Source.PageCount} pages"
-        : !HasUnsavedChanges ? "Working copy · no changes yet"
-        : State.ContainsSignature ? "Working copy · not saved to file · contains your signature"
-        : "Working copy · not saved to file";
+    /// <summary>
+    /// The line under the file name (INTERACTION-PATTERNS §1, FR-2.6). "Saved" only ever means saved to the file;
+    /// "contains your signature" reminds the person to send the final copy (FR-8.4).
+    /// </summary>
+    public string DocumentStatus
+    {
+        get
+        {
+            if (IsLoading)
+            {
+                return $"Opening · {Source.PageCount} pages";
+            }
+
+            if (ChangedElsewhere is not null)
+            {
+                return "Opened as it is now · Fillsign edits not restored";
+            }
+
+            string state = HasUnsavedChanges ? "not saved to file"
+                : LastSavedAt is { } saved ? $"saved {saved.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)}"
+                : "no changes yet";
+            string signature = State.ContainsSignature ? " · contains your signature" : string.Empty;
+            return $"Working copy · {state}{signature}";
+        }
+    }
 
     public string ContextHint => IsLoading
         ? "You can start on page 1 now. The rest of the pages are still loading."

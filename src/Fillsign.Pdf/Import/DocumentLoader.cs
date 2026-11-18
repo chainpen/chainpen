@@ -29,7 +29,8 @@ public delegate Task<string?> PasswordPrompt(string fileName, bool wasWrong);
 
 /// <param name="Skipped">Files left out, with the reason ("2 of 3 files were opened…"). Files skipped at the password
 /// prompt aren't listed: that was the person's choice.</param>
-public sealed record OpenResult(SourceDocument Source, ImmutableArray<OpenProblem> Skipped);
+/// <param name="Restore">The working copy's editable record when one was found; null for an ordinary PDF.</param>
+public sealed record OpenResult(SourceDocument Source, ImmutableArray<OpenProblem> Skipped, WorkingCopyRestore? Restore = null);
 
 /// <summary>Opens PDFs and images as one document (FR-1.1–1.3, 1.6).</summary>
 public static class DocumentLoader
@@ -40,7 +41,8 @@ public static class DocumentLoader
     /// </summary>
     /// <exception cref="DocumentOpenException">Nothing could be opened.</exception>
     /// <exception cref="OperationCanceledException">Every file was skipped at the password prompt, or the open was cancelled.</exception>
-    public static async Task<OpenResult> OpenAsync(IReadOnlyList<InputFile> files, PasswordPrompt askPassword, CancellationToken cancellationToken)
+    /// <param name="restoreRecord">False opens a working copy as other readers show it ("Open final copy instead").</param>
+    public static async Task<OpenResult> OpenAsync(IReadOnlyList<InputFile> files, PasswordPrompt askPassword, CancellationToken cancellationToken, bool restoreRecord = true)
     {
         ArgumentNullException.ThrowIfNull(files);
         var (parts, problems) = await OpenPartsAsync(files, askPassword, cancellationToken).ConfigureAwait(false);
@@ -51,7 +53,16 @@ public static class DocumentLoader
 
         if (parts is [{ IsImage: false } only])
         {
-            return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, only.Pdf, only.NeedsPassword), [.. problems]);
+            // Editable records are restored only when a single document is opened (FR-9.7).
+            WorkingCopyRestore? restore = files.Count == 1 && restoreRecord ? await Task.Run(() => FindRecord(only), cancellationToken).ConfigureAwait(false) : null;
+            if (restore is { Kind: RestoreKind.Restored })
+            {
+                only.Pdf.Dispose();
+                PdfiumDocument clean = await Task.Run(() => PdfiumDocument.Open(restore.CleanSource), cancellationToken).ConfigureAwait(false);
+                return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, clean, only.NeedsPassword), [.. problems], restore);
+            }
+
+            return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, only.Pdf, only.NeedsPassword), [.. problems], restore);
         }
 
         PdfiumDocument combined = await Task.Run(() => Combine(parts), cancellationToken).ConfigureAwait(false);
@@ -75,6 +86,56 @@ public static class DocumentLoader
 
         PdfiumDocument combined = await Task.Run(() => Combine(parts), cancellationToken).ConfigureAwait(false);
         return (combined, [.. problems]);
+    }
+
+    /// <summary>
+    /// Opens a clean original kept in a working copy, to restore Fillsign edits the person chose to bring back after
+    /// another app changed the file (FR-9.6).
+    /// </summary>
+    public static SourceDocument OpenCleanSource(string name, string? path, byte[] cleanSource) =>
+        new(name, path, PdfiumDocument.Open(cleanSource), needsPassword: false);
+
+    /// <summary>
+    /// Looks for Fillsign's editable record. A damaged record, or one that doesn't fit its clean original, is ignored
+    /// and the file opens as an ordinary PDF (FR-9.5).
+    /// </summary>
+    private static WorkingCopyRestore? FindRecord(Part part)
+    {
+        if (part.File.Bytes is not { } bytes)
+        {
+            return null;
+        }
+
+        Core.Session.SessionLookup lookup = Core.Session.SessionStore.Find(bytes);
+        if (lookup is not { Record: { } record, IsOriginalAvailable: true } || lookup.Status is not (Core.Session.SessionStatus.Intact or Core.Session.SessionStatus.ChangedElsewhere))
+        {
+            if (lookup.Problem is not null)
+            {
+                System.Diagnostics.Trace.TraceWarning($"{part.File.Name}: the Fillsign record was ignored. {lookup.Problem}");
+            }
+
+            return null;
+        }
+
+        byte[] clean = bytes[..(int)record.Base.Length];
+        try
+        {
+            using PdfiumDocument check = PdfiumDocument.Open(clean);
+            if (check.PageCount != record.SourcePageCount)
+            {
+                System.Diagnostics.Trace.TraceWarning($"{part.File.Name}: the Fillsign record doesn't match its original's pages, so it was ignored.");
+                return null;
+            }
+        }
+        catch (PdfOpenException ex)
+        {
+            System.Diagnostics.Trace.TraceWarning($"{part.File.Name}: the clean original in the working copy can't be opened, so the record was ignored. {ex.Message}");
+            return null;
+        }
+
+        DateTimeOffset? savedAt = part.File.Path is { } path && File.Exists(path) ? File.GetLastWriteTime(path) : null;
+        RestoreKind kind = lookup.Status == Core.Session.SessionStatus.Intact ? RestoreKind.Restored : RestoreKind.ChangedElsewhere;
+        return new WorkingCopyRestore(kind, record.Document, clean, savedAt);
     }
 
     /// <summary>Whether the bytes start like a PDF ("%PDF" in the first KB, as readers accept).</summary>

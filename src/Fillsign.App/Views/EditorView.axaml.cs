@@ -26,6 +26,7 @@ public partial class EditorView : UserControl
     }
 
     /// <summary>Widths below which the toolbar collapses (INTERACTION-PATTERNS §3); the smallest window (S2, 1024) has both.</summary>
+    private const double CompactSwitchBelowWidth = 1480;
     private const double IconsBelowWidth = 1180;
     private const double MoreMenuBelowWidth = 1100;
 
@@ -62,9 +63,10 @@ public partial class EditorView : UserControl
         ShapesButton.IsVisible = !usesMoreMenu;
         DrawButton.IsVisible = !usesMoreMenu;
         MoreButton.IsVisible = usesMoreMenu;
-        OpenLabel.IsVisible = !usesMoreMenu;
-        EditContentLabel.IsVisible = !usesMoreMenu;
-        OrganiseLabel.IsVisible = !usesMoreMenu;
+        bool isCompact = width < CompactSwitchBelowWidth;
+        ExportLabel.Text = isCompact ? "Export…" : "Export final copy…";
+        EditContentLabel.IsVisible = !isCompact;
+        OrganiseLabel.IsVisible = !isCompact;
     }
 
     /// <summary>Whether keyboard focus is on the page view (not the toolbar, bar or page list).</summary>
@@ -100,6 +102,8 @@ public partial class EditorView : UserControl
     }
 
     private void OnOpen(object? sender, RoutedEventArgs e) => OpenRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnCloseSaveMenu(object? sender, RoutedEventArgs e) => SaveMenuButton.Flyout?.Hide();
 
     private void OnAddPages(object? sender, RoutedEventArgs e) => AddPagesRequested?.Invoke(this, EventArgs.Empty);
 

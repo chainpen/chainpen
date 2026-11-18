@@ -300,12 +300,16 @@ public sealed class PdfiumPageEditor
 
     /// <param name="x">Left edge of the text.</param>
     /// <param name="baseline">Baseline, in PDF user space (y up).</param>
-    public void AddText(PdfiumFont font, float fontSize, string text, double x, double baseline, (byte R, byte G, byte B) color)
+    public void AddText(PdfiumFont font, float fontSize, string text, double x, double baseline, (byte R, byte G, byte B) color) =>
+        AddText(font, fontSize, text, (1, 0, 0, 1, x, baseline), color);
+
+    /// <summary>Adds text placed by a matrix that maps text space (origin on the baseline, y up) to user space.</summary>
+    public void AddText(PdfiumFont font, float fontSize, string text, (double A, double B, double C, double D, double E, double F) matrix, (byte R, byte G, byte B) color)
     {
         nint obj = FPDFPageObj_CreateTextObj(_document, font.Handle, fontSize);
         Check(obj != 0 && FPDFText_SetText(obj, text), "create text");
         FPDFPageObj_SetFillColor(obj, color.R, color.G, color.B, 255);
-        FPDFPageObj_Transform(obj, 1, 0, 0, 1, x, baseline);
+        FPDFPageObj_Transform(obj, matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F);
         Insert(obj);
     }
 
@@ -328,7 +332,14 @@ public sealed class PdfiumPageEditor
     }
 
     /// <summary>Places a BGRA (premultiplied is fine for opaque; alpha becomes a soft mask) image into a rectangle.</summary>
-    public void AddImage(ReadOnlySpan<byte> bgra, int pixelWidth, int pixelHeight, double x, double y, double width, double height)
+    public void AddImage(ReadOnlySpan<byte> bgra, int pixelWidth, int pixelHeight, double x, double y, double width, double height) =>
+        AddImage(bgra, pixelWidth, pixelHeight, (width, 0, 0, height, x, y));
+
+    /// <summary>
+    /// Places a BGRA image (straight alpha; alpha becomes a soft mask) with a matrix mapping the unit square, y up, to
+    /// user space.
+    /// </summary>
+    public void AddImage(ReadOnlySpan<byte> bgra, int pixelWidth, int pixelHeight, (double A, double B, double C, double D, double E, double F) matrix)
     {
         nint obj = FPDFPageObj_NewImageObj(_document);
         Check(obj != 0, "create image");
@@ -351,7 +362,7 @@ public sealed class PdfiumPageEditor
             }
         }
 
-        Check(FPDFImageObj_SetMatrix(obj, width, 0, 0, height, x, y), "place image");
+        Check(FPDFImageObj_SetMatrix(obj, matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F), "place image");
         Insert(obj);
     }
 
@@ -396,6 +407,10 @@ public sealed class PdfiumPageEditor
         {
             FPDFPageObj_SetStrokeColor(obj, s.R, s.G, s.B, s.A);
             FPDFPageObj_SetStrokeWidth(obj, strokeWidth);
+
+            // Round ends and corners, as the screen draws them.
+            FPDFPageObj_SetLineCap(obj, FPDF_LINECAP_ROUND);
+            FPDFPageObj_SetLineJoin(obj, FPDF_LINEJOIN_ROUND);
         }
 
         if (blendMode is not null)

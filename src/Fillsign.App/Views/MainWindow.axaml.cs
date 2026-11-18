@@ -57,6 +57,7 @@ public partial class MainWindow : Window, IEditorHost
         AddHandler(DragDrop.DropEvent, OnWindowDrop);
         AddHandler(DragDrop.DragOverEvent, OnWindowDragOver);
         KeyDown += OnKeyDown;
+        Closing += OnClosing;
         Closed += (_, _) => _viewModel.Editor?.Dispose();
         if (pathsToOpen.Count > 0)
         {
@@ -94,18 +95,17 @@ public partial class MainWindow : Window, IEditorHost
         await OpenFilesAsync(files).ConfigureAwait(true);
     }
 
-    private async Task OpenFilesAsync(InputFile[] files, bool isPracticeForm = false)
+    private async Task OpenFilesAsync(InputFile[] files, bool isPracticeForm = false, bool restoreRecord = true)
     {
         StartViewModel start = _viewModel.Start;
         start.IsOpening = true;
         start.Problem = null;
         try
         {
-            OpenResult result = await DocumentLoader.OpenAsync(files, AskPasswordAsync, CancellationToken.None).ConfigureAwait(true);
+            OpenResult result = await DocumentLoader.OpenAsync(files, AskPasswordAsync, CancellationToken.None, restoreRecord).ConfigureAwait(true);
             var editor = new EditorViewModel(result.Source, this);
-            _viewModel.ShowEditor(editor);
-            ShowEditor(editor);
-            _ = editor.LoadAsync();
+            editor.ApplyRestore(result.Restore);
+            ReplaceEditor(editor);
             if (!result.Skipped.IsEmpty)
             {
                 await ShowProblemsAsync(result.Skipped, files.Length - result.Skipped.Length).ConfigureAwait(true);
@@ -157,6 +157,62 @@ public partial class MainWindow : Window, IEditorHost
         _startView.OpenRequested += async (_, _) => await ChooseAndOpenAsync().ConfigureAwait(true);
         _startView.PracticeFormRequested += async (_, _) => await OpenPracticeFormAsync().ConfigureAwait(true);
         Host.Content = _startView;
+    }
+
+    /// <summary>Shows a newly opened document, closing the one it replaces ("Open final copy instead", restoring edits).</summary>
+    private void ReplaceEditor(EditorViewModel editor)
+    {
+        EditorViewModel? previous = _viewModel.Editor;
+        _viewModel.ShowEditor(editor);
+        ShowEditor(editor);
+        previous?.Dispose();
+        _ = editor.LoadAsync();
+    }
+
+    // ----- Closing (D4, FR-8.11) -----
+
+    private bool _isCloseConfirmed;
+
+    /// <summary>Closes without asking about unsaved changes. Tests use this to tidy up.</summary>
+    internal void CloseWithoutAsking()
+    {
+        _isCloseConfirmed = true;
+        Close();
+    }
+
+    private void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_isCloseConfirmed || _viewModel.Editor is not { HasUnsavedChanges: true } editor)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        _ = AskBeforeClosingAsync(editor);
+    }
+
+    /// <summary>D4: Save is the default and has focus; Don't save is never the default (FR-8.11).</summary>
+    private async Task AskBeforeClosingAsync(EditorViewModel editor)
+    {
+        string since = editor.LastSavedAt is { } saved ? $" since {saved.ToLocalTime():HH:mm}" : string.Empty;
+        Choice choice = await ShowDialogAsync(
+            new ChoiceDialog(
+                $"Save changes to {editor.Title} before closing?",
+                $"Your changes{since} aren’t saved to the file. If you don’t save, they’re lost.",
+                "Save",
+                "Don’t save",
+                focusMain: true),
+            dialog => dialog.Result).ConfigureAwait(true);
+        bool canClose = choice switch
+        {
+            Choice.Main => await editor.SaveAsync().ConfigureAwait(true),
+            Choice.Other => true,
+            _ => false,
+        };
+        if (canClose)
+        {
+            CloseWithoutAsking();
+        }
     }
 
     private void ShowEditor(EditorViewModel editor)
@@ -247,6 +303,15 @@ public partial class MainWindow : Window, IEditorHost
         {
             case Key.O when hasCommand:
                 _ = ChooseAndOpenAsync();
+                break;
+            case Key.S when hasCommand && hasShift && editor is not null:
+                _ = editor.SaveAsCommand.ExecuteAsync(null);
+                break;
+            case Key.S when hasCommand && editor is not null:
+                _ = editor.SaveCommand.ExecuteAsync(null);
+                break;
+            case Key.E when hasCommand && editor is not null:
+                _ = editor.ExportCommand.ExecuteAsync(null);
                 break;
             case Key.OemPlus or Key.Add when hasCommand && editor is not null:
                 _editorView?.ZoomIn();
@@ -406,6 +471,82 @@ public partial class MainWindow : Window, IEditorHost
             FileTypeFilter = [s_photos, FilePickerFileTypes.All],
         }).ConfigureAwait(true);
         return files.Select(file => file.TryGetLocalPath()).OfType<string>().FirstOrDefault();
+    }
+
+    /// <summary>Stands in for the system's save dialog in tests: (suggested name, folder) → chosen path or null.</summary>
+    internal static Func<string, string, string?>? SavePathOverride { get; set; }
+
+    public async Task<string?> AskWorkingCopyPathAsync(string suggestedName, string folder)
+    {
+        if (SavePathOverride is { } chooseForTest)
+        {
+            return chooseForTest(suggestedName, folder);
+        }
+
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save your working copy",
+            SuggestedFileName = suggestedName,
+            SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(folder).ConfigureAwait(true),
+            DefaultExtension = "pdf",
+            FileTypeChoices = [new FilePickerFileType("PDF") { Patterns = ["*.pdf"], AppleUniformTypeIdentifiers = ["com.adobe.pdf"], MimeTypes = ["application/pdf"] }],
+            ShowOverwritePrompt = true,
+        }).ConfigureAwait(true);
+        return file?.TryGetLocalPath();
+    }
+
+    public Task<ExportChoice?> AskExportAsync(ExportRequest request) =>
+        ShowDialogAsync(new ExportDialog(request), dialog => dialog.Result, top: 64);
+
+    public async Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt)
+    {
+        string when = savedAt is { } saved ? $" from {saved.ToLocalTime():dd/MM/yyyy, HH:mm}" : string.Empty;
+        Choice choice = await ShowDialogAsync(
+            new ChoiceDialog(
+                "Restore your Fillsign edits?",
+                $"Your editable ticks, text and signature{when} come back, and the changes made in the other app are removed from this window. The file isn’t changed until you save.",
+                "Restore edits",
+                otherLabel: null,
+                focusMain: false,
+                isMainDestructive: true),
+            dialog => dialog.Result).ConfigureAwait(true);
+        return choice == Choice.Main;
+    }
+
+    public void ShowInFolder(string path)
+    {
+        try
+        {
+            System.Diagnostics.ProcessStartInfo start = OperatingSystem.IsMacOS() ? new("open") { ArgumentList = { "-R", path } }
+                : OperatingSystem.IsWindows() ? new("explorer.exe") { ArgumentList = { $"/select,{path}" } }
+                : new("xdg-open") { ArgumentList = { Path.GetDirectoryName(path) ?? path } };
+            start.UseShellExecute = false;
+            System.Diagnostics.Process.Start(start)?.Dispose();
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            System.Diagnostics.Trace.TraceWarning($"The folder could not be shown. {ex.Message}");
+        }
+    }
+
+    public async Task OpenAsFinalCopyAsync(string path)
+    {
+        InputFile file = await InputFile.ReadAsync(path, CancellationToken.None).ConfigureAwait(true);
+        await OpenFilesAsync([file], restoreRecord: false).ConfigureAwait(true);
+    }
+
+    public Task RestoreEditsAsync(WorkingCopyRestore restore)
+    {
+        if (_viewModel.Editor is not { } current)
+        {
+            return Task.CompletedTask;
+        }
+
+        SourceDocument clean = DocumentLoader.OpenCleanSource(current.Source.Name, current.Source.Path, restore.CleanSource);
+        var editor = new EditorViewModel(clean, this);
+        editor.RestoreEditsOver(restore);
+        ReplaceEditor(editor);
+        return Task.CompletedTask;
     }
 
     public Task<int?> AskMovePositionAsync(int count, int pageCount) =>
