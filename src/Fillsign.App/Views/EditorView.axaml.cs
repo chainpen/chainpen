@@ -16,7 +16,8 @@ public partial class EditorView : UserControl
     public EditorView()
     {
         InitializeComponent();
-        PageList.SelectionChanged += OnPageListSelectionChanged;
+        AttachPageList(PageList);
+        AttachPageList(OrganiseList);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
         AddHandler(DragDrop.DropEvent, OnDrop);
@@ -47,22 +48,23 @@ public partial class EditorView : UserControl
     public void FitWidth() => Canvas.FitWidth();
 
     /// <summary>
-    /// Narrower windows first turn Select, Cross and Date into icons, then move Shapes and Draw into More.
+    /// Narrower windows first turn Select, Cross, Date, Rotate left and Rotate right into icons, then move Shapes and
+    /// Draw into More and show the Edit content / Organise pages switch as icons (S3).
     /// Tick, Text and Sign always keep their labels (NFR-11).
     /// </summary>
     private void CollapseToolbar(double width)
     {
         bool isIconsOnly = width < IconsBelowWidth;
-        foreach (TextBlock label in Tools.GetVisualDescendants().OfType<TextBlock>().Where(block => block.Classes.Contains("collapsible")))
-        {
-            label.IsVisible = !isIconsOnly;
-        }
+        // A style hides every "collapsible" label, including ones in bars that haven't been shown yet.
+        Classes.Set("iconsOnly", isIconsOnly);
 
         bool usesMoreMenu = width < MoreMenuBelowWidth;
         ShapesButton.IsVisible = !usesMoreMenu;
         DrawButton.IsVisible = !usesMoreMenu;
         MoreButton.IsVisible = usesMoreMenu;
         OpenLabel.IsVisible = !usesMoreMenu;
+        EditContentLabel.IsVisible = !usesMoreMenu;
+        OrganiseLabel.IsVisible = !usesMoreMenu;
     }
 
     /// <summary>Whether keyboard focus is on the page view (not the toolbar, bar or page list).</summary>
@@ -82,27 +84,19 @@ public partial class EditorView : UserControl
         Canvas.Attach(editor, Scroller);
         editor.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex) && PageList.SelectedIndex != editor.CurrentPageIndex)
+            if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex) && editor.CurrentPageIndex < editor.Pages.Count)
             {
-                PageList.SelectedIndex = editor.CurrentPageIndex;
                 PageList.ScrollIntoView(editor.CurrentPageIndex);
             }
         };
+        editor.PageSelectionChanged += SyncListSelection;
+        editor.PagesChanged += SyncListSelection;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         Scroller.Focus();
-    }
-
-    private void OnPageListSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        // Clicking a thumbnail goes to that page; selection follows the current page otherwise.
-        if (_editor is not null && PageList.SelectedIndex >= 0 && PageList.SelectedIndex != _editor.CurrentPageIndex)
-        {
-            _editor.GoToPageCommand.Execute(PageList.SelectedIndex + 1);
-        }
     }
 
     private void OnOpen(object? sender, RoutedEventArgs e) => OpenRequested?.Invoke(this, EventArgs.Empty);
@@ -153,6 +147,16 @@ public partial class EditorView : UserControl
         }
 
         e.DragEffects = DragDropEffects.Copy;
+        if (_editor is { IsOrganising: true })
+        {
+            // Organise pages: files go between the pages where they're dropped (🎨 4).
+            _insertGap = GridGapAt(e.GetPosition(OrganiseList));
+            ShowGridMarker(_insertGap);
+            AddTarget.Classes.Set("active", true);
+            NewWindowTarget.Classes.Set("active", false);
+            return;
+        }
+
         DropOverlay.IsVisible = true;
         DropCaption.Text = "Where you let go decides: add the pages here, or open them on their own.";
         Canvas.Opacity = 0.5;
@@ -191,6 +195,7 @@ public partial class EditorView : UserControl
 
     private void EndDrag()
     {
+        ShowGridMarker(null);
         DropOverlay.IsVisible = false;
         Canvas.Opacity = 1;
         ShowInsertMarker(null);

@@ -237,6 +237,12 @@ public partial class MainWindow : Window, IEditorHost
         // Typing in a text box (e.g. Go to page) keeps its own keys (FR-7.12).
         bool isTyping = FocusManager?.GetFocusedElement() is TextBox;
 
+        if (editor is { IsOrganising: true } && !isTyping && HandleOrganiseKey(editor, e.Key, hasCommand))
+        {
+            e.Handled = true;
+            return;
+        }
+
         switch (e.Key)
         {
             case Key.O when hasCommand:
@@ -307,6 +313,34 @@ public partial class MainWindow : Window, IEditorHost
         e.Handled = true;
     }
 
+    /// <summary>Organise pages (FR-6, FR-7): the item shortcuts act on the selected pages instead.</summary>
+    private static bool HandleOrganiseKey(EditorViewModel editor, Key key, bool hasCommand)
+    {
+        switch (key)
+        {
+            case Key.Delete or Key.Back when editor.DeletePagesCommand.CanExecute(null):
+                editor.DeletePagesCommand.Execute(null);
+                return true;
+            case Key.A when hasCommand:
+                editor.SelectAllPagesCommand.Execute(null);
+                return true;
+            case Key.D when hasCommand && editor.DuplicatePagesCommand.CanExecute(null):
+                editor.DuplicatePagesCommand.Execute(null);
+                return true;
+            case Key.Escape when editor.HasPageSelection:
+                editor.ClearPageSelectionCommand.Execute(null);
+                return true;
+            case Key.Escape:
+                editor.ShowEditContentCommand.Execute(null);
+                return true;
+            case Key.C or Key.X or Key.V when hasCommand:
+                // Copying pages between documents isn't offered yet; don't let these reach the items.
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private bool IsOnPage(EditorViewModel? editor, bool isTyping) =>
         editor is not null && !isTyping && _editorView is not null && _editorView.IsPageFocused(FocusManager?.GetFocusedElement());
 
@@ -373,6 +407,9 @@ public partial class MainWindow : Window, IEditorHost
         }).ConfigureAwait(true);
         return files.Select(file => file.TryGetLocalPath()).OfType<string>().FirstOrDefault();
     }
+
+    public Task<int?> AskMovePositionAsync(int count, int pageCount) =>
+        ShowDialogAsync(new MoveToDialog(count, pageCount), dialog => dialog.Result);
 
     public void OpenInNewWindow(IReadOnlyList<string> paths)
     {

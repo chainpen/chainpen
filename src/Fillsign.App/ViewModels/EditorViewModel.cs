@@ -64,6 +64,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     public partial int CurrentPageIndex { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPagesPanel))]
     public partial bool IsPagesPanelVisible { get; set; } = true;
 
     [ObservableProperty]
@@ -260,13 +261,28 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     private void ApplyState(DocumentState next)
     {
         bool havePagesChanged = !next.Pages.SequenceEqual(State.Pages);
+        PageId? currentPage = CurrentPageIndex < State.Pages.Length ? State.Pages[CurrentPageIndex].Id : null;
         State = next;
         Selection = Selections.Prune(Selection, next);
         UndoCommand.NotifyCanExecuteChanged();
         RedoCommand.NotifyCanExecuteChanged();
         if (havePagesChanged)
         {
+            // The current page stays current wherever it moved to (FR-6.10); if it went, its neighbour takes over.
+            int moved = State.Pages.ToList().FindIndex(entry => entry.Id == currentPage);
+            bool hasCurrentMoved = moved >= 0 && moved != CurrentPageIndex;
+            if (moved >= 0)
+            {
+                CurrentPageIndex = moved;
+            }
+
+            SelectedPages = [.. SelectedPages.Where(id => State.Pages.Any(entry => entry.Id == id))];
             RebuildPages();
+            if (hasCurrentMoved)
+            {
+                // Keep the page you were on in view rather than whichever page now sits at that scroll position.
+                ScrollToPageRequested?.Invoke(moved);
+            }
         }
         else
         {
@@ -307,6 +323,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
             page.IsDamaged = damaged.Contains(entry.SourceIndex);
             page.HasEdits = State.HasItems(entry.Id);
             page.IsCurrent = i == CurrentPageIndex;
+            page.IsSelected = SelectedPages.Contains(entry.Id);
             if (existing is null)
             {
                 Pages.Add(page);
@@ -326,6 +343,8 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         DamagedPageCount = Pages.Count(page => page.IsDamaged);
         OnPropertyChanged(nameof(PageStatus));
         OnPropertyChanged(nameof(DocumentStatus));
+        OnPropertyChanged(nameof(OrganiseHint));
+        OnPropertyChanged(nameof(PageSelectionLabel));
         PagesChanged?.Invoke();
     }
 

@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Fillsign.App.Views.MoveToDialog"
+             Width="440">
+    <!-- "Move to…" (FR-6.4): the non-drag way to reorder pages. -->
+    <Border Classes="dialog">
+        <StackPanel>
+            <TextBlock x:Name="Heading" Classes="heading-dialog" />
+            <TextBlock x:Name="PositionLabel" Margin="0,16,0,6" FontWeight="SemiBold" Text="Put them" />
+            <ComboBox x:Name="Positions" HorizontalAlignment="Stretch" MinHeight="40"
+                      AutomationProperties.LabeledBy="{Binding #PositionLabel}" KeyDown="OnKeyDown" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,22,0,0">
+                <Button Content="Cancel" Click="OnCancel" />
+                <Button x:Name="MoveButton" Classes="primary" Content="Move" Click="OnMove" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

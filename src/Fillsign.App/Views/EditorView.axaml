@@ -42,7 +42,34 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
-                <StackPanel x:Name="Tools" Orientation="Horizontal" Spacing="4" AutomationProperties.Name="Tools">
+                <!-- Edit content or Organise pages (FR-6.2, 🎨 4). -->
+                <Border DockPanel.Dock="Left" Classes="segments" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.Name="View">
+                        <RadioButton x:Name="EditContentSwitch" Classes="segment" GroupName="view" IsChecked="{Binding IsEditingContent}"
+                                     AutomationProperties.Name="Edit content" ToolTip.Tip="Edit content: add text, ticks and signatures">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconEditContent}" Size="16" />
+                                <TextBlock x:Name="EditContentLabel" Text="Edit content" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="OrganiseSwitch" Classes="segment" GroupName="view" IsChecked="{Binding IsOrganising}"
+                                     AutomationProperties.Name="Organise pages" ToolTip.Tip="Organise pages: reorder, rotate, duplicate and delete">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconOrganise}" Size="16" />
+                                <TextBlock x:Name="OrganiseLabel" Text="Organise pages" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+                <Button DockPanel.Dock="Left" Classes="chip" IsVisible="{Binding IsOrganising}" Click="OnAddPages" VerticalAlignment="Center"
+                        ToolTip.Tip="Add pages from PDFs or images at the end">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:StrokeIcon Data="{StaticResource IconFilePlus}" />
+                        <TextBlock Text="Add pages…" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <StackPanel x:Name="Tools" Orientation="Horizontal" Spacing="4" AutomationProperties.Name="Tools"
+                            IsVisible="{Binding IsEditingContent}">
                     <ToggleButton Classes="tool icon" IsChecked="{Binding IsPagesPanelVisible}"
                                   AutomationProperties.Name="Show or hide pages" ToolTip.Tip="Pages panel">
                         <c:StrokeIcon Data="{StaticResource IconPages}" />
@@ -178,8 +205,63 @@
 
         <!-- The bar under the toolbar (FS-310): always the same height, so the page never jumps. -->
         <Border Grid.Row="2" Height="{StaticResource ContextBarHeight}" Classes="contextBar" Classes.placing="{Binding ShowsPlacing}"
-                Padding="16,0" AutomationProperties.LiveSetting="Polite">
+                Classes.pagesSelected="{Binding ShowsPageActions}" Padding="16,0" AutomationProperties.LiveSetting="Polite">
             <Panel VerticalAlignment="Center">
+            <!-- Organise pages: the selection and its actions (🎨 4, D9), or a hint. -->
+            <Panel IsVisible="{Binding IsOrganising}">
+                <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding ShowsOrganiseHint}"
+                           Text="Click a page to select it. Shift-click selects a range, Mod-click adds a page." />
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsPageNotice}">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Notice}" />
+                    <Button Classes="link" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="Undo (Mod+Z)" />
+                </StackPanel>
+                <DockPanel IsVisible="{Binding ShowsPageActions}">
+                    <Button DockPanel.Dock="Right" Classes="chip" BorderBrush="Transparent" Background="Transparent"
+                            Command="{Binding ClearPageSelectionCommand}" Content="Clear selection" ToolTip.Tip="Clear selection (Esc)" />
+                    <StackPanel x:Name="PageActions" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" Text="{Binding PageSelectionLabel}" />
+                        <Button Classes="chip" Command="{Binding RotatePagesLeftCommand}" AutomationProperties.Name="Rotate left" ToolTip.Tip="Rotate left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconRotateLeft}" />
+                                <TextBlock Classes="collapsible" Text="Rotate left" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip" Command="{Binding RotatePagesRightCommand}" AutomationProperties.Name="Rotate right" ToolTip.Tip="Rotate right">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconRotateRight}" />
+                                <TextBlock Classes="collapsible" Text="Rotate right" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip" Command="{Binding DuplicatePagesCommand}" ToolTip.Tip="Duplicate (Mod+D)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconDuplicate}" />
+                                <TextBlock Text="Duplicate" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip" Command="{Binding MovePagesToCommand}" ToolTip.Tip="Choose where these pages go">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconArrowUp}" />
+                                <TextBlock Text="Move to…" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip danger" Command="{Binding DeletePagesCommand}" ToolTip.Tip="Delete (Delete key)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconDelete}" />
+                                <TextBlock Text="Delete" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <!-- D9: explains instead of failing silently. -->
+                        <Border Classes="pageMessage" IsVisible="{Binding HasPageMessage}" Margin="6,0,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                                <TextBlock FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="460" Text="{Binding PageMessage}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </DockPanel>
+            </Panel>
+            <Panel IsVisible="{Binding IsEditingContent}">
                 <TextBlock Classes="muted" FontSize="13" Text="{Binding ContextHint}" IsVisible="{Binding ShowsHint}" TextTrimming="CharacterEllipsis" />
 
                 <!-- Options for typing, the pen, a placing tool or the selection (E2, E3, E6). -->
@@ -267,11 +349,12 @@
                     <Button Classes="link" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="Undo (Mod+Z)" />
                 </StackPanel>
             </Panel>
+            </Panel>
         </Border>
 
         <Grid Grid.Row="3" ColumnDefinitions="Auto,*">
             <!-- Pages panel (FS-206). -->
-            <Border x:Name="PagesPanel" Width="{StaticResource PagesPanelWidth}" IsVisible="{Binding IsPagesPanelVisible}"
+            <Border x:Name="PagesPanel" Width="{StaticResource PagesPanelWidth}" IsVisible="{Binding ShowsPagesPanel}"
                     Background="{DynamicResource SurfaceSubtle}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,1,0"
                     DragDrop.AllowDrop="True">
                 <DockPanel>
@@ -289,8 +372,8 @@
                         </StackPanel>
                     </DockPanel>
                     <Grid>
-                        <ListBox x:Name="PageList" ItemsSource="{Binding Pages}" Background="Transparent"
-                                 SelectionMode="Single" AutomationProperties.Name="Pages"
+                        <ListBox x:Name="PageList" Classes="pageList" ItemsSource="{Binding Pages}" Background="Transparent"
+                                 SelectionMode="Multiple" AutomationProperties.Name="Pages"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -301,13 +384,21 @@
                                 <DataTemplate x:DataType="vm:PageViewModel">
                                     <StackPanel Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,14"
                                                 AutomationProperties.Name="{Binding AccessibleName}">
-                                        <Border Classes="thumb" Classes.current="{Binding IsCurrent}" Width="116" Height="150">
-                                            <Panel>
-                                                <c:PageThumbnail Requests="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).Thumbnails, FallbackValue={x:Null}}" />
-                                                <c:StrokeIcon Data="{StaticResource IconWarning}" Size="22" Foreground="{DynamicResource DamagedText}"
-                                                              IsVisible="{Binding IsDamaged}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Panel>
-                                        </Border>
+                                        <Panel>
+                                            <Border Classes="thumb" Classes.current="{Binding IsCurrent}" Classes.selected="{Binding IsSelected}" Width="116" Height="150">
+                                                <Panel>
+                                                    <c:PageThumbnail Requests="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).Thumbnails, FallbackValue={x:Null}}" />
+                                                    <c:StrokeIcon Data="{StaticResource IconWarning}" Size="22" Foreground="{DynamicResource DamagedText}"
+                                                                  IsVisible="{Binding IsDamaged}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Panel>
+                                            </Border>
+                                            <Border Classes="selectedBadge" IsVisible="{Binding IsSelected}" />
+                                            <!-- The page's own menu (FR-6.9); also on right-click. -->
+                                            <Button Classes="pageMenu" Click="OnPageMenu" AutomationProperties.Name="{Binding Number, StringFormat='Page {0} actions'}"
+                                                    ToolTip.Tip="Page actions">
+                                                <c:StrokeIcon Data="{StaticResource IconMore}" Size="16" />
+                                            </Button>
+                                        </Panel>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
                                             <TextBlock Classes="caption" Classes.current="{Binding IsCurrent}" Text="{Binding NumberLabel}" />
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center"
@@ -326,11 +417,53 @@
                 </DockPanel>
             </Border>
 
-            <ScrollViewer x:Name="Scroller" Grid.Column="1" Background="{DynamicResource Canvas}"
+            <ScrollViewer x:Name="Scroller" Grid.Column="1" Background="{DynamicResource Canvas}" IsVisible="{Binding IsEditingContent}"
                           HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                           Focusable="True" AutomationProperties.Name="Document">
                 <c:PagesCanvas x:Name="Canvas" />
             </ScrollViewer>
+
+            <!-- Organise pages (FR-6.2, 🎨 4): large thumbnails, any selection, drag to reorder. -->
+            <Grid x:Name="OrganisePanel" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding IsOrganising}" Background="{DynamicResource Canvas}">
+                <ListBox x:Name="OrganiseList" Classes="pageList organise" ItemsSource="{Binding Pages}" Background="Transparent"
+                         SelectionMode="Multiple" AutomationProperties.Name="Pages" Padding="30,18"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemSpacing="16" LineSpacing="8" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PageViewModel">
+                            <StackPanel Spacing="8" AutomationProperties.Name="{Binding AccessibleName}">
+                                <Panel>
+                                    <Border Classes="thumb large" Classes.selected="{Binding IsSelected}" Width="168" Height="218">
+                                        <Panel>
+                                            <c:PageThumbnail Requests="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).Thumbnails, FallbackValue={x:Null}}" />
+                                            <c:StrokeIcon Data="{StaticResource IconWarning}" Size="26" Foreground="{DynamicResource DamagedText}"
+                                                          IsVisible="{Binding IsDamaged}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Panel>
+                                    </Border>
+                                    <Border Classes="selectedBadge" IsVisible="{Binding IsSelected}" />
+                                    <Button Classes="pageMenu" Click="OnPageMenu" AutomationProperties.Name="{Binding Number, StringFormat='Page {0} actions'}"
+                                            ToolTip.Tip="Page actions">
+                                        <c:StrokeIcon Data="{StaticResource IconMore}" Size="16" />
+                                    </Button>
+                                </Panel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+                                    <TextBlock Classes="caption" Classes.selected="{Binding IsSelected}" FontSize="13" Text="{Binding NumberLabel}" />
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center" IsVisible="{Binding HasEdits}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <!-- Where dragged pages or dropped files will go. -->
+                <Canvas IsHitTestVisible="False">
+                    <Border x:Name="GridInsertMarker" Width="4" Height="218" CornerRadius="2"
+                            Background="{DynamicResource Accent}" IsVisible="False" />
+                </Canvas>
+            </Grid>
 
             <!-- Two drop targets while files are dragged over the document (E9). -->
             <Grid x:Name="DropOverlay" Grid.Column="1" IsVisible="False" Margin="16" ColumnDefinitions="*,*"
@@ -359,7 +492,9 @@
         <Border Grid.Row="4" Height="{StaticResource StatusBarHeight}" Background="{DynamicResource Surface}"
                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="16,0">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <TextBlock DockPanel.Dock="Left" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding IsOrganising}" Text="{Binding OrganiseHint}" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
                     <Button Classes="tool icon small" Click="OnZoomOut" AutomationProperties.Name="Zoom out" ToolTip.Tip="Zoom out (Mod+−)">
                         <c:StrokeIcon Data="{StaticResource IconZoomOut}" />
                     </Button>
@@ -370,7 +505,7 @@
                     </Button>
                     <Button Classes="tool small" Click="OnFitWidth" Content="Fit width" ToolTip.Tip="Fit the page width (Mod+0)" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="Page" />
                     <TextBox x:Name="PageBox" Width="44" MinWidth="44" MinHeight="26" Height="26" Padding="4,0" FontSize="12"
                              HorizontalContentAlignment="Center" AutomationProperties.Name="Go to page"
@@ -392,6 +527,9 @@
     </Grid>
 
     <UserControl.Styles>
+        <Style Selector=":is(UserControl).iconsOnly TextBlock.collapsible">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
         <Style Selector="ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -413,6 +551,73 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
             <Setter Property="Background" Value="{DynamicResource AccentTint}" />
         </Style>
+        <Style Selector="Border.thumb.large">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="Border.thumb.selected">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <Style Selector="Border.thumb.large.selected">
+            <Setter Property="Padding" Value="7" />
+        </Style>
+        <!-- A tick in a blue circle on a selected page's corner (🎨 4). -->
+        <Style Selector="Border.selectedBadge">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Background" Value="{DynamicResource Accent}" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,-9,-9,0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Child">
+                <Template>
+                    <c:StrokeIcon Data="{StaticResource IconTick}" Size="13" StrokeThickness="3" Foreground="{DynamicResource OnPrimary}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Template>
+            </Setter>
+        </Style>
+        <!-- The page's "⋯" menu button: shown on hover, focus and for the current or selected page. -->
+        <Style Selector="Button.pageMenu">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,6,6,0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="ListBoxItem:pointerover Button.pageMenu, ListBoxItem:selected Button.pageMenu, Button.pageMenu:focus-visible, Button.pageMenu:pressed">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ListBox.organise Button.pageMenu">
+            <Setter Property="Margin" Value="0,8,8,0" />
+        </Style>
+        <Style Selector="TextBlock.caption.selected">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+        </Style>
+        <Style Selector="Border.pageMessage">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+        </Style>
+        <Style Selector="Button.chip.danger">
+            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+        </Style>
+        <!-- Room for the selected badge, which sits over the thumbnail's corner. -->
+        <Style Selector="ListBox.organise ListBoxItem">
+            <Setter Property="Padding" Value="10" />
+        </Style>
+        <Style Selector="ListBox.pageList ListBoxItem">
+            <Setter Property="ClipToBounds" Value="False" />
+        </Style>
         <Style Selector="TextBlock.caption.current">
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource Accent}" />
@@ -424,6 +629,10 @@
         </Style>
         <!-- A mode you're in, like placing a signature, tints the bar blue (INTERACTION-PATTERNS §2). -->
         <Style Selector="Border.contextBar.placing">
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <!-- Pages selected in Organise pages (🎨 4). -->
+        <Style Selector="Border.contextBar.pagesSelected">
             <Setter Property="Background" Value="{DynamicResource AccentTint}" />
         </Style>
         <Style Selector="Border.dropTarget">

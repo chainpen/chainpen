@@ -232,39 +232,6 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
-        <!-- Signature / Initials switch. -->
-        <Style Selector="Border.segments">
-            <Setter Property="Padding" Value="2" />
-            <Setter Property="CornerRadius" Value="9" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceSunken}" />
-        </Style>
-        <Style Selector="RadioButton.segment">
-            <Setter Property="Height" Value="34" />
-            <Setter Property="Padding" Value="14,0" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Name="Box" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="7"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"
-                                          Foreground="{DynamicResource TextMuted}" FontWeight="Medium" />
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <Style Selector="RadioButton.segment:checked /template/ Border#Box">
-            <Setter Property="Background" Value="{DynamicResource Surface}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
-        </Style>
-        <Style Selector="RadioButton.segment:checked /template/ ContentPresenter">
-            <Setter Property="Foreground" Value="{DynamicResource Text}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-        <Style Selector="RadioButton.segment:focus-visible /template/ Border#Box">
-            <Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" />
-        </Style>
-
         <!-- Draw / Type / Photo tabs. -->
         <Style Selector="RadioButton.tab">
             <Setter Property="Height" Value="40" />

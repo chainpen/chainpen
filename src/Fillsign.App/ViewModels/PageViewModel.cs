@@ -39,8 +39,17 @@ public sealed partial class PageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(AccessibleName), nameof(NumberLabel))]
     public partial bool IsDamaged { get; set; }
 
-    /// <summary>"3" or "3 · can't show".</summary>
-    public string NumberLabel => IsDamaged ? $"{Number} · can’t show" : Number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>Part of the page selection (FR-6.3).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    public partial bool IsSelected { get; set; }
+
+    public bool IsRotated => Entry.Rotation != Rotation.None;
+
+    /// <summary>"3", "3 · rotated" or "3 · can't show".</summary>
+    public string NumberLabel => IsDamaged ? $"{Number} · can’t show"
+        : IsRotated ? $"{Number} · rotated"
+        : Number.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>"Page 1, current, has edits".</summary>
     public string AccessibleName
@@ -51,6 +60,16 @@ public sealed partial class PageViewModel : ObservableObject
             if (IsCurrent)
             {
                 parts.Add("current");
+            }
+
+            if (IsSelected)
+            {
+                parts.Add("selected");
+            }
+
+            if (IsRotated)
+            {
+                parts.Add("rotated");
             }
 
             if (HasEdits)

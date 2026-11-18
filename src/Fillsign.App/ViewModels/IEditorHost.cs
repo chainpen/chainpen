@@ -32,6 +32,12 @@ public interface IEditorHost
     /// <summary>FR-3.4: picks or makes a signature or initials to place. Null when cancelled.</summary>
     Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync();
 
+    /// <summary>
+    /// "Move to…" (FR-6.4): asks where <paramref name="count"/> pages should go. Returns the gap (0 is before page 1,
+    /// <paramref name="pageCount"/> is the end), or null when cancelled.
+    /// </summary>
+    Task<int?> AskMovePositionAsync(int count, int pageCount);
+
     /// <summary>Opens files in a separate window, leaving this document unchanged (FR-1.5).</summary>
     void OpenInNewWindow(IReadOnlyList<string> paths);
 }

@@ -1088,6 +1088,8 @@ public sealed partial class EditorViewModel
         nameof(IsDrawTool), nameof(ContextHint),
     ];
 
+    private static readonly string[] s_organiseBarDependents = [nameof(ShowsPageActions), nameof(ShowsPageNotice), nameof(ShowsOrganiseHint)];
+
     private static readonly string[] s_colourDependents = [nameof(IsBlackChosen), nameof(IsBlueChosen), nameof(IsRedChosen)];
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
@@ -1100,6 +1102,7 @@ public sealed partial class EditorViewModel
             nameof(Tool) => s_toolDependents,
             nameof(CurrentColour) => s_colourDependents,
             nameof(SizeTip) => [nameof(SizeCaption)],
+            nameof(Notice) or nameof(IsOrganising) or nameof(SelectedPages) => s_organiseBarDependents,
             _ => [],
         };
         foreach (string name in dependents)
