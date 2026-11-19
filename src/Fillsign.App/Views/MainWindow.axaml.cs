@@ -55,6 +55,9 @@ public partial class MainWindow : Window, IEditorHost
     {
         InitializeComponent();
         TitleBar.MergeInto(this);
+
+        // macOS has its menus in the system menu bar; an empty bar here would sit over the window buttons.
+        MenuBar.IsVisible = !OperatingSystem.IsMacOS();
         RestorePlacement();
         Closed += (_, _) => RememberPlacement();
         Opened += (_, _) => WindowFit.KeepOnScreen(this);

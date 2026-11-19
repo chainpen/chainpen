@@ -23,6 +23,7 @@ public partial class EditorView : UserControl
     {
         InitializeComponent();
         TitleBar.ActsAsTitleBar(TitleStrip);
+        TitleBar.KeepClearOfMenus(TitleStrip.Child!);
         AttachPagesPanelResizer();
         ShareButton.IsVisible = Platform.ShareSheet.IsAvailable;
         ShowToolLetters(ToolKeys.IsOn);
