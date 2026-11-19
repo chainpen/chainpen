@@ -149,6 +149,30 @@ public sealed class DocumentLoaderTests
         Assert.True(source.IsFullyLoaded);
     }
 
+    [Fact]
+    public async Task Fields_on_added_pages_are_offered_only_if_they_survive_saving()
+    {
+        OpenResult result = await DocumentLoader.OpenAsync([Sample("four-pages.pdf")], s_noPassword, CancellationToken.None);
+        using SourceDocument source = result.Source;
+        var (pages, _, _) = await DocumentLoader.OpenForAddingAsync([Sample("form-fields.pdf")], s_noPassword, CancellationToken.None);
+        using (pages)
+        {
+            Assert.Equal([4], source.AppendFrom(pages));
+        }
+
+        // PDFium's import loses the radio group's parent field, so it isn't offered; fields that are their own widget are.
+        IReadOnlyList<FormField> fields = source.FormFields(4);
+        Assert.Contains(fields, field => field.Name == "Name" && field.Kind == FormFieldKind.Text);
+        Assert.Contains(fields, field => field.Name == "Signature");
+        Assert.DoesNotContain(fields, field => field.Kind == FormFieldKind.Radio);
+
+        // And what's offered fills and saves.
+        using PdfiumDocument copy = PdfiumDocument.Open(source.Pdf.SaveCopy(removeSecurity: true));
+        copy.FillFormFields(new Dictionary<string, string> { ["Name"] = "Added page" });
+        using PdfiumDocument back = PdfiumDocument.Open(copy.SaveCopy(removeSecurity: true));
+        Assert.Equal("Added page", back.GetFormFields(4).Single(field => field.Name == "Name").Value);
+    }
+
     private static (byte b, byte g, byte r) Pixel(byte[] bgra, int width, int x, int y)
     {
         int i = ((y * width) + x) * 4;

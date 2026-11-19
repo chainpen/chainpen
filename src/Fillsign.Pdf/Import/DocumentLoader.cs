@@ -252,6 +252,11 @@ public static class DocumentLoader
         }
     }
 
+    /// <summary>
+    /// Puts the parts' pages into one new document. It's then replaced by a saved copy of itself, made while the
+    /// parts are still open: PDFium's import leaves form widgets pointing at parent fields inside the part they came
+    /// from, and following those links after the part closes would read freed memory.
+    /// </summary>
     private static PdfiumDocument Combine(List<Part> parts)
     {
         var combined = PdfiumDocument.CreateNew();
@@ -262,7 +267,9 @@ public static class DocumentLoader
                 combined.ImportPages(part.Pdf, [.. Enumerable.Range(0, part.Pdf.PageCount)], combined.PageCount);
             }
 
-            return combined;
+            byte[] saved = combined.SaveCopy(removeSecurity: true);
+            combined.Dispose();
+            return PdfiumDocument.Open(saved);
         }
         catch
         {

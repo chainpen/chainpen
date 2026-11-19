@@ -37,7 +37,14 @@ public static class GapFinder
     private const double BlankReach = 2;
 
     /// <param name="spotsOn">Each page's boxes and blanks, already in that page's display coordinates.</param>
-    public static GapReport Find(DocumentState document, Func<PageEntry, IReadOnlyList<FormSpot>> spotsOn, ITextMeasurer measurer)
+    /// <param name="alsoWorkedOn">
+    /// Pages worked on without adding items, such as filling the PDF's own form fields (FS-950); checked as well.
+    /// </param>
+    public static GapReport Find(
+        DocumentState document,
+        Func<PageEntry, IReadOnlyList<FormSpot>> spotsOn,
+        ITextMeasurer measurer,
+        IReadOnlySet<PageId>? alsoWorkedOn = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(spotsOn);
@@ -50,7 +57,7 @@ public static class GapFinder
         {
             PageEntry page = document.Pages[index];
             PageRect[] placed = [.. document.ItemsOn(page.Id).Select(item => ItemGeometry.Bounds(item, measurer))];
-            if (placed.Length == 0)
+            if (placed.Length == 0 && alsoWorkedOn?.Contains(page.Id) != true)
             {
                 continue;
             }

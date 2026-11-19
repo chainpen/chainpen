@@ -279,11 +279,28 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.FocusPage();
         void Press(Key key, PhysicalKey physical) => e.Window.KeyPress(key, RawInputModifiers.None, physical, null);
 
-        // The list click left the focus on "How did you hear?". Shift+Tab goes back to the radio group: one stop, on
-        // its first button since none is chosen; the arrows wrap round the group.
-        e.Window.KeyPress(Key.Tab, RawInputModifiers.Shift, PhysicalKey.Tab, null);
-        Assert.Equal("State", e.Editor.FocusedField?.Field.Name);
-        e.Window.KeyPress(Key.Tab, RawInputModifiers.Shift, PhysicalKey.Tab, null);
+        // Tab from a field: wait for a text field's box to take focus first, as a person would.
+        async Task TabAsync(bool backwards)
+        {
+            if (e.Editor.EditingField is not null)
+            {
+                await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+            }
+
+            e.Window.KeyPress(Key.Tab, backwards ? RawInputModifiers.Shift : RawInputModifiers.None, PhysicalKey.Tab, null);
+            await Pump(() => true);
+        }
+
+        string? Current() => e.Editor.FocusedField?.Field.Name ?? e.Editor.EditingField?.Hit.Field.Name;
+
+        // The list click left the focus on "How did you hear?". Shift+Tab goes back through Title, Postcode and State
+        // to the radio group: one stop, on its first button since none is chosen; the arrows wrap round the group.
+        foreach (string previous in (string[])["Title", "Postcode", "State", "Membership"])
+        {
+            await TabAsync(backwards: true);
+            Assert.Equal(previous, Current());
+        }
+
         Assert.Equal("Individual", e.Editor.FocusedField?.Field.OnValue);
         Press(Key.Left, PhysicalKey.ArrowLeft);
         Assert.Equal("Business", e.Editor.State.Fields["Membership"]);
@@ -297,8 +314,12 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         // Multi-select list keys (WAI-ARIA list box pattern): arrows move the outline without changing what's
         // chosen, Space ticks or unticks, Shift+arrows choose the rows from where the outline was.
-        Press(Key.Tab, PhysicalKey.Tab);
-        Assert.Equal("Heard", e.Editor.FocusedField?.Field.Name);
+        foreach (string next in (string[])["Postcode", "Title", "Heard"])
+        {
+            await TabAsync(backwards: false);
+            Assert.Equal(next, Current());
+        }
+
         Assert.Equal(3, e.Editor.FocusedOption); // starts on the chosen row
         Press(Key.Up, PhysicalKey.ArrowUp);
         Press(Key.Up, PhysicalKey.ArrowUp);
@@ -312,6 +333,83 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.Window.KeyPress(Key.Down, RawInputModifiers.Shift, PhysicalKey.ArrowDown, null);
         e.Window.KeyPress(Key.Down, RawInputModifiers.Shift, PhysicalKey.ArrowDown, null);
         Assert.Equal("Search\nSocial media\nNewspaper", e.Editor.State.Fields["Heard"]);
+    }
+
+    [AvaloniaFact]
+    public async Task Signature_fields_buttons_limits_typed_answers_and_gaps_for_form_fields()
+    {
+        using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+        PageId page = e.Editor.State.Pages[0].Id;
+        Pdf.Pdfium.FormField[] fields = [.. e.Editor.Source.FormFields(0)];
+        var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+        PagePoint Centre(string name)
+        {
+            Pdf.Pdfium.FormField field = fields.First(field => field.Name == name);
+            return transform.ToDisplay((field.Rect.Left + field.Rect.Right) / 2, (field.Rect.Bottom + field.Rect.Top) / 2);
+        }
+
+        void Press(PagePoint at)
+        {
+            e.Editor.PointerPressed(0, at, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+            e.Editor.PointerReleased(at);
+        }
+
+        // Gaps: nothing filled yet, so nothing is checked; once a field is filled, the page's empty fields are hints.
+        Assert.Equal(0, e.Editor.FindGaps().PagesChecked);
+        e.Editor.SetField("Name", "Jordan Lee");
+        Core.Gaps.GapReport gaps = e.Editor.FindGaps();
+        Assert.Equal(1, gaps.PagesChecked);
+        string[] labels = [.. gaps.Gaps.Select(gap => gap.Label)];
+        Assert.Contains("Your email address", labels);
+        Assert.Contains("Your signature", labels);
+        Assert.Contains(gaps.Gaps, gap => gap.Kind == Core.Gaps.GapKind.Unticked && gap.Label.Contains("Individual", StringComparison.Ordinal));
+        Assert.DoesNotContain("Name", labels);
+        Assert.DoesNotContain("Total", labels);
+        Assert.DoesNotContain("Reset", labels);
+
+        // A push button says why nothing happens.
+        Assert.True(e.Editor.IsOverReadOnlyField(page, Centre("Reset")));
+        Press(Centre("Reset"));
+        Assert.Contains("doesn’t run form buttons", e.Editor.Notice, StringComparison.Ordinal);
+
+        // A text field with a character limit stops there.
+        Press(Centre("Postcode"));
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+        Assert.Equal(4, e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible).MaxLength);
+        e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        await Pump(() => e.Editor.EditingField is null);
+
+        // A drop-down that takes typing.
+        FieldHit title = e.Editor.FieldAt(page, Centre("Title"))!;
+        e.Editor.TypeIntoField(title);
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+        e.Window.KeyTextInput("Prof");
+        e.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        await Pump(() => e.Editor.EditingField is null);
+        Assert.Equal("Prof", e.Editor.State.Fields["Title"]);
+
+        // A signature field: sign, and the signature lands inside its box; that gap is then filled.
+        Press(Centre("Signature"));
+        SignatureDialog dialog = await Await(() => e.Window.FindControl<ContentControl>("DialogHost")!.Content as SignatureDialog);
+        var signing = (SignatureDialogViewModel)dialog.DataContext!;
+        signing.IsTypeTab = true;
+        signing.TypedName = "Jordan Lee";
+        signing.PlaceCommand.Execute(null);
+        await Pump(() => e.Editor.State.Items.OfType<SignatureItem>().Any());
+        SignatureItem signature = e.Editor.State.Items.OfType<SignatureItem>().Single();
+        PageRect box = e.Editor.FieldAt(page, Centre("Signature"))!.Box;
+        Assert.True(signature.X >= box.X && signature.X + signature.Width <= box.Right + 0.01, "fits across");
+        Assert.True(signature.Y >= box.Y && signature.Y + signature.Height <= box.Bottom + 0.01, "fits down");
+        Assert.DoesNotContain("Your signature", e.Editor.FindGaps().Gaps.Select(gap => gap.Label));
+        await e.SaveAsync("edit-form-signature");
+    }
+
+    private static async Task<T> Await<T>(Func<T?> find)
+        where T : class
+    {
+        T? found = null;
+        await Pump(() => (found = find()) is not null);
+        return found!;
     }
 
     [AvaloniaFact]

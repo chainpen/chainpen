@@ -121,6 +121,33 @@ public sealed class FormFieldTests
     }
 
     [Fact]
+    public void Signature_fields_buttons_limits_typed_answers_and_descriptions_are_read()
+    {
+        byte[] saved;
+        using (PdfiumDocument pdf = Open("form-fields.pdf"))
+        {
+            IReadOnlyList<FormField> fields = pdf.GetFormFields(0);
+            FormField signature = fields.Single(field => field.Name == "Signature");
+            Assert.Equal(FormFieldKind.Signature, signature.Kind);
+            Assert.Equal("Your signature", signature.DisplayName);
+            Assert.Equal(FormFieldKind.PushButton, fields.Single(field => field.Name == "Reset").Kind);
+            Assert.Equal(4, fields.Single(field => field.Name == "Postcode").MaxLength);
+            Assert.Equal(0, fields.Single(field => field.Name == "Name").MaxLength);
+            Assert.True(fields.Single(field => field.Name == "Title").IsEditable);
+            Assert.False(fields.Single(field => field.Name == "State").IsEditable);
+            Assert.Equal("Your email address", fields.Single(field => field.Name == "Email").DisplayName);
+
+            pdf.FillFormFields(new Dictionary<string, string> { ["Title"] = "Prof", ["Postcode"] = "400012", ["Signature"] = "x", ["Reset"] = "x" });
+            saved = pdf.SaveCopy(removeSecurity: true);
+        }
+
+        using PdfiumDocument reopened = PdfiumDocument.Open(saved);
+        IReadOnlyList<FormField> back = reopened.GetFormFields(0);
+        Assert.Equal("Prof", back.Single(field => field.Name == "Title").Value);
+        Assert.Equal("4000", back.Single(field => field.Name == "Postcode").Value);
+    }
+
+    [Fact]
     public void Text_fields_can_be_emptied_and_a_page_with_no_form_has_no_fields()
     {
         byte[] saved;

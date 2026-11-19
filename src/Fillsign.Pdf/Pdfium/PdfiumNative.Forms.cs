@@ -9,16 +9,19 @@ internal static partial class PdfiumNative
     public const int FPDF_ANNOT_WIDGET = 20;
 
     // FPDFAnnot_GetFormFieldType.
+    public const int FPDF_FORMFIELD_PUSHBUTTON = 1;
     public const int FPDF_FORMFIELD_CHECKBOX = 2;
     public const int FPDF_FORMFIELD_RADIOBUTTON = 3;
     public const int FPDF_FORMFIELD_COMBOBOX = 4;
     public const int FPDF_FORMFIELD_LISTBOX = 5;
     public const int FPDF_FORMFIELD_TEXTFIELD = 6;
+    public const int FPDF_FORMFIELD_SIGNATURE = 7;
 
     // Field flags (/Ff): read-only for every field, multi-line for text.
     public const int FPDF_FORMFLAG_READONLY = 1 << 0;
     public const int FPDF_FORMFLAG_TEXT_MULTILINE = 1 << 12;
     public const int FPDF_FORMFLAG_CHOICE_COMBO = 1 << 17;
+    public const int FPDF_FORMFLAG_CHOICE_EDIT = 1 << 18;
     public const int FPDF_FORMFLAG_CHOICE_MULTI_SELECT = 1 << 21;
 
     /// <summary>
@@ -97,6 +100,22 @@ internal static partial class PdfiumNative
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static unsafe partial CULong FPDFAnnot_GetFormFieldName(nint form, nint annotation, char* buffer, CULong bufferBytes);
+
+    /// <summary>The field's description for people (/TU), shown as its tooltip in readers.</summary>
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static unsafe partial CULong FPDFAnnot_GetFormFieldAlternateName(nint form, nint annotation, char* buffer, CULong bufferBytes);
+
+    /// <summary>A number from the annotation's own dictionary, e.g. "MaxLen".</summary>
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFAnnot_GetNumberValue(nint annotation, string key, out float value);
+
+    /// <summary>An annotation linked from this one under a key, e.g. the field above a widget ("Parent").</summary>
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial nint FPDFAnnot_GetLinkedAnnot(nint annotation, string key);
 
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

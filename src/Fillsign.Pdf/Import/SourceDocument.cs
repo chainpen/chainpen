@@ -33,7 +33,8 @@ public sealed class SourceDocument : IDisposable
     /// <summary>Where it was opened from; null when several files were combined.</summary>
     public string? Path { get; }
 
-    public PdfiumDocument Pdf { get; }
+    /// <summary>The document as Fillsign holds it. Replaced by a saved copy of itself when pages are added (see <see cref="AppendFrom"/>).</summary>
+    public PdfiumDocument Pdf { get; private set; }
 
     /// <summary>The file was locked with a user password (asked for on open; never kept).</summary>
     public bool NeedsPassword { get; }
@@ -173,12 +174,7 @@ public sealed class SourceDocument : IDisposable
         }
 
         LoadPages(null, CancellationToken.None);
-        lock (PdfiumLibrary.Sync)
-        {
-            // The preview is a copy of the old page list; the next render makes a fresh one.
-            ClosePreview();
-        }
-
+        ReloadFromSavedCopy();
         return [.. Enumerable.Range(first, PageCount - first)];
     }
 
@@ -215,6 +211,31 @@ public sealed class SourceDocument : IDisposable
         }
 
         return fields;
+    }
+
+    /// <summary>
+    /// After pages are imported, the document is replaced by a saved copy of itself, made while the other file is
+    /// still open (FS-950). PDFium's import leaves form widgets pointing at their parent field in the other file;
+    /// once that closes, the form layer would follow those links into freed memory. In the saved copy every link is
+    /// inside the document, and it holds exactly what saving keeps: fields made of several widgets (a radio group)
+    /// lose their parent in the import, so they aren't offered as fields and can't silently lose an answer. Page
+    /// facts and indexes don't change.
+    /// </summary>
+    private void ReloadFromSavedCopy()
+    {
+        PdfiumDocument reloaded = PdfiumDocument.Open(Pdf.SaveCopy(removeSecurity: true));
+        lock (PdfiumLibrary.Sync)
+        {
+            ClosePreview();
+            PdfiumDocument old = Pdf;
+            Pdf = reloaded;
+            old.Dispose();
+        }
+
+        lock (_lock)
+        {
+            _fields.Clear();
+        }
     }
 
     /// <summary>

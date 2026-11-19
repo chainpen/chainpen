@@ -82,6 +82,7 @@ public sealed partial class PagesCanvas
         _fieldBoxEdit = editing;
         AutomationProperties.SetName(_fieldBox, $"Form field {editing.Hit.Field.Name}");
         _fieldBox.AcceptsReturn = editing.Hit.Field.IsMultiline;
+        _fieldBox.MaxLength = editing.Hit.Field.MaxLength; // 0 is no limit (FS-963)
         _fieldBox.TextWrapping = editing.Hit.Field.IsMultiline ? TextWrapping.Wrap : TextWrapping.NoWrap;
         _fieldBox.VerticalContentAlignment = editing.Hit.Field.IsMultiline ? VerticalAlignment.Top : VerticalAlignment.Center;
         _fieldBox.FontSize = FieldFontSize(editing.Hit) * Zoom;
@@ -161,6 +162,19 @@ public sealed partial class PagesCanvas
             };
             item.Click += (_, _) => _editor?.ChooseOption(hit.Field, option);
             menu.Items.Add(item);
+        }
+
+        // A drop-down that takes typing (FS-964): an answer that isn't in the list.
+        if (hit.Field.IsEditable)
+        {
+            if (menu.Items.Count > 0)
+            {
+                menu.Items.Add(new Separator());
+            }
+
+            var type = new MenuItem { Header = "Type an answer…" };
+            type.Click += (_, _) => _editor?.TypeIntoField(hit);
+            menu.Items.Add(type);
         }
 
         // An invisible anchor over the field, so the menu opens right under it.

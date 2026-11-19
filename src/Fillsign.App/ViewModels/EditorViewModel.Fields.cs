@@ -46,11 +46,15 @@ public sealed partial class EditorViewModel
     public event Action<FieldHit, string>? FieldChoiceRequested;
 
     /// <summary>The editable field at a point on a page, topmost first; null when there's none, or it's read-only.</summary>
-    public FieldHit? FieldAt(PageId page, PagePoint point) => TopFieldAt(page, point) is { Field.IsReadOnly: false } hit ? hit : null;
+    public FieldHit? FieldAt(PageId page, PagePoint point) =>
+        TopFieldAt(page, point) is { Field: { IsReadOnly: false, Kind: not FormFieldKind.PushButton } } hit ? hit : null;
 
-    /// <summary>Whether the field at a point is one the form fills in itself, such as a total, so it can't be changed.</summary>
+    /// <summary>
+    /// Whether the field at a point can't be filled here: one the form fills in itself (a total), or a button that
+    /// runs the form's scripts (FS-965).
+    /// </summary>
     public bool IsOverReadOnlyField(PageId page, PagePoint point) =>
-        Tool is EditorTool.Select or EditorTool.Text && TopFieldAt(page, point) is { Field.IsReadOnly: true };
+        Tool is EditorTool.Select or EditorTool.Text && TopFieldAt(page, point) is { Field: { IsReadOnly: true } or { Kind: FormFieldKind.PushButton } };
 
     /// <summary>The topmost field of any kind at a point.</summary>
     private FieldHit? TopFieldAt(PageId page, PagePoint point)
@@ -100,6 +104,13 @@ public sealed partial class EditorViewModel
         if (hit.Field.IsReadOnly)
         {
             Notice = "That field can’t be changed: the form fills it in itself.";
+            Changed();
+            return true;
+        }
+
+        if (hit.Field.Kind == FormFieldKind.PushButton)
+        {
+            Notice = "Fillsign doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.";
             Changed();
             return true;
         }
@@ -217,8 +228,11 @@ public sealed partial class EditorViewModel
                 // A list shows its options as rows: the click picks the row under it, as in PDF readers.
                 ChooseOption(field, field.Options[row]);
                 break;
-            case FormFieldKind.Choice when !field.Options.IsEmpty:
+            case FormFieldKind.Choice when !field.Options.IsEmpty || field.IsEditable:
                 FieldChoiceRequested?.Invoke(hit, FieldValue(field));
+                break;
+            case FormFieldKind.Signature:
+                _ = SignIntoFieldAsync(hit);
                 break;
             default:
                 return false;
@@ -226,6 +240,40 @@ public sealed partial class EditorViewModel
 
         Changed();
         return true;
+    }
+
+    /// <summary>A drop-down that takes typing (FS-964): "Type an answer…" opens it for typing like a text field.</summary>
+    public void TypeIntoField(FieldHit hit)
+    {
+        ArgumentNullException.ThrowIfNull(hit);
+        SetFocusedField(null);
+        EditingField = new FieldEdit(hit, FieldValue(hit.Field), SelectsAll: true);
+        OnPropertyChanged(nameof(EditingField));
+        Changed();
+    }
+
+    /// <summary>
+    /// A signature field (FS-962): choose or make a signature as Sign does, and it's placed inside the field's box,
+    /// as large as fits, centred. It's an ordinary signature item afterwards: move it, resize it or delete it.
+    /// </summary>
+    private async Task SignIntoFieldAsync(FieldHit hit)
+    {
+        if (await _host.ChooseSignatureAsync().ConfigureAwait(true) is not { } chosen)
+        {
+            return;
+        }
+
+        const double Padding = 2;
+        PageRect box = hit.Box;
+        double ratio = chosen.Image.PixelHeight / (double)Math.Max(1, chosen.Image.PixelWidth);
+        double width = Math.Max(ItemEdits.SignatureMinWidth, Math.Min(box.Width - (2 * Padding), (box.Height - (2 * Padding)) / ratio));
+        double height = width * ratio;
+        var item = new SignatureItem(ItemId.New(), hit.Page, box.Centre.X - (width / 2), box.Centre.Y - (height / 2), chosen.Kind, chosen.Image, width, height);
+        SetFocusedField(null);
+        Change(ItemEdits.Add(State, item));
+        SwitchTool(EditorTool.Select);
+        Selection = new ItemSelection([item.Id]);
+        Changed();
     }
 
     /// <summary>
@@ -256,6 +304,11 @@ public sealed partial class EditorViewModel
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(value);
+        if (FieldsNamed(name).FirstOrDefault() is { Kind: FormFieldKind.Signature or FormFieldKind.PushButton })
+        {
+            return;
+        }
+
         bool isSame = State.Fields.TryGetValue(name, out string? current)
             ? current == value
             : FieldsNamed(name).FirstOrDefault() is { } field && FieldValue(field) == value && field.Kind != FormFieldKind.Radio;
@@ -385,7 +438,7 @@ public sealed partial class EditorViewModel
 
             var transform = new PageTransform(Source.GetPage(entry.SourceIndex), entry.Rotation);
             order.AddRange(Source.FormFields(entry.SourceIndex)
-                .Where(field => !field.IsReadOnly)
+                .Where(field => field is { IsReadOnly: false, Kind: not FormFieldKind.PushButton })
                 .Select(field => new FieldHit(field, entry.Id, BoxOf(field, transform))));
         }
 

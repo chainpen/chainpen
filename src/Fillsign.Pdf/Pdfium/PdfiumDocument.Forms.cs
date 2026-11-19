@@ -4,13 +4,19 @@ using static Fillsign.Pdf.Pdfium.PdfiumNative;
 
 namespace Fillsign.Pdf.Pdfium;
 
-/// <summary>The kinds of form field Fillsign can fill (FS-950). Buttons and signature fields are left alone.</summary>
+/// <summary>The kinds of form field Fillsign knows (FS-950).</summary>
 public enum FormFieldKind
 {
     Text,
     CheckBox,
     Radio,
     Choice,
+
+    /// <summary>A box for a signature (FS-962). Fillsign signs over it with a signature item; it has no value to fill.</summary>
+    Signature,
+
+    /// <summary>Reset, Print, Submit: they run the form's scripts, which Fillsign doesn't (FS-965). Never filled.</summary>
+    PushButton,
 }
 
 /// <summary>
@@ -25,6 +31,9 @@ public enum FormFieldKind
 /// <param name="OnValue">For check boxes and radio buttons: the value this widget sets when chosen.</param>
 /// <param name="IsList">A choice field shown as a list of rows (not a drop-down), picked by clicking a row.</param>
 /// <param name="FontSize">The size the field's text is drawn at, in points; 0 when it's sized to fit.</param>
+/// <param name="MaxLength">The most characters a text field takes (/MaxLen, FS-963); 0 for no limit.</param>
+/// <param name="IsEditable">A drop-down that also takes a typed answer not in its list (FS-964).</param>
+/// <param name="Label">What the field asks for, for people (/TU, its tooltip in readers); empty when it has none.</param>
 public sealed record FormField(
     string Name,
     FormFieldKind Kind,
@@ -37,8 +46,14 @@ public sealed record FormField(
     bool IsMultiline,
     bool IsList = false,
     double FontSize = 0,
-    bool IsMultiSelect = false)
+    bool IsMultiSelect = false,
+    int MaxLength = 0,
+    bool IsEditable = false,
+    string Label = "")
 {
+    /// <summary>The field's description if it has one, else its name, for gap hints and screen readers.</summary>
+    public string DisplayName => Label.Length > 0 ? Label : Name;
+
     /// <summary>
     /// How tall each row of a list field is, as PDFium draws it: the font's line height, about 1.15 × the size (12 pt
     /// when the size is automatic).
@@ -180,7 +195,7 @@ public sealed partial class PdfiumDocument
                         if (FORM_SetFocusedAnnot(form, annotation))
                         {
                             FORM_SelectAllText(form, page);
-                            FORM_ReplaceSelection(form, page, value);
+                            FORM_ReplaceSelection(form, page, field.MaxLength > 0 && value.Length > field.MaxLength ? value[..field.MaxLength] : value);
                             FORM_ForceToKillFocus(form);
                         }
 
@@ -205,6 +220,13 @@ public sealed partial class PdfiumDocument
                         if (option >= 0 && FORM_SetFocusedAnnot(form, annotation))
                         {
                             FORM_SetIndexSelected(form, page, option, true);
+                            FORM_ForceToKillFocus(form);
+                        }
+                        else if (option < 0 && field.IsEditable && FORM_SetFocusedAnnot(form, annotation))
+                        {
+                            // A drop-down that takes typing (FS-964): the answer is typed into it.
+                            FORM_SelectAllText(form, page);
+                            FORM_ReplaceSelection(form, page, value);
                             FORM_ForceToKillFocus(form);
                         }
 
@@ -263,6 +285,8 @@ public sealed partial class PdfiumDocument
             FPDF_FORMFIELD_CHECKBOX => FormFieldKind.CheckBox,
             FPDF_FORMFIELD_RADIOBUTTON => FormFieldKind.Radio,
             FPDF_FORMFIELD_COMBOBOX or FPDF_FORMFIELD_LISTBOX => FormFieldKind.Choice,
+            FPDF_FORMFIELD_SIGNATURE => FormFieldKind.Signature,
+            FPDF_FORMFIELD_PUSHBUTTON => FormFieldKind.PushButton,
             _ => null,
         };
         if (kind is null || !FPDFAnnot_GetRect(annotation, out FsRectF rect))
@@ -295,7 +319,34 @@ public sealed partial class PdfiumDocument
             kind == FormFieldKind.Text && (flags & FPDF_FORMFLAG_TEXT_MULTILINE) != 0,
             kind == FormFieldKind.Choice && (flags & FPDF_FORMFLAG_CHOICE_COMBO) == 0,
             FPDFAnnot_GetFontSize(form, annotation, out float fontSize) ? fontSize : 0,
-            isMultiSelect);
+            isMultiSelect,
+            kind == FormFieldKind.Text ? MaxLength(annotation) : 0,
+            kind == FormFieldKind.Choice && (flags & FPDF_FORMFLAG_CHOICE_COMBO) != 0 && (flags & FPDF_FORMFLAG_CHOICE_EDIT) != 0,
+            ReadString((buffer, bytes) => { unsafe { return FPDFAnnot_GetFormFieldAlternateName(form, annotation, (char*)buffer, bytes); } }));
+    }
+
+    /// <summary>A text field's /MaxLen: on the widget when it is the field, else on the field above it.</summary>
+    private static int MaxLength(nint annotation)
+    {
+        if (FPDFAnnot_GetNumberValue(annotation, "MaxLen", out float own))
+        {
+            return Math.Max(0, (int)own);
+        }
+
+        nint parent = FPDFAnnot_GetLinkedAnnot(annotation, "Parent");
+        if (parent == 0)
+        {
+            return 0;
+        }
+
+        try
+        {
+            return FPDFAnnot_GetNumberValue(parent, "MaxLen", out float inherited) ? Math.Max(0, (int)inherited) : 0;
+        }
+        finally
+        {
+            FPDFPage_CloseAnnot(parent);
+        }
     }
 
     private static ImmutableArray<string> ReadOptions(nint form, nint annotation)

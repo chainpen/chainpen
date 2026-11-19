@@ -61,8 +61,90 @@ public sealed partial class EditorViewModel
     private GapReport FindGaps(DocumentState state) =>
         GapFinder.Find(
             state,
-            entry => GapFinder.Turn(SpotsOn(entry.SourceIndex), Source.GetPage(entry.SourceIndex), entry.Rotation),
-            Measurer);
+            entry => WithFields(GapFinder.Turn(SpotsOn(entry.SourceIndex), Source.GetPage(entry.SourceIndex), entry.Rotation), entry, state),
+            Measurer,
+            PagesWithFilledFields(state));
+
+    // Groups for spots made from form fields, kept clear of the small numbers the page text's boxes use.
+    private const int RadioGroups = 1_000_000;
+    private const int CheckBoxRows = 2_000_000;
+
+    /// <summary>
+    /// The page's spots with its own form fields added (FS-950): empty text fields, drop-downs and signature fields
+    /// are blanks; radio groups, and check boxes on the same row, are questions to tick. Boxes and blanks read from the
+    /// page text that sit on a field are dropped, so nothing is pointed out twice.
+    /// </summary>
+    private IReadOnlyList<FormSpot> WithFields(IReadOnlyList<FormSpot> fromText, PageEntry entry, DocumentState state)
+    {
+        if (entry.SourceIndex >= Source.PageCount)
+        {
+            return fromText;
+        }
+
+        var transform = new Core.Geometry.PageTransform(Source.GetPage(entry.SourceIndex), entry.Rotation);
+        var fields = Source.FormFields(entry.SourceIndex)
+            .Where(field => field is { IsReadOnly: false, Kind: not Pdf.Pdfium.FormFieldKind.PushButton })
+            .Select(field => (Field: field, Box: BoxOf(field, transform)))
+            .ToList();
+        if (fields.Count == 0)
+        {
+            return fromText;
+        }
+
+        string ValueOf(Pdf.Pdfium.FormField field) => state.Fields.TryGetValue(field.Name, out string? value) ? value : field.Value;
+        var spots = new List<FormSpot>(fromText.Where(spot => !fields.Any(field => field.Box.Intersects(spot.Area))));
+        var radioGroups = new Dictionary<string, int>(StringComparer.Ordinal);
+        var rows = new List<double>();
+        foreach ((Pdf.Pdfium.FormField field, PageRect box) in fields)
+        {
+            switch (field.Kind)
+            {
+                case Pdf.Pdfium.FormFieldKind.Text or Pdf.Pdfium.FormFieldKind.Choice when ValueOf(field).Length == 0:
+                    spots.Add(new BlankSpot(box, field.DisplayName, BlankKind.Text));
+                    break;
+                case Pdf.Pdfium.FormFieldKind.Signature:
+                    spots.Add(new BlankSpot(box, field.DisplayName, BlankKind.Signature));
+                    break;
+                case Pdf.Pdfium.FormFieldKind.Radio:
+                    int group = RadioGroups + radioGroups.GetValueOrDefault(field.Name, radioGroups.Count);
+                    radioGroups.TryAdd(field.Name, radioGroups.Count);
+                    spots.Add(new CheckBoxSpot(box, field.OnValue, group, ValueOf(field) == field.OnValue));
+                    break;
+                case Pdf.Pdfium.FormFieldKind.CheckBox:
+                    int row = rows.FindIndex(y => Math.Abs(y - box.Centre.Y) <= Math.Max(4, box.Height / 2));
+                    if (row < 0)
+                    {
+                        rows.Add(box.Centre.Y);
+                        row = rows.Count - 1;
+                    }
+
+                    spots.Add(new CheckBoxSpot(box, field.DisplayName, CheckBoxRows + row, ValueOf(field) != Pdf.Pdfium.PdfiumDocument.FieldOff));
+                    break;
+            }
+        }
+
+        return spots;
+    }
+
+    /// <summary>Pages with a form field filled in: they count as worked on, so their gaps are looked for too.</summary>
+    private HashSet<PageId> PagesWithFilledFields(DocumentState state)
+    {
+        var pages = new HashSet<PageId>();
+        if (state.Fields.IsEmpty)
+        {
+            return pages;
+        }
+
+        foreach (PageEntry entry in state.Pages)
+        {
+            if (entry.SourceIndex < Source.PageCount && Source.FormFields(entry.SourceIndex).Any(field => state.Fields.ContainsKey(field.Name)))
+            {
+                pages.Add(entry.Id);
+            }
+        }
+
+        return pages;
+    }
 
     private IReadOnlyList<FormSpot> SpotsOn(int sourceIndex)
     {
