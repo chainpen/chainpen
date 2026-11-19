@@ -92,10 +92,20 @@ public sealed partial class EditorViewModel
     /// </summary>
     public FieldHit? FocusedField { get; private set; }
 
-    /// <summary>A click on a field (Select or Text tool, nothing of Fillsign's on top). Returns whether it was used.</summary>
+    /// <summary>
+    /// A click on a field, with nothing of Fillsign's on top. Select and Text fill any field; Tick and Cross fill the
+    /// form's own check boxes and radio buttons, rather than drawing a mark over them that the form wouldn't know about.
+    /// Returns whether the click was used.
+    /// </summary>
     private bool PressField(PageId page, PagePoint point)
     {
-        if (IsViewOnly || Tool is not (EditorTool.Select or EditorTool.Text) || TopFieldAt(page, point) is not { } hit)
+        if (IsViewOnly || TopFieldAt(page, point) is not { } hit)
+        {
+            return false;
+        }
+
+        bool isBox = hit.Field.Kind is FormFieldKind.CheckBox or FormFieldKind.Radio;
+        if (Tool is not (EditorTool.Select or EditorTool.Text) && !(Tool is EditorTool.Tick or EditorTool.Cross && isBox && !hit.Field.IsReadOnly))
         {
             return false;
         }
@@ -103,14 +113,14 @@ public sealed partial class EditorViewModel
         // Say why nothing happens, instead of ignoring the click.
         if (hit.Field.IsReadOnly)
         {
-            Notice = "That field can’t be changed: the form fills it in itself.";
+            Tell("That field can’t be changed: the form fills it in itself.");
             Changed();
             return true;
         }
 
         if (hit.Field.Kind == FormFieldKind.PushButton)
         {
-            Notice = "Fillsign doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.";
+            Tell("Fillsign doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.");
             Changed();
             return true;
         }
@@ -177,6 +187,7 @@ public sealed partial class EditorViewModel
             case FormFieldKind.Choice when field.IsMultiSelect && !field.Options.IsEmpty:
                 FocusedOption = Math.Clamp(FocusedOption + step, 0, field.Options.Length - 1);
                 OnPropertyChanged(nameof(FocusedOption));
+                OnPropertyChanged(nameof(FieldAnnouncement));
                 if (keys != ListKeys.Extend)
                 {
                     _optionAnchor = FocusedOption;
@@ -420,6 +431,7 @@ public sealed partial class EditorViewModel
         _optionAnchor = FocusedOption;
         FocusedField = hit;
         OnPropertyChanged(nameof(FocusedField));
+        OnPropertyChanged(nameof(FieldAnnouncement));
     }
 
     /// <summary>
@@ -481,6 +493,142 @@ public sealed partial class EditorViewModel
         EditingField = null;
         OnPropertyChanged(nameof(EditingField));
     }
+
+    /// <summary>
+    /// What a screen reader says about the field Tab reached (NFR-5): what it asks, what kind of control it is, and
+    /// its state, e.g. "Membership, radio button Family, 2 of 3, chosen". Empty when no field is focused. Text fields
+    /// are named on their text box instead (<see cref="FieldBoxName"/>).
+    /// </summary>
+    public string FieldAnnouncement => FocusedField is { } focused ? Describe(focused) : string.Empty;
+
+    /// <summary>
+    /// The bar's words while a form field is in use: which field, and the keys that work in it. Null when none is.
+    /// </summary>
+    public string? FieldHint
+    {
+        get
+        {
+            if (EditingField is { } editing)
+            {
+                string enter = editing.Hit.Field.IsMultiline ? "Enter for a new line" : "Enter to finish";
+                return $"Typing in “{editing.Hit.Field.DisplayName}” · {enter} · Tab for the next field · Esc to cancel";
+            }
+
+            if (FocusedField is not { Field: var focused })
+            {
+                return null;
+            }
+
+            string keys = focused.Kind switch
+            {
+                FormFieldKind.CheckBox => "Space to tick or untick",
+                FormFieldKind.Radio => "← → to choose an answer",
+                FormFieldKind.Choice when focused.IsMultiSelect => "↑ ↓ to move · Space to tick or untick · click a row to add or remove it",
+                FormFieldKind.Choice when focused.IsList => "↑ ↓ to choose",
+                FormFieldKind.Choice => "↑ ↓ to change · Space to open the list",
+                FormFieldKind.Signature => "Space to sign",
+                _ => "Space to fill",
+            };
+            return $"“{focused.DisplayName}” · {keys} · Tab for the next field";
+        }
+    }
+
+    /// <summary>The accessible name of a text field's box: what it asks, and its limit if it has one.</summary>
+    public static string FieldBoxName(FormField field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        string kind = field.Kind == FormFieldKind.Choice ? "drop-down, type an answer" : field.IsMultiline ? "text field, several lines" : "text field";
+        return field.MaxLength > 0 ? $"{field.DisplayName}, {kind}, up to {field.MaxLength} characters" : $"{field.DisplayName}, {kind}";
+    }
+
+    private string Describe(FieldHit hit)
+    {
+        FormField field = hit.Field;
+        string value = FieldValue(field);
+        switch (field.Kind)
+        {
+            case FormFieldKind.CheckBox:
+                return $"{field.DisplayName}, check box, {(value == PdfiumDocument.FieldOff ? "not ticked" : "ticked")}";
+            case FormFieldKind.Radio:
+                List<FieldHit> group = FieldsInDocumentOrder().FindAll(other => other.Field.Name == field.Name);
+                int position = group.FindIndex(other => other.Page == hit.Page && other.Box == hit.Box) + 1;
+                return $"{field.DisplayName}, radio button {field.OnValue}, {position} of {group.Count}, {(value == field.OnValue ? "chosen" : "not chosen")}";
+            case FormFieldKind.Choice when field.IsMultiSelect && !field.Options.IsEmpty:
+                IReadOnlySet<string> chosen = PdfiumDocument.SplitChoices(value);
+                string row = field.Options[Math.Clamp(FocusedOption, 0, field.Options.Length - 1)];
+                return $"{field.DisplayName}, list, several answers, {row}, {(chosen.Contains(row) ? "ticked" : "not ticked")}, {chosen.Count} of {field.Options.Length} chosen";
+            case FormFieldKind.Choice:
+                return $"{field.DisplayName}, {(field.IsList ? "list" : "drop-down")}, {(value.Length > 0 ? value : "nothing chosen")}";
+            case FormFieldKind.Signature:
+                return $"{field.DisplayName}, signature field. Press Space to sign.";
+            default:
+                return $"{field.DisplayName}, text field, {(value.Length > 0 ? value : "empty")}";
+        }
+    }
+
+    /// <summary>For screen readers: fills a field as a click or Space would (ticks a box, opens signing).</summary>
+    public void Activate(FieldHit hit)
+    {
+        ArgumentNullException.ThrowIfNull(hit);
+        if (!IsViewOnly && !hit.Field.IsReadOnly)
+        {
+            ActivateField(hit, point: null);
+        }
+    }
+
+    /// <summary>For screen readers: moves to a field as Tab would, scrolling it into view.</summary>
+    public void FocusField(FieldHit hit)
+    {
+        ArgumentNullException.ThrowIfNull(hit);
+        FocusOn(hit);
+    }
+
+    /// <summary>
+    /// The fields on the page in view and the pages either side, in the form's order: what the page offers screen
+    /// readers, without building hundreds of entries on long forms.
+    /// </summary>
+    public IReadOnlyList<FieldHit> FieldsNearCurrentPage()
+    {
+        if (State.Pages.Length == 0)
+        {
+            return [];
+        }
+
+        int current = Math.Clamp(CurrentPageIndex, 0, State.Pages.Length - 1);
+        var near = new HashSet<PageId>(State.Pages.Skip(Math.Max(0, current - 1)).Take(3).Select(entry => entry.Id));
+        return FieldsInDocumentOrder().FindAll(hit => near.Contains(hit.Page));
+    }
+
+    /// <summary>With Tick or Cross, the pointer is over one of the form's own boxes: the click fills it, so no preview mark.</summary>
+    private bool IsOverBoxField(PageId page, PagePoint point) =>
+        FieldAt(page, point) is { Field.Kind: FormFieldKind.CheckBox or FormFieldKind.Radio };
+
+    /// <summary>The document has fields to fill, so the bar and the opening note point at them.</summary>
+    public bool HasFillableFields => HasFormFields();
+
+    /// <summary>
+    /// Once the pages have loaded: if the document is a form with fields, a note says so and how to start, since the
+    /// fields' light tint is easy to miss.
+    /// </summary>
+    private void AnnounceFillableFields()
+    {
+        int count = TabStops().Count;
+        if (count == 0 || IsViewOnly)
+        {
+            return;
+        }
+
+        Tell(count == 1
+            ? "This form has a field you can fill. Click it, or press Tab to go to it."
+            : $"This form has {count} fields you can fill. Click one, or press Tab to go through them.");
+        OnPropertyChanged(nameof(ContextHint));
+        Changed();
+    }
+
+    /// <summary>Whether any page in the document has a field to fill (not counting buttons).</summary>
+    private bool HasFormFields() =>
+        State.Pages.Any(entry => entry.SourceIndex < Source.PageCount
+            && Source.FormFields(entry.SourceIndex).Any(field => field.Kind != FormFieldKind.PushButton));
 
     /// <summary>Esc with a field focused, or a click elsewhere: the ring goes.</summary>
     public void LeaveFields() => SetFocusedField(null);

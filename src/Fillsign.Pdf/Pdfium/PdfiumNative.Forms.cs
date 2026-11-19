@@ -20,6 +20,7 @@ internal static partial class PdfiumNative
     // Field flags (/Ff): read-only for every field, multi-line for text.
     public const int FPDF_FORMFLAG_READONLY = 1 << 0;
     public const int FPDF_FORMFLAG_TEXT_MULTILINE = 1 << 12;
+    public const int FPDF_FORMFLAG_TEXT_COMB = 1 << 24;
     public const int FPDF_FORMFLAG_CHOICE_COMBO = 1 << 17;
     public const int FPDF_FORMFLAG_CHOICE_EDIT = 1 << 18;
     public const int FPDF_FORMFLAG_CHOICE_MULTI_SELECT = 1 << 21;
@@ -33,6 +34,20 @@ internal static partial class PdfiumNative
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nint FPDFDOC_InitFormFillEnvironment(nint document, nint formInfo);
+
+    // XFA packets (fpdfview.h): the XML some forms carry beside their fields, read here only for field descriptions.
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int FPDF_GetXFAPacketCount(nint document);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static unsafe partial CULong FPDF_GetXFAPacketName(nint document, int index, byte* buffer, CULong bufferLength);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static unsafe partial bool FPDF_GetXFAPacketContent(nint document, int index, byte* buffer, CULong bufferLength, out CULong outLength);
 
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -96,6 +111,11 @@ internal static partial class PdfiumNative
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial int FPDFAnnot_GetFormFieldFlags(nint form, nint annotation);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFAnnot_SetFormFieldFlags(nint form, nint annotation, int flags);
 
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

@@ -18,7 +18,14 @@ public enum BlankKind
 }
 
 /// <summary>A place on a form meant to be filled: a box to tick, or a blank after a label or along a line.</summary>
-public abstract record FormSpot(PageRect Area, string Label);
+public abstract record FormSpot(PageRect Area, string Label)
+{
+    /// <summary>One of the PDF's own form fields (FS-950), not a box or blank read from the page text.</summary>
+    public bool IsField { get; init; }
+
+    /// <summary>For a form's radio button: the question its group answers ("Membership").</summary>
+    public string Question { get; init; } = "";
+}
 
 /// <param name="Group">Boxes on the same line share a group: ticking one answers the others ("Yes ☐ No ☐").</param>
 /// <param name="IsTicked">The form came with it ticked (☒, ☑).</param>

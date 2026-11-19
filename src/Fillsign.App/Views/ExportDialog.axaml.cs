@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -26,6 +27,13 @@ public partial class ExportDialog : UserControl
         FolderText.Text = ShortFolder(_folder);
         SizeText.Text = $"Final copy {SaveSizes.Describe(request.Size)}";
         AlsoSave.IsVisible = request.CanSaveWorkingCopy;
+        LockFields.IsVisible = request.HasFormFields;
+        if (request.HasFormFields)
+        {
+            // What the person sends depends on the lock: say which, so the opening line never contradicts it.
+            LockFields.IsCheckedChanged += (_, _) => UpdateLede();
+            UpdateLede();
+        }
         AlsoSaveDetail.Text = request.ContainsSignature
             ? "Keeps your edits changeable. It contains your signature, so keep it private and send only the final copy."
             : "Keeps your edits changeable. Save it somewhere private, and send only the final copy.";
@@ -37,6 +45,7 @@ public partial class ExportDialog : UserControl
             {
                 FileName.Focus();
                 FileName.SelectAll();
+                Avalonia.Threading.Dispatcher.UIThread.Post(ShowFromTheTop, Avalonia.Threading.DispatcherPriority.Background);
             },
             Avalonia.Threading.DispatcherPriority.Loaded);
         KeyDown += (_, e) =>
@@ -54,6 +63,27 @@ public partial class ExportDialog : UserControl
 
     // More than this and the list stops being read; the rest are a count, and the checking mode steps through them all.
     private const int MaxGapRows = 5;
+
+    private void UpdateLede() => Lede.Text = LockFields.IsChecked == true
+        ? "Makes a copy to send. It looks the same in any PDF reader, and your answers can’t be changed. Your working copy stays as it is."
+        : "Makes a copy to send. It looks the same in any PDF reader, and the form’s fields stay editable. Your working copy stays as it is.";
+
+    /// <summary>
+    /// Focusing the name box scrolls it into view, which nudged the dialog down a few points and cut off the top of the
+    /// gaps list. Back to the top, as long as the name box is still in full view from there.
+    /// </summary>
+    private void ShowFromTheTop()
+    {
+        if (Body.Content is not Avalonia.Visual content || FileName.TranslatePoint(new Avalonia.Point(0, FileName.Bounds.Height), content) is not { } bottom)
+        {
+            return;
+        }
+
+        if (bottom.Y <= Body.Viewport.Height)
+        {
+            Body.Offset = default;
+        }
+    }
 
     /// <summary>
     /// "Possible gaps we spotted" (🎨 6): boxes are summed up per page ("3 of 4 boxes ticked on page 1") and each empty
@@ -79,6 +109,15 @@ public partial class ExportDialog : UserControl
             if (gap.Kind != Core.Gaps.GapKind.Unticked)
             {
                 rows.Add((EditorViewModel.DescribeForExport(gap), null, i));
+                continue;
+            }
+
+            // A form's own question gets a row of its own, worded as a question; boxes read from the page text are
+            // summed up per page instead.
+            if (gap.IsField)
+            {
+                string? options = gap.Question.Length > 0 && gap.Label.Length > 0 ? $"Options: {gap.Label}. Fine to leave if that’s intended." : "Fine to leave if that’s intended.";
+                rows.Add((EditorViewModel.DescribeForExport(gap), options, i));
                 continue;
             }
 
@@ -200,7 +239,7 @@ public partial class ExportDialog : UserControl
             return;
         }
 
-        _result.TrySetResult(new ExportChoice(path, AlsoSave.IsVisible && AlsoSave.IsChecked == true));
+        _result.TrySetResult(new ExportChoice(path, AlsoSave.IsVisible && AlsoSave.IsChecked == true, LockFields.IsVisible && LockFields.IsChecked == true));
     }
 
     private void OnCancel(object? sender, RoutedEventArgs e) => _result.TrySetResult(null);

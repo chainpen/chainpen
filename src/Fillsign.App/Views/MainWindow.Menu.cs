@@ -254,12 +254,14 @@ public partial class MainWindow
         Platform.AppUpdates updates = Platform.AppUpdates.Instance;
         Platform.UpdateCheck result = await updates.CheckAsync().ConfigureAwait(true);
         (string title, string message) = Platform.AppUpdates.Describe(result, App.DisplayVersion, updates.Ready);
-        await ShowMessageAsync(title, message).ConfigureAwait(true);
+
+        // Only a failed check is a problem; the rest is news.
+        await (result == Platform.UpdateCheck.Failed ? ShowMessageAsync(title, message) : ShowInformationAsync(title, message)).ConfigureAwait(true);
     }
 
     /// <summary>About Fillsign: the version, that it works offline, and the licence in plain words (FS-027).</summary>
     public void ShowAbout() =>
-        _ = ShowMessageAsync(
+        _ = ShowInformationAsync(
             "About Fillsign",
             $"Version {App.DisplayVersion}. Fill in and sign PDF forms on this computer. Your documents never leave it.\n\n"
             + "Free for personal use. Free for businesses and other organisations during the beta; after it, they’ll need a "
@@ -267,7 +269,7 @@ public partial class MainWindow
             + "and the licences of the libraries and fonts Fillsign uses are in the Licenses folder that comes with the app.");
 
     private void ShowHowItWorks() =>
-        _ = ShowMessageAsync(
+        _ = ShowInformationAsync(
             "How Fillsign works",
             "Open your form, then tick, type and sign on the page with the tools at the top. Save keeps a working copy you can change later. Export final copy makes the file to send: it looks the same for everyone and can’t be changed. Nothing leaves this computer.");
 }

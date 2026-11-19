@@ -4,6 +4,13 @@ using Avalonia.Interactivity;
 
 namespace Fillsign.App.Views;
 
+/// <summary>Whether a message is about a problem (red warning icon) or just information (no icon).</summary>
+public enum MessageTone
+{
+    Problem,
+    Information,
+}
+
 public partial class MessageDialog : UserControl
 {
     private readonly TaskCompletionSource _closed = new();
@@ -14,10 +21,12 @@ public partial class MessageDialog : UserControl
     }
 
     /// <param name="closeLabel">Names what closing does ("Got it", "Close"); never "OK".</param>
-    public MessageDialog(string title, IReadOnlyList<string> paragraphs, string closeLabel)
+    /// <param name="tone">Information (About, "you're up to date") has no warning icon, so it doesn't read as an error.</param>
+    public MessageDialog(string title, IReadOnlyList<string> paragraphs, string closeLabel, MessageTone tone = MessageTone.Problem)
     {
         InitializeComponent();
         Heading.Text = title;
+        Icon.IsVisible = tone == MessageTone.Problem;
         foreach (string paragraph in paragraphs)
         {
             Lines.Children.Add(new TextBlock { Text = paragraph, TextWrapping = Avalonia.Media.TextWrapping.Wrap });

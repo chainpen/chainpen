@@ -72,9 +72,14 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
-    public async Task Single_letters_pick_tools_unless_turned_off_in_settings()
+    public async Task Single_letters_pick_tools_once_turned_on_in_settings()
     {
         using var e = await EditorSession.OpenAsync();
+
+        // Off by default: a letter does nothing.
+        e.Window.KeyPress(Key.T, RawInputModifiers.None, PhysicalKey.T, "t");
+        Assert.Equal(EditorTool.Select, e.Editor.Tool);
+        Platform.AppSettings.Update(settings => settings with { UseSingleKeyTools = true });
         e.Window.KeyPress(Key.T, RawInputModifiers.None, PhysicalKey.T, "t");
         Assert.Equal(EditorTool.Text, e.Editor.Tool);
         e.Window.KeyPress(Key.C, RawInputModifiers.None, PhysicalKey.C, "c");
@@ -99,18 +104,18 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         try
         {
-            Platform.AppSettings.Update(settings => settings with { SingleKeyToolShortcuts = false });
+            Platform.AppSettings.Update(settings => settings with { UseSingleKeyTools = false });
             e.Window.KeyPress(Key.X, RawInputModifiers.None, PhysicalKey.X, "x");
             Assert.Equal(EditorTool.Text, e.Editor.Tool);
         }
         finally
         {
-            Platform.AppSettings.Update(settings => settings with { SingleKeyToolShortcuts = true });
+            Platform.AppSettings.Update(settings => settings with { UseSingleKeyTools = false });
         }
     }
 
     [AvaloniaFact]
-    public async Task Bold_alignment_and_the_new_inks_apply_to_typing_and_carry_on_to_new_text()
+    public async Task Bold_applies_to_typing_and_carry_on_to_new_text()
     {
         using var e = await EditorSession.OpenAsync();
         e.Editor.SelectToolCommand.Execute(EditorTool.Text);
@@ -119,18 +124,15 @@ public sealed class EditingTests(ITestOutputHelper output)
         await Pump(() => e.TypingBox?.IsFocused == true);
         e.Window.KeyTextInput("Jordan Lee");
         e.Window.KeyPress(Key.B, s_command, PhysicalKey.B, null);
-        e.Editor.SetAlignCommand.Execute(TextAlign.Centre);
-        e.Editor.SetColourCommand.Execute(InkColor.Green);
+        e.Editor.SetColourCommand.Execute(InkColor.Red);
         await Pump(() => e.TypingBox?.FontWeight == FontWeight.Bold);
-        Assert.Equal(TextAlignment.Center, e.TypingBox!.TextAlignment);
         e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         await Pump(() => e.Editor.TypingItem is null);
 
         TextItem typed = Assert.Single(e.Editor.State.Items.OfType<TextItem>());
         Assert.True(typed.IsBold);
-        Assert.Equal(TextAlign.Centre, typed.Align);
-        Assert.Equal(InkColor.Green, typed.Color);
-        await e.SaveAsync("edit-bold-centred");
+        Assert.Equal(InkColor.Red, typed.Color);
+        await e.SaveAsync("edit-bold");
 
         // The next text starts the same way; the buttons change a selected item too, as one undo step.
         e.Click(120, 300);
@@ -243,8 +245,10 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         await Pump(() => e.Editor.FocusedField?.Field.Name == "ContactEmail");
         Assert.Null(e.Editor.EditingField);
+        Assert.Equal("Email, check box, not ticked", e.Editor.FieldAnnouncement);
         e.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
         Assert.Equal("Yes", e.Editor.State.Fields["ContactEmail"]);
+        Assert.Equal("Email, check box, ticked", e.Editor.FieldAnnouncement);
         e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         Assert.Equal("ContactPhone", e.Editor.FocusedField?.Field.Name);
 
@@ -293,9 +297,9 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         string? Current() => e.Editor.FocusedField?.Field.Name ?? e.Editor.EditingField?.Hit.Field.Name;
 
-        // The list click left the focus on "How did you hear?". Shift+Tab goes back through Title, Postcode and State
-        // to the radio group: one stop, on its first button since none is chosen; the arrows wrap round the group.
-        foreach (string previous in (string[])["Title", "Postcode", "State", "Membership"])
+        // The list click left the focus on "How did you hear?". Shift+Tab goes back through Postcode and State to the
+        // radio group: one stop, on its first button since none is chosen; the arrows wrap round the group.
+        foreach (string previous in (string[])["Postcode", "State", "Membership"])
         {
             await TabAsync(backwards: true);
             Assert.Equal(previous, Current());
@@ -304,6 +308,7 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.Equal("Individual", e.Editor.FocusedField?.Field.OnValue);
         Press(Key.Left, PhysicalKey.ArrowLeft);
         Assert.Equal("Business", e.Editor.State.Fields["Membership"]);
+        Assert.Equal("Membership, radio button Business, 3 of 3, chosen", e.Editor.FieldAnnouncement);
         Press(Key.Right, PhysicalKey.ArrowRight);
         Assert.Equal("Individual", e.Editor.State.Fields["Membership"]);
         Press(Key.Tab, PhysicalKey.Tab);
@@ -314,7 +319,7 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         // Multi-select list keys (WAI-ARIA list box pattern): arrows move the outline without changing what's
         // chosen, Space ticks or unticks, Shift+arrows choose the rows from where the outline was.
-        foreach (string next in (string[])["Postcode", "Title", "Heard"])
+        foreach (string next in (string[])["Postcode", "Heard"])
         {
             await TabAsync(backwards: false);
             Assert.Equal(next, Current());
@@ -327,6 +332,7 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.Equal("Newspaper", e.Editor.State.Fields["Heard"]);
         Press(Key.Space, PhysicalKey.Space);
         Assert.Equal("Search\nNewspaper", e.Editor.State.Fields["Heard"]);
+        Assert.Equal("How did you hear?, list, several answers, Search, ticked, 2 of 4 chosen", e.Editor.FieldAnnouncement);
         Press(Key.Down, PhysicalKey.ArrowDown);
         Assert.Equal("Search\nNewspaper", e.Editor.State.Fields["Heard"]);
         Press(Key.Up, PhysicalKey.ArrowUp);
@@ -375,9 +381,19 @@ public sealed class EditingTests(ITestOutputHelper output)
         // A text field with a character limit stops there.
         Press(Centre("Postcode"));
         await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
-        Assert.Equal(4, e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible).MaxLength);
-        e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        TextBox postcode = e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible);
+        Assert.Equal(4, postcode.MaxLength);
+        Assert.Equal("Postcode, text field, up to 4 characters", Avalonia.Automation.AutomationProperties.GetName(postcode));
+
+        // It's a comb field: typing shows its boxes, a character in each.
+        Assert.True(e.Editor.EditingField!.Hit.Field.IsComb);
+        e.Window.KeyTextInput("470123");
+        await Pump(() => true);
+        Assert.Equal("4701", e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible).Text);
+        Save(e.Window, "edit-form-comb-typing");
+        e.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
         await Pump(() => e.Editor.EditingField is null);
+        Assert.Equal("4701", e.Editor.State.Fields["Postcode"]);
 
         // A drop-down that takes typing.
         FieldHit title = e.Editor.FieldAt(page, Centre("Title"))!;
@@ -402,6 +418,56 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.True(signature.Y >= box.Y && signature.Y + signature.Height <= box.Bottom + 0.01, "fits down");
         Assert.DoesNotContain("Your signature", e.Editor.FindGaps().Gaps.Select(gap => gap.Label));
         await e.SaveAsync("edit-form-signature");
+    }
+
+    [AvaloniaFact]
+    public async Task On_a_form_the_tools_and_hints_point_at_its_fields_and_screen_readers_can_reach_them()
+    {
+        using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+        PageId page = e.Editor.State.Pages[0].Id;
+        var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+        Pdf.Pdfium.FormField phone = e.Editor.Source.FormFields(0).Single(field => field.Name == "ContactPhone");
+        PagePoint phoneCentre = transform.ToDisplay((phone.Rect.Left + phone.Rect.Right) / 2, (phone.Rect.Bottom + phone.Rect.Top) / 2);
+
+        // Opening says the form has fields, as information (no Undo), and the bar points at them.
+        await Pump(() => e.Editor.Notice is not null);
+        Assert.StartsWith("This form has ", e.Editor.Notice, StringComparison.Ordinal);
+        Assert.False(e.Editor.NoticeOffersUndo);
+        Assert.StartsWith("Click a field to fill it", e.Editor.ContextHint, StringComparison.Ordinal);
+
+        // Tick on one of the form's boxes ticks the box itself; no separate mark is added.
+        e.Editor.SelectToolCommand.Execute(EditorTool.Tick);
+        e.Editor.PointerMoved(0, phoneCentre);
+        Assert.Null(e.Editor.MarkPreview);
+        e.Editor.PointerPressed(0, phoneCentre, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+        e.Editor.PointerReleased(phoneCentre);
+        Assert.Equal("Yes", e.Editor.State.Fields["ContactPhone"]);
+        Assert.Empty(e.Editor.State.Items);
+        e.Editor.SelectToolCommand.Execute(EditorTool.Select);
+
+        // Gaps are worded as fields and questions.
+        string[] gaps = [.. e.Editor.FindGaps().Gaps.Select(EditorViewModel.DescribeForExport)];
+        Assert.Contains("“Your email address” is empty on page 1", gaps);
+        Assert.Contains("“Membership” isn’t answered on page 1", gaps);
+        Assert.Contains("“Your signature” isn’t signed on page 1", gaps);
+
+        // The bar shows the field in use and its keys.
+        e.Editor.FocusField(e.Editor.FieldAt(page, phoneCentre)!);
+        Assert.Equal("“Phone” · Space to tick or untick · Tab for the next field", e.Editor.ContextHint);
+
+        // Screen readers see each field as its control, with its value, and can act on it.
+        var canvasPeer = (Avalonia.Automation.Peers.ControlAutomationPeer)Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(e.Canvas);
+        var fields = canvasPeer.GetChildren().OfType<FieldAutomationPeer>().ToList();
+        Assert.Contains(fields, peer => peer.GetName() == "Full name" && peer.GetAutomationControlType() == Avalonia.Automation.Peers.AutomationControlType.Edit);
+        var phonePeer = fields.Single(peer => peer.GetAutomationId() == "ContactPhone");
+        var toggle = Assert.IsAssignableFrom<Avalonia.Automation.Provider.IToggleProvider>(phonePeer);
+        Assert.Equal(Avalonia.Automation.Provider.ToggleState.On, toggle.ToggleState);
+        toggle.Toggle();
+        Assert.Equal("Off", e.Editor.State.Fields["ContactPhone"]);
+        var name = Assert.IsAssignableFrom<Avalonia.Automation.Provider.IValueProvider>(fields.Single(peer => peer.GetAutomationId() == "Name"));
+        name.SetValue("Jordan Lee");
+        Assert.Equal("Jordan Lee", e.Editor.State.Fields["Name"]);
+        Assert.Contains(fields, peer => peer.GetName() == "Membership: Family" && peer.GetAutomationControlType() == Avalonia.Automation.Peers.AutomationControlType.RadioButton);
     }
 
     private static async Task<T> Await<T>(Func<T?> find)

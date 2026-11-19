@@ -18,13 +18,17 @@ public sealed record ExportRequest(string SuggestedName, string Folder, long Siz
 
     /// <summary>Pages in the document, so the dialog can say when only some were checked.</summary>
     public int PageCount { get; init; }
+
+    /// <summary>The document has fields to fill (FS-950), so the dialog offers to lock them.</summary>
+    public bool HasFormFields { get; init; }
 }
 
 /// <summary>What the person chose in the export dialog.</summary>
 public abstract record ExportDecision;
 
 /// <summary>Where the person chose to put the final copy, and whether to save the working copy too.</summary>
-public sealed record ExportChoice(string Path, bool AlsoSaveWorkingCopy) : ExportDecision;
+/// <param name="LockFormFields">Make the form's fields read-only in the final copy, so the answers can't be changed.</param>
+public sealed record ExportChoice(string Path, bool AlsoSaveWorkingCopy, bool LockFormFields = false) : ExportDecision;
 
 /// <summary>Show me: look at this possible gap before exporting.</summary>
 public sealed record CheckGapChoice(int GapIndex) : ExportDecision;
@@ -199,7 +203,7 @@ public sealed partial class EditorViewModel
         switch (_host.PrintFile(path))
         {
             case PrintOutcome.OpenedInViewer:
-                await _host.ShowMessageAsync("Print from your PDF viewer", "The document opened in your PDF viewer, looking as it will print. Print it from there.").ConfigureAwait(true);
+                await _host.ShowInformationAsync("Print from your PDF viewer", "The document opened in your PDF viewer, looking as it will print. Print it from there.").ConfigureAwait(true);
                 break;
             case PrintOutcome.Failed:
                 await _host.ShowMessageAsync("Printing couldn’t start", "Export a final copy and print it from your PDF viewer instead.").ConfigureAwait(true);
@@ -284,6 +288,7 @@ public sealed partial class EditorViewModel
         {
             Gaps = gaps,
             PageCount = State.Pages.Length,
+            HasFormFields = HasFormFields(),
         };
         ExportDecision? decision = await _host.AskExportAsync(request).ConfigureAwait(true);
         if (decision is CheckGapChoice check)
@@ -297,7 +302,13 @@ public sealed partial class EditorViewModel
             return;
         }
 
-        if (!await WriteFileAsync(choice.Path, final.Pdf).ConfigureAwait(true))
+        byte[] finalPdf = final.Pdf;
+        if (choice.LockFormFields)
+        {
+            finalPdf = await Task.Run(() => DocumentWriter.WithFormFieldsLocked(final.Pdf)).ConfigureAwait(true);
+        }
+
+        if (!await WriteFileAsync(choice.Path, finalPdf).ConfigureAwait(true))
         {
             return;
         }
@@ -308,7 +319,7 @@ public sealed partial class EditorViewModel
         }
 
         AppSettings.Update(settings => settings.WithRecent(choice.Path, DateTimeOffset.Now, isFinalCopy: true));
-        Exported = new ExportedNotice(Path.GetFileName(choice.Path), Path.GetDirectoryName(choice.Path) ?? string.Empty, choice.Path, final.Pdf.Length);
+        Exported = new ExportedNotice(Path.GetFileName(choice.Path), Path.GetDirectoryName(choice.Path) ?? string.Empty, choice.Path, finalPdf.Length);
         if (final.HaveFormsMoved)
         {
             await _host.ShowMessageAsync("Fillable fields may not work", FormsMovedMessage).ConfigureAwait(true);

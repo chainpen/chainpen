@@ -1,9 +1,12 @@
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Controls.Presenters;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Fillsign.App.ViewModels;
 using Fillsign.Pdf.Pdfium;
 
@@ -18,6 +21,7 @@ public sealed partial class PagesCanvas
 {
     private TextBox? _fieldBox;
     private FieldEdit? _fieldBoxEdit;
+    private CombCells? _combCells;
 
     private void AttachFields(EditorViewModel editor)
     {
@@ -32,6 +36,11 @@ public sealed partial class PagesCanvas
             {
                 InvalidateLayers();
             }
+            else if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex))
+            {
+                // Screen readers see the fields near the page in view; moving on changes which those are.
+                (ControlAutomationPeer.FromElement(this) as PagesCanvasAutomationPeer)?.RefreshFields();
+            }
         };
         editor.FieldChoiceRequested += OfferChoices;
     }
@@ -45,6 +54,7 @@ public sealed partial class PagesCanvas
             {
                 _fieldBoxEdit = null;
                 _fieldBox.IsVisible = false;
+                _combCells?.IsVisible = false;
                 _scroller?.Focus();
             }
 
@@ -80,7 +90,7 @@ public sealed partial class PagesCanvas
         }
 
         _fieldBoxEdit = editing;
-        AutomationProperties.SetName(_fieldBox, $"Form field {editing.Hit.Field.Name}");
+        AutomationProperties.SetName(_fieldBox, EditorViewModel.FieldBoxName(editing.Hit.Field));
         _fieldBox.AcceptsReturn = editing.Hit.Field.IsMultiline;
         _fieldBox.MaxLength = editing.Hit.Field.MaxLength; // 0 is no limit (FS-963)
         _fieldBox.TextWrapping = editing.Hit.Field.IsMultiline ? TextWrapping.Wrap : TextWrapping.NoWrap;
@@ -103,8 +113,13 @@ public sealed partial class PagesCanvas
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _fieldBox?.Focus());
     }
 
-    /// <summary>About the size PDF readers fill fields at: 11 pt, smaller for short boxes.</summary>
-    private static double FieldFontSize(FieldHit hit) => Math.Min(11, Math.Max(6, hit.Box.Height * 0.7));
+    /// <summary>
+    /// The size the field's text will be drawn at, so it doesn't jump when typing finishes: the field's own size, or for
+    /// fields sized to fit, about what PDF readers fit to the box (12 pt for several lines).
+    /// </summary>
+    private static double FieldFontSize(FieldHit hit) => hit.Field.FontSize > 0
+        ? hit.Field.FontSize
+        : hit.Field.IsMultiline ? 12 : Math.Clamp((hit.Box.Height - 4) * 0.75, 6, 12);
 
     /// <summary>Keeps what was typed in the field's text box.</summary>
     private void CommitFieldBox()
@@ -139,6 +154,67 @@ public sealed partial class PagesCanvas
         var rect = new Rect(page.X + (box.X * Zoom), page.Y + (box.Y * Zoom), box.Width * Zoom, box.Height * Zoom);
         _fieldBox.MinHeight = 0;
         _fieldBox.Arrange(rect);
+        ArrangeComb(editing.Hit.Field, rect);
+    }
+
+    /// <summary>
+    /// FS-963: a field with a box per character is typed into as it'll look: its boxes are drawn over the text box and
+    /// each character is spaced to sit in the middle of its own box.
+    /// </summary>
+    private void ArrangeComb(FormField field, Rect rect)
+    {
+        if (_fieldBox is null)
+        {
+            return;
+        }
+
+        TextPresenter? presenter = _fieldBox.GetVisualDescendants().OfType<TextPresenter>().FirstOrDefault();
+        if (!field.IsComb)
+        {
+            _combCells?.IsVisible = false;
+            presenter?.LetterSpacing = 0;
+            _fieldBox.Padding = new Thickness(2, 0);
+            return;
+        }
+
+        if (_combCells is null)
+        {
+            _combCells = new CombCells { IsHitTestVisible = false };
+            Children.Add(_combCells);
+        }
+
+        double cell = rect.Width / field.MaxLength;
+        double glyph = new FormattedText("0", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+            new Typeface(Rendering.ItemPainter.NotoSans), _fieldBox.FontSize, Brushes.Black).WidthIncludingTrailingWhitespace;
+        _fieldBox.Padding = new Thickness(Math.Max(0, (cell - glyph) / 2), 0, 0, 0);
+        presenter?.LetterSpacing = Math.Max(0, cell - glyph);
+        _combCells.Cells = field.MaxLength;
+        _combCells.IsVisible = true;
+        _combCells.Measure(rect.Size);
+        _combCells.Arrange(rect);
+        _combCells.InvalidateVisual();
+    }
+
+    /// <summary>The dividers between a comb field's boxes, drawn over its text box while it's typed into.</summary>
+    private sealed class CombCells : Control
+    {
+        public int Cells { get; set; }
+
+        public override void Render(DrawingContext context)
+        {
+            if (Cells < 2)
+            {
+                return;
+            }
+
+            var pen = new Pen(new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), 1);
+            double cell = Bounds.Width / Cells;
+            for (int i = 1; i < Cells; i++)
+            {
+                double x = Math.Round(i * cell) + 0.5;
+                context.DrawLine(pen, new Point(x, 0), new Point(x, Bounds.Height));
+            }
+        }
     }
 
     /// <summary>A list or drop-down field: its options in a menu under it, the current one ticked.</summary>
@@ -201,6 +277,25 @@ public sealed partial class PagesCanvas
             (menu.Items.ElementAtOrDefault(current) as MenuItem)?.Focus(NavigationMethod.Directional);
         });
         menu.ShowAt(anchor);
+    }
+
+    /// <summary>The editor this page shows, for its screen-reader view.</summary>
+    internal EditorViewModel? Editor => _editor;
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new PagesCanvasAutomationPeer(this);
+
+    /// <summary>Where a field is, relative to the window, for screen readers' highlight. Null when its page isn't laid out.</summary>
+    internal Rect? FieldBoundsInWindow(FieldHit hit)
+    {
+        int index = _editor?.State.IndexOf(hit.Page) ?? -1;
+        if (index < 0 || index >= _tops.Length || TopLevel.GetTopLevel(this) is not { } top)
+        {
+            return null;
+        }
+
+        Rect page = PageRect(index);
+        var local = new Rect(page.X + (hit.Box.X * Zoom), page.Y + (hit.Box.Y * Zoom), hit.Box.Width * Zoom, hit.Box.Height * Zoom);
+        return this.TranslatePoint(local.TopLeft, top) is { } origin ? new Rect(origin, local.Size) : null;
     }
 
     /// <summary>The field under the pointer, for the hand cursor.</summary>

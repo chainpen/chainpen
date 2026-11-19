@@ -100,15 +100,15 @@ public sealed partial class EditorViewModel
             switch (field.Kind)
             {
                 case Pdf.Pdfium.FormFieldKind.Text or Pdf.Pdfium.FormFieldKind.Choice when ValueOf(field).Length == 0:
-                    spots.Add(new BlankSpot(box, field.DisplayName, BlankKind.Text));
+                    spots.Add(new BlankSpot(box, field.DisplayName, BlankKind.Text) { IsField = true });
                     break;
                 case Pdf.Pdfium.FormFieldKind.Signature:
-                    spots.Add(new BlankSpot(box, field.DisplayName, BlankKind.Signature));
+                    spots.Add(new BlankSpot(box, field.DisplayName, BlankKind.Signature) { IsField = true });
                     break;
                 case Pdf.Pdfium.FormFieldKind.Radio:
                     int group = RadioGroups + radioGroups.GetValueOrDefault(field.Name, radioGroups.Count);
                     radioGroups.TryAdd(field.Name, radioGroups.Count);
-                    spots.Add(new CheckBoxSpot(box, field.OnValue, group, ValueOf(field) == field.OnValue));
+                    spots.Add(new CheckBoxSpot(box, field.OnValue, group, ValueOf(field) == field.OnValue) { IsField = true, Question = field.DisplayName });
                     break;
                 case Pdf.Pdfium.FormFieldKind.CheckBox:
                     int row = rows.FindIndex(y => Math.Abs(y - box.Centre.Y) <= Math.Max(4, box.Height / 2));
@@ -118,7 +118,7 @@ public sealed partial class EditorViewModel
                         row = rows.Count - 1;
                     }
 
-                    spots.Add(new CheckBoxSpot(box, field.DisplayName, CheckBoxRows + row, ValueOf(field) != Pdf.Pdfium.PdfiumDocument.FieldOff));
+                    spots.Add(new CheckBoxSpot(box, field.DisplayName, CheckBoxRows + row, ValueOf(field) != Pdf.Pdfium.PdfiumDocument.FieldOff) { IsField = true });
                     break;
             }
         }
@@ -239,7 +239,23 @@ public sealed partial class EditorViewModel
     }
 
     /// <summary>What the checking bar says about a gap.</summary>
-    private static string DescribeForChecking(Gap gap) => gap.Kind switch
+    /// <summary>A form field's gap, worded as a field: "'Email' is empty", "'Membership' isn't answered".</summary>
+    private static string DescribeField(Gap gap) => gap.Kind switch
+    {
+        GapKind.Unticked when gap.Question.Length > 0 => $"“{gap.Question}” isn’t answered",
+        GapKind.Unticked => $"Nothing ticked: {gap.Label}",
+        _ when gap.BlankKind == BlankKind.Signature => $"“{gap.Label}” isn’t signed",
+        _ => $"“{gap.Label}” is empty",
+    };
+
+    private static string DescribeForChecking(Gap gap) => gap.IsField
+        ? gap switch
+        {
+            { Kind: GapKind.Unticked } => $"{DescribeField(gap)}. Click an answer to choose it, or leave it if that’s intended.",
+            { BlankKind: BlankKind.Signature } => $"{DescribeField(gap)}. Click it to sign.",
+            _ => $"{DescribeField(gap)}. Click it to fill it, or leave it if that’s intended.",
+        }
+        : gap.Kind switch
     {
         GapKind.Unticked => "a box isn’t ticked. The Tick tool is ready if you want to tick it.",
         _ => gap.BlankKind switch
@@ -255,6 +271,11 @@ public sealed partial class EditorViewModel
     public static string DescribeForExport(Gap gap)
     {
         ArgumentNullException.ThrowIfNull(gap);
+        if (gap.IsField)
+        {
+            return $"{DescribeField(gap)} on page {gap.PageNumber}";
+        }
+
         string what = gap.Kind switch
         {
             GapKind.Unticked => "Box not ticked",

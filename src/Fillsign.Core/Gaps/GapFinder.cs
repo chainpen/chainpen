@@ -14,7 +14,14 @@ public enum GapKind
 
 /// <summary>A possible gap on one page, in that page's display coordinates.</summary>
 /// <param name="PageNumber">1-based position in the document as it is now.</param>
-public sealed record Gap(PageId Page, int PageNumber, GapKind Kind, PageRect Area, string Label, BlankKind BlankKind);
+public sealed record Gap(PageId Page, int PageNumber, GapKind Kind, PageRect Area, string Label, BlankKind BlankKind)
+{
+    /// <summary>A form field (FS-950): worded as a field ("'Email' is empty"), not as a printed line.</summary>
+    public bool IsField { get; init; }
+
+    /// <summary>For a form's radio group: the question it answers.</summary>
+    public string Question { get; init; } = "";
+}
 
 /// <summary>Boxes on a page and how many are ticked, for "3 of 4 boxes ticked on page 1".</summary>
 public sealed record PageBoxes(PageId Page, int PageNumber, int Ticked, int Total);
@@ -68,9 +75,12 @@ public static class GapFinder
 
             CheckBoxSpot[] pageBoxes = [.. spots.OfType<CheckBoxSpot>()];
             bool[] ticked = [.. pageBoxes.Select(box => box.IsTicked || Covered(box.Area, BoxReach))];
-            if (pageBoxes.Length > 0)
+
+            // The page's box count is for boxes read from its text; form fields are counted as questions instead.
+            int[] printed = [.. Enumerable.Range(0, pageBoxes.Length).Where(i => !pageBoxes[i].IsField)];
+            if (printed.Length > 0)
             {
-                boxes.Add(new PageBoxes(page.Id, index + 1, ticked.Count(isTicked => isTicked), pageBoxes.Length));
+                boxes.Add(new PageBoxes(page.Id, index + 1, printed.Count(i => ticked[i]), printed.Length));
             }
 
             foreach (IGrouping<int, int> question in Enumerable.Range(0, pageBoxes.Length).GroupBy(i => pageBoxes[i].Group))
@@ -82,14 +92,18 @@ public static class GapFinder
 
                 CheckBoxSpot[] options = [.. question.Select(i => pageBoxes[i])];
                 string label = string.Join(" / ", options.Select(option => option.Label).Where(text => text.Length > 0).Take(3));
-                gaps.Add(new Gap(page.Id, index + 1, GapKind.Unticked, Union(options.Select(option => option.Area)), label, BlankKind.Text));
+                gaps.Add(new Gap(page.Id, index + 1, GapKind.Unticked, Union(options.Select(option => option.Area)), label, BlankKind.Text)
+                {
+                    IsField = options.All(option => option.IsField),
+                    Question = options.Select(option => option.Question).FirstOrDefault(question => question.Length > 0) ?? "",
+                });
             }
 
             foreach (BlankSpot blank in spots.OfType<BlankSpot>())
             {
                 if (!Covered(blank.Area, BlankReach))
                 {
-                    gaps.Add(new Gap(page.Id, index + 1, GapKind.Empty, blank.Area, blank.Label, blank.Kind));
+                    gaps.Add(new Gap(page.Id, index + 1, GapKind.Empty, blank.Area, blank.Label, blank.Kind) { IsField = blank.IsField });
                 }
             }
         }

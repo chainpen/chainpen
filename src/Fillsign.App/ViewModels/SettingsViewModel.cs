@@ -26,22 +26,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         _appearance = settings.Appearance;
         _recoveryDays = settings.RecoveryDays;
         _sendCrashReports = settings.SendCrashReports == true;
-        _singleKeyToolShortcuts = settings.SingleKeyToolShortcuts;
+        _singleKeyToolShortcuts = settings.UseSingleKeyTools;
     }
 
     // ----- Keyboard (FS-951) -----
 
     private bool _singleKeyToolShortcuts;
 
-    /// <summary>Single letters pick tools (V, T, C…). On unless turned off.</summary>
-    public bool SingleKeyToolShortcuts
+    /// <summary>Single letters pick tools (V, T, C…). Off unless turned on.</summary>
+    public bool UseSingleKeyTools
     {
         get => _singleKeyToolShortcuts;
         set
         {
             if (SetProperty(ref _singleKeyToolShortcuts, value))
             {
-                AppSettings.Update(settings => settings with { SingleKeyToolShortcuts = value });
+                AppSettings.Update(settings => settings with { UseSingleKeyTools = value });
             }
         }
     }

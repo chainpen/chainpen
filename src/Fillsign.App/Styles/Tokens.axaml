@@ -71,8 +71,6 @@
             <SolidColorBrush x:Key="InkBlue" Color="#1d3f9e" />
             <Color x:Key="InkRedColor">#b42318</Color>
             <SolidColorBrush x:Key="InkRed" Color="#b42318" />
-            <SolidColorBrush x:Key="InkGreen" Color="#1a6b3a" />
-            <SolidColorBrush x:Key="InkPurple" Color="#5b2a86" />
             <Color x:Key="HighlightColor">#73ffd60a</Color>
             <SolidColorBrush x:Key="Highlight" Color="#73ffd60a" />
             <Color x:Key="ToastColor">#1b1e23</Color>
@@ -152,8 +150,6 @@
             <SolidColorBrush x:Key="InkBlue" Color="#1d3f9e" />
             <Color x:Key="InkRedColor">#b42318</Color>
             <SolidColorBrush x:Key="InkRed" Color="#b42318" />
-            <SolidColorBrush x:Key="InkGreen" Color="#1a6b3a" />
-            <SolidColorBrush x:Key="InkPurple" Color="#5b2a86" />
             <Color x:Key="HighlightColor">#73ffd60a</Color>
             <SolidColorBrush x:Key="Highlight" Color="#73ffd60a" />
             <Color x:Key="ToastColor">#e6e8eb</Color>

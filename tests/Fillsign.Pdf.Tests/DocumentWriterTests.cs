@@ -281,7 +281,7 @@ public sealed class DocumentWriterTests
 
     private static string FirstLine(string text) => text.Split('\r', '\n')[0].Trim();
 
-    private static SignatureImage HalfTransparentImage()
+    internal static SignatureImage HalfTransparentImage()
     {
         using var bitmap = new SKBitmap(new SKImageInfo(40, 20, SKColorType.Bgra8888, SKAlphaType.Unpremul));
         for (int x = 0; x < 40; x++)

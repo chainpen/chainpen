@@ -740,6 +740,10 @@ public partial class MainWindow : Window, IEditorHost
     public async Task ShowMessageAsync(string title, string message) =>
         await ShowDialogAsync(new MessageDialog(title, [message], "Got it"), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
 
+    /// <summary>A message that's just information, such as About: no warning icon.</summary>
+    public async Task ShowInformationAsync(string title, string message) =>
+        await ShowDialogAsync(new MessageDialog(title, [message], "Got it", MessageTone.Information), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
+
     /// <summary>Saved signatures and initials. Tests point this at a temporary folder.</summary>
     internal static SavedSignatureStore? SignatureStoreOverride { get; set; }
 

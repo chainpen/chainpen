@@ -23,7 +23,7 @@ public partial class ShortcutsPanel : UserControl
         ("Selecting", ["← → ↑ ↓"], "Nudge (hold Shift for bigger steps)"),
         ("Selecting", ["Esc"], "Clear the selection, or stop what you’re doing"),
         ("Tools", ["V", "T", "C", "X"], "Select, text, tick, cross"),
-        ("Tools", ["D", "S", "R", "P"], "Date, sign, shapes, draw (can be turned off in Settings)"),
+        ("Tools", ["D", "S", "R", "P"], "Date, sign, shapes, draw (turn on in Settings → Keyboard)"),
         ("Document", ["Mod O"], "Open"),
         ("Document", ["Mod S", "Mod Shift S"], "Save working copy, save as"),
         ("Document", ["Mod E"], "Export final copy"),

@@ -99,10 +99,6 @@ public readonly record struct InkColor(byte R, byte G, byte B)
     public static readonly InkColor Black = new(0x11, 0x13, 0x18);
     public static readonly InkColor Blue = new(0x1d, 0x3f, 0x9e);
     public static readonly InkColor Red = new(0xb4, 0x23, 0x18);
-
-    // FS-952: two more inks, dark enough to read on white and to tell apart from the others in print.
-    public static readonly InkColor Green = new(0x1a, 0x6b, 0x3a);
-    public static readonly InkColor Purple = new(0x5b, 0x2a, 0x86);
     public static readonly InkColor White = new(0xff, 0xff, 0xff);
 
     /// <summary>

@@ -42,6 +42,17 @@ public static class DocumentWriter
     }
 
     /// <summary>
+    /// A final copy with its form fields locked (made read-only), for when the answers shouldn't be changed by whoever
+    /// receives it. The fields still show their values; links keep working.
+    /// </summary>
+    public static byte[] WithFormFieldsLocked(byte[] finalCopy)
+    {
+        ArgumentNullException.ThrowIfNull(finalCopy);
+        using PdfiumDocument pdf = PdfiumDocument.Open(finalCopy);
+        return pdf.LockFormFields() > 0 ? pdf.SaveCopy(removeSecurity: true) : finalCopy;
+    }
+
+    /// <summary>
     /// The working copy (FR-8.1, FR-9.1): the clean source unchanged, then an incremental update with the finished
     /// pages (what other readers show), then Fillsign's editable record. Reopening it in Fillsign restores the clean
     /// pages and every item (FR-9.2); saving again rewrites it from the clean source, so it doesn't grow (FR-9.8).
@@ -181,6 +192,14 @@ public static class DocumentWriter
                 if (whiteoutAreas.Length > 0)
                 {
                     pdf.FlattenAnnotationsUnder(i, whiteoutAreas);
+                }
+
+                // FS-962: an empty signature field signed over with a signature item is taken out of the final copy,
+                // or viewers draw their "unsigned" mark (a crossed box) under the signature. The working copy keeps it.
+                PdfBox[] signatureAreas = [.. items.Where(item => item is SignatureItem).Select(item => AreaInPdf(transform, item))];
+                if (signatureAreas.Length > 0)
+                {
+                    pdf.RemoveSignatureFieldsUnder(i, signatureAreas);
                 }
             }
 

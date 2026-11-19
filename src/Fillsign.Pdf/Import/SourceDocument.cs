@@ -181,6 +181,7 @@ public sealed class SourceDocument : IDisposable
     // ----- Form fields (FS-950) -----
 
     private readonly Dictionary<int, IReadOnlyList<FormField>> _fields = [];
+    private IReadOnlyDictionary<string, string>? _xfaDescriptions;
     private PdfiumDocument? _preview;
     private ImmutableSortedDictionary<string, string> _shown = ImmutableSortedDictionary<string, string>.Empty;
 
@@ -199,6 +200,11 @@ public sealed class SourceDocument : IDisposable
         try
         {
             fields = Pdf.GetFormFields(sourceIndex);
+            if (fields.Count > 0)
+            {
+                _xfaDescriptions ??= Pdf.GetXfaDescriptions();
+                fields = FieldLabels.FromPage(fields, Pdf.GetCharacters(sourceIndex), _xfaDescriptions);
+            }
         }
         catch (PdfPageException)
         {

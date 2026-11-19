@@ -161,10 +161,40 @@ public sealed class SaveTests : IDisposable
         Assert.StartsWith("sample-form-final.pdf (", s.Editor.Exported!.Text, StringComparison.Ordinal);
 
         // "Also save my working copy" was ticked, so the working copy was saved too.
+        Assert.False(dialog.FindControl<CheckBox>("LockFields")!.IsVisible, "a form with no fields has nothing to lock");
         await Pump(() => !s.Editor.HasUnsavedChanges);
         Assert.True(File.Exists(Path.Combine(_folder, "sample-form.pdf")));
         await Pump(() => true);
         Save(s.Window, "phase6-8-exported");
+    }
+
+    [AvaloniaFact]
+    public async Task A_filled_form_is_exported_with_its_fields_locked()
+    {
+        File.Copy(TestFiles.Sample("form-fields.pdf"), Path.Combine(_folder, "form.pdf"));
+        using var s = await Session.OpenAsync(Path.Combine(_folder, "form.pdf"));
+        s.Editor.SetField("Name", "Jordan Lee");
+        s.Key(Key.E, s_command);
+        await Pump(() => s.Dialog<ExportDialog>() is not null);
+        ExportDialog dialog = s.Dialog<ExportDialog>()!;
+        CheckBox locking = dialog.FindControl<CheckBox>("LockFields")!;
+        Assert.True(locking.IsVisible);
+        Assert.True(locking.IsChecked);
+
+        // The opening line says what's sent, whichever way the lock is set.
+        TextBlock lede = dialog.FindControl<TextBlock>("Lede")!;
+        Assert.Contains("your answers can’t be changed", lede.Text, StringComparison.Ordinal);
+        locking.IsChecked = false;
+        Assert.Contains("the form’s fields stay editable", lede.Text, StringComparison.Ordinal);
+        locking.IsChecked = true;
+        dialog.UseFolder(_folder);
+        Click(dialog, "Export final copy");
+        await Pump(() => s.Editor.HasExportedNotice);
+
+        using Pdf.Pdfium.PdfiumDocument final = Pdf.Pdfium.PdfiumDocument.Open(File.ReadAllBytes(Path.Combine(_folder, "form-final.pdf")));
+        IReadOnlyList<Pdf.Pdfium.FormField> fields = final.GetFormFields(0);
+        Assert.Equal("Jordan Lee", fields.Single(field => field.Name == "Name").Value);
+        Assert.All(fields, field => Assert.True(field.IsReadOnly, $"{field.Name} should be locked"));
     }
 
     [AvaloniaFact]

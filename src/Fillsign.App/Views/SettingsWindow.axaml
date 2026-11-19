@@ -77,10 +77,10 @@
                 <Border Classes="card">
                     <StackPanel Spacing="4">
                         <TextBlock Classes="heading-section" Text="Keyboard" />
-                        <CheckBox x:Name="SingleKeyTools" Margin="0,6,0,0" IsChecked="{Binding SingleKeyToolShortcuts}"
+                        <CheckBox x:Name="SingleKeyTools" Margin="0,6,0,0" IsChecked="{Binding UseSingleKeyTools}"
                                   Content="Pick tools with single letters (V, T, C, X, D, S, R, P)" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="Turn this off if you use speech input, or keep pressing letters by accident." />
+                                   Text="Off unless you turn it on. Leave it off if you use speech input, or would press letters by accident." />
                     </StackPanel>
                 </Border>
 

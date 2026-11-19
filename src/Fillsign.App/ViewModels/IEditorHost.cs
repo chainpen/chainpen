@@ -29,6 +29,9 @@ public interface IEditorHost
     /// <summary>Explains why something isn't allowed (D9).</summary>
     Task ShowMessageAsync(string title, string message);
 
+    /// <summary>A message that's just information: no warning icon.</summary>
+    Task ShowInformationAsync(string title, string message);
+
     /// <summary>FR-3.4: picks or makes a signature or initials to place. Null when cancelled.</summary>
     Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync();
 

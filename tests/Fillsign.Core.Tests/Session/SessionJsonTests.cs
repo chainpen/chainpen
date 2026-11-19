@@ -13,7 +13,7 @@ public sealed class SessionJsonTests
         DocumentState document = TestData.FourPagesWithItems();
         document = document.WithPages(document.Pages.SetItem(1, document.Pages[1] with { Rotation = Rotation.FromDegrees(270) }));
         document = ItemEdits.Add(document, new ShapeItem(ItemId.New(), document.Pages[2].Id, 1, 2, ShapeKind.Highlight, 80, 14, InkColor.Blue, 2, true, false));
-        document = ItemEdits.Add(document, new TextItem(ItemId.New(), document.Pages[2].Id, 5, 6, "Bold\nright", 14, InkColor.Purple, IsBold: true, Align: TextAlign.Right));
+        document = ItemEdits.Add(document, new TextItem(ItemId.New(), document.Pages[2].Id, 5, 6, "Bold\nright", 14, InkColor.Red, IsBold: true, Align: TextAlign.Right));
         document = ItemEdits.Add(document, new PictureItem(ItemId.New(), document.Pages[3].Id, 50, 60, TestData.Png(), 150, 50));
         document = document.WithField("A.NOM", "Lee").WithField("R.CM", "Non").WithField("Notes", "two\nlines");
         return new SessionRecord(ByteStamp.Of("original"u8), ByteStamp.Of("original plus edits"u8), 4, document);

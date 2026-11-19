@@ -148,6 +148,58 @@ public sealed class FormFieldTests
     }
 
     [Fact]
+    public void Locking_makes_every_field_read_only_and_keeps_the_answers()
+    {
+        byte[] filled;
+        using (PdfiumDocument pdf = Open("form-fields.pdf"))
+        {
+            pdf.FillFormFields(new Dictionary<string, string> { ["Name"] = "Jordan Lee", ["Membership"] = "Family" });
+            filled = pdf.SaveCopy(removeSecurity: true);
+        }
+
+        using PdfiumDocument locked = PdfiumDocument.Open(Export.DocumentWriter.WithFormFieldsLocked(filled));
+        IReadOnlyList<FormField> fields = locked.GetFormFields(0);
+        Assert.All(fields, field => Assert.True(field.IsReadOnly, field.Name));
+        Assert.Equal("Jordan Lee", fields.Single(field => field.Name == "Name").Value);
+        Assert.True(fields.Single(field => field.Name == "Membership" && field.OnValue == "Family").IsChecked);
+    }
+
+    [Fact]
+    public void A_signature_field_signed_over_leaves_the_final_copy_but_stays_in_the_working_copy()
+    {
+        byte[] source = File.ReadAllBytes(TestFiles.Sample("form-fields.pdf"));
+        using PdfiumDocument original = PdfiumDocument.Open(source);
+        Core.Model.SourcePage[] pages = [original.GetPageInfo(0).ToSourcePage()];
+        FormField field = original.GetFormFields(0).Single(f => f.Name == "Signature");
+        var transform = new Core.Geometry.PageTransform(pages[0], Core.Model.Rotation.None);
+        Core.Model.PagePoint corner = transform.ToDisplay(field.Rect.Left + 10, field.Rect.Top - 5);
+        var state = Core.Model.DocumentState.ForSourcePages(1);
+        var signature = new Core.Model.SignatureItem(Core.Model.ItemId.New(), state.Pages[0].Id, corner.X, corner.Y,
+            Core.Model.SignatureKind.Signature, DocumentWriterTests.HalfTransparentImage(), 120, 30);
+        state = state.WithItems([signature]);
+
+        using (PdfiumDocument final = PdfiumDocument.Open(Export.DocumentWriter.FinalCopy(source, pages, state).Pdf))
+        {
+            Assert.DoesNotContain(final.GetFormFields(0), f => f.Kind == FormFieldKind.Signature);
+            Assert.Contains(final.GetFormFields(0), f => f.Name == "Name");
+        }
+
+        using PdfiumDocument working = PdfiumDocument.Open(Export.DocumentWriter.WorkingCopy(source, pages, state).Pdf);
+        Assert.Contains(working.GetFormFields(0), f => f.Kind == FormFieldKind.Signature);
+    }
+
+    [Fact]
+    public void Fields_without_a_description_are_labelled_from_the_words_beside_them()
+    {
+        using PdfiumDocument pdf = Open("form-fields.pdf");
+        IReadOnlyList<FormField> fields = Import.FieldLabels.FromPage(pdf.GetFormFields(0), pdf.GetCharacters(0));
+        Assert.Equal("Full name", fields.Single(f => f.Name == "Name").DisplayName);
+        Assert.Equal("Your email address", fields.Single(f => f.Name == "Email").DisplayName); // its own description wins
+        Assert.Equal("Phone", fields.Single(f => f.Name == "ContactPhone").DisplayName); // a box's words follow it
+        Assert.Equal("Postcode", fields.Single(f => f.Name == "Postcode").DisplayName);
+    }
+
+    [Fact]
     public void Text_fields_can_be_emptied_and_a_page_with_no_form_has_no_fields()
     {
         byte[] saved;

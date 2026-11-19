@@ -6,8 +6,8 @@ namespace Fillsign.App.Views;
 
 /// <summary>
 /// FS-951: one letter picks a tool, with no modifier (V Select, T Text, C Tick, X Cross, D Date, S Sign, R Shapes,
-/// P Draw). Settings can turn them off, for people whose speech input or typing would set them off by accident
-/// (WCAG 2.1.4).
+/// P Draw). Off until turned on in Settings: most people filling a form won't know them, and a stray letter changing
+/// tools is confusing; speech input users can leave them off (WCAG 2.1.4).
 /// </summary>
 internal static class ToolKeys
 {
@@ -26,10 +26,10 @@ internal static class ToolKeys
 
     private static bool? s_isOn;
 
-    static ToolKeys() => AppSettings.Changed += changed => s_isOn = changed.SingleKeyToolShortcuts;
+    static ToolKeys() => AppSettings.Changed += changed => s_isOn = changed.UseSingleKeyTools;
 
-    /// <summary>Whether the letters are on (Settings → Keyboard). Read once, then kept up to date.</summary>
-    public static bool IsOn => s_isOn ??= AppSettings.Load().SingleKeyToolShortcuts;
+    /// <summary>Whether the letters are on (Settings → Keyboard, off by default). Read once, then kept up to date.</summary>
+    public static bool IsOn => s_isOn ??= AppSettings.Load().UseSingleKeyTools;
 
     /// <summary>The tool a letter picks, if it's one of them and no modifier is held.</summary>
     public static EditorTool? ToolFor(Key key, KeyModifiers modifiers)

@@ -33,7 +33,11 @@ public enum FormFieldKind
 /// <param name="FontSize">The size the field's text is drawn at, in points; 0 when it's sized to fit.</param>
 /// <param name="MaxLength">The most characters a text field takes (/MaxLen, FS-963); 0 for no limit.</param>
 /// <param name="IsEditable">A drop-down that also takes a typed answer not in its list (FS-964).</param>
-/// <param name="Label">What the field asks for, for people (/TU, its tooltip in readers); empty when it has none.</param>
+/// <param name="IsComb">A text field drawn as a row of boxes, one per character up to <paramref name="MaxLength"/>.</param>
+/// <param name="Label">
+/// What the field asks for, for people: its /TU (the tooltip in readers), or, when a document is opened in Fillsign,
+/// the words printed beside it (<see cref="Import.FieldLabels"/>). Empty when there's neither.
+/// </param>
 public sealed record FormField(
     string Name,
     FormFieldKind Kind,
@@ -49,7 +53,8 @@ public sealed record FormField(
     bool IsMultiSelect = false,
     int MaxLength = 0,
     bool IsEditable = false,
-    string Label = "")
+    string Label = "",
+    bool IsComb = false)
 {
     /// <summary>The field's description if it has one, else its name, for gap hints and screen readers.</summary>
     public string DisplayName => Label.Length > 0 ? Label : Name;
@@ -167,6 +172,129 @@ public sealed partial class PdfiumDocument
                     FPDF_ClosePage(page);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Makes every form field read-only, so readers show the answers but won't let them be changed: the usual way to
+    /// lock a filled form. Links and the rest of the page are untouched. Returns how many fields it locked.
+    /// </summary>
+    public int LockFormFields()
+    {
+        lock (PdfiumLibrary.Sync)
+        {
+            nint form = FormHandle();
+            if (form == 0)
+            {
+                return 0;
+            }
+
+            int locked = 0;
+            int pages = FPDF_GetPageCount(_document);
+            for (int pageIndex = 0; pageIndex < pages; pageIndex++)
+            {
+                nint page = FPDF_LoadPage(_document, pageIndex);
+                if (page == 0)
+                {
+                    continue;
+                }
+
+                FORM_OnAfterLoadPage(page, form);
+                try
+                {
+                    int count = FPDFPage_GetAnnotCount(page);
+                    for (int index = 0; index < count; index++)
+                    {
+                        nint annotation = FPDFPage_GetAnnot(page, index);
+                        if (annotation == 0)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            if (FPDFAnnot_GetSubtype(annotation) == FPDF_ANNOT_WIDGET && FPDFAnnot_GetFormFieldType(form, annotation) > 0)
+                            {
+                                int flags = FPDFAnnot_GetFormFieldFlags(form, annotation);
+                                if ((flags & FPDF_FORMFLAG_READONLY) == 0 && FPDFAnnot_SetFormFieldFlags(form, annotation, flags | FPDF_FORMFLAG_READONLY))
+                                {
+                                    locked++;
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            FPDFPage_CloseAnnot(annotation);
+                        }
+                    }
+                }
+                finally
+                {
+                    FORM_OnBeforeClosePage(page, form);
+                    FPDF_ClosePage(page);
+                }
+            }
+
+            return locked;
+        }
+    }
+
+    /// <summary>
+    /// Removes the page's signature fields that overlap <paramref name="areas"/> (PDF user space): fields signed over
+    /// with a signature image, which viewers would otherwise mark as unsigned. Returns how many it removed.
+    /// </summary>
+    public int RemoveSignatureFieldsUnder(int pageIndex, IReadOnlyList<Fillsign.Core.Model.PdfBox> areas)
+    {
+        ArgumentNullException.ThrowIfNull(areas);
+        lock (PdfiumLibrary.Sync)
+        {
+            nint form = FormHandle();
+            if (form == 0)
+            {
+                return 0;
+            }
+
+            nint page = LoadPage(pageIndex);
+            FORM_OnAfterLoadPage(page, form);
+            int removed = 0;
+            try
+            {
+                // From the end, so removing one doesn't move the ones still to look at.
+                for (int index = FPDFPage_GetAnnotCount(page) - 1; index >= 0; index--)
+                {
+                    nint annotation = FPDFPage_GetAnnot(page, index);
+                    if (annotation == 0)
+                    {
+                        continue;
+                    }
+
+                    bool isSignedOver;
+                    try
+                    {
+                        isSignedOver = FPDFAnnot_GetSubtype(annotation) == FPDF_ANNOT_WIDGET
+                            && FPDFAnnot_GetFormFieldType(form, annotation) == FPDF_FORMFIELD_SIGNATURE
+                            && FPDFAnnot_GetRect(annotation, out FsRectF rect)
+                            && areas.Any(area => Math.Min(rect.Left, rect.Right) < area.Right && Math.Max(rect.Left, rect.Right) > area.Left
+                                && Math.Min(rect.Top, rect.Bottom) < area.Top && Math.Max(rect.Top, rect.Bottom) > area.Bottom);
+                    }
+                    finally
+                    {
+                        FPDFPage_CloseAnnot(annotation);
+                    }
+
+                    if (isSignedOver && FPDFPage_RemoveAnnot(page, index))
+                    {
+                        removed++;
+                    }
+                }
+            }
+            finally
+            {
+                FORM_OnBeforeClosePage(page, form);
+                FPDF_ClosePage(page);
+            }
+
+            return removed;
         }
     }
 
@@ -322,7 +450,8 @@ public sealed partial class PdfiumDocument
             isMultiSelect,
             kind == FormFieldKind.Text ? MaxLength(annotation) : 0,
             kind == FormFieldKind.Choice && (flags & FPDF_FORMFLAG_CHOICE_COMBO) != 0 && (flags & FPDF_FORMFLAG_CHOICE_EDIT) != 0,
-            ReadString((buffer, bytes) => { unsafe { return FPDFAnnot_GetFormFieldAlternateName(form, annotation, (char*)buffer, bytes); } }));
+            ReadString((buffer, bytes) => { unsafe { return FPDFAnnot_GetFormFieldAlternateName(form, annotation, (char*)buffer, bytes); } }),
+            kind == FormFieldKind.Text && (flags & FPDF_FORMFLAG_TEXT_COMB) != 0 && MaxLength(annotation) > 0);
     }
 
     /// <summary>A text field's /MaxLen: on the widget when it is the field, else on the field above it.</summary>

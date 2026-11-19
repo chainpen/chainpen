@@ -278,7 +278,9 @@
         <!-- The bar under the toolbar (FS-310): always the same height, so the page never jumps. -->
         <Border Grid.Row="2" Height="{StaticResource ContextBarHeight}" Classes="contextBar" Classes.placing="{Binding ShowsPlacing}"
                 Classes.pagesSelected="{Binding ShowsPageActions}" Padding="16,0" AutomationProperties.LiveSetting="Polite">
-            <Panel VerticalAlignment="Center">
+            <!-- One control's height whatever is shown (the Bold button is 2 points taller than the size stepper), so
+                 switching tools or modes never nudges the bar's contents up or down. -->
+            <Panel VerticalAlignment="Center" Height="{StaticResource ControlHeight}">
             <!-- Organise pages: the selection and its actions (🎨 4, D9), or a hint. -->
             <Panel IsVisible="{Binding IsOrganising}">
                 <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
@@ -330,7 +332,8 @@
                 </DockPanel>
             </Panel>
             <Panel IsVisible="{Binding IsEditingContent}">
-                <TextBlock Classes="muted" FontSize="13" Text="{Binding ContextHint}" IsVisible="{Binding ShowsHint}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Classes="muted" FontSize="13" Text="{Binding ContextHint}" IsVisible="{Binding ShowsHint}" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
 
                 <!-- Options for typing, the pen, a placing tool or the selection (E2, E3, E6). -->
                 <DockPanel IsVisible="{Binding ShowsOptions}">
@@ -342,7 +345,8 @@
                         </StackPanel>
                     </Button>
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding OptionsTitle}" />
+                        <!-- A fixed width for the tool names (Text, Tick, Cross … Highlight), so switching tools doesn't shift the controls. -->
+                        <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding OptionsTitle}" MinWidth="72" />
                         <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding OptionsHaveSize}" Margin="6,0,0,0">
                             <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding SizeCaption}" />
                             <Border Classes="stepper">
@@ -366,39 +370,14 @@
                                 <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkRed}" AutomationProperties.Name="Red"
                                              ToolTip.Tip="Red" IsChecked="{Binding IsRedChosen, Mode=OneWay}"
                                              Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Red}" />
-                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkGreen}" AutomationProperties.Name="Green"
-                                             ToolTip.Tip="Green" IsChecked="{Binding IsGreenChosen, Mode=OneWay}"
-                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Green}" />
-                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkPurple}" AutomationProperties.Name="Purple"
-                                             ToolTip.Tip="Purple" IsChecked="{Binding IsPurpleChosen, Mode=OneWay}"
-                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Purple}" />
                             </StackPanel>
                         </StackPanel>
-                        <!-- FS-952: bold and alignment for text. -->
+                        <!-- FS-952: bold text. (Alignment was tried and dropped: text has no box to line up in.) -->
                         <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding OptionsHaveTextStyle}" Margin="6,0,0,0">
                             <ToggleButton x:Name="BoldButton" Classes="tool icon" IsChecked="{Binding IsBoldChosen, Mode=OneWay}" Command="{Binding ToggleBoldCommand}"
                                           AutomationProperties.Name="Bold" ToolTip.Tip="{c:Keys 'Bold (Mod+B)'}">
                                 <TextBlock Text="B" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center" />
                             </ToggleButton>
-                            <Border Classes="segments" Margin="4,0,0,0">
-                                <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.Name="Text alignment">
-                                    <RadioButton Classes="segment icon" GroupName="TextAlign" IsChecked="{Binding IsAlignLeft, Mode=OneWay}"
-                                                 Command="{Binding SetAlignCommand}" CommandParameter="{x:Static m:TextAlign.Left}"
-                                                 AutomationProperties.Name="Align left" ToolTip.Tip="Align left">
-                                        <c:StrokeIcon Data="{StaticResource IconAlignLeft}" />
-                                    </RadioButton>
-                                    <RadioButton Classes="segment icon" GroupName="TextAlign" IsChecked="{Binding IsAlignCentre, Mode=OneWay}"
-                                                 Command="{Binding SetAlignCommand}" CommandParameter="{x:Static m:TextAlign.Centre}"
-                                                 AutomationProperties.Name="Centre" ToolTip.Tip="Centre">
-                                        <c:StrokeIcon Data="{StaticResource IconAlignCentre}" />
-                                    </RadioButton>
-                                    <RadioButton Classes="segment icon" GroupName="TextAlign" IsChecked="{Binding IsAlignRight, Mode=OneWay}"
-                                                 Command="{Binding SetAlignCommand}" CommandParameter="{x:Static m:TextAlign.Right}"
-                                                 AutomationProperties.Name="Align right" ToolTip.Tip="Align right">
-                                        <c:StrokeIcon Data="{StaticResource IconAlignRight}" />
-                                    </RadioButton>
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsSelectionActions}" Margin="6,0,0,0">
                             <Button Classes="chip" Command="{Binding DuplicateSelectionCommand}" ToolTip.Tip="{c:Keys 'Duplicate (Mod+D)'}">
@@ -444,7 +423,7 @@
                 </DockPanel>
 
                 <!-- Dragging a selection box (E5). -->
-                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsBoxSelecting}">
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsBoxSelecting}" VerticalAlignment="Center">
                     <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding BoxSelectingText}" />
                     <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center"
                                Text="Let go to select them · hold Shift to add to the current selection · Esc to cancel" />
@@ -678,6 +657,12 @@
                            HorizontalAlignment="Center" TextWrapping="Wrap" />
             </Grid>
 
+            <!-- FS-950, NFR-5: the form field Tab reached, read out as it changes ("Membership, radio button Family,
+                 2 of 3, chosen"). Not drawn: the ring on the page shows it. -->
+            <TextBlock x:Name="FieldAnnouncement" Grid.Column="0" Width="1" Height="1" Opacity="0" IsHitTestVisible="False"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Text="{Binding FieldAnnouncement}"
+                       AutomationProperties.Name="{Binding FieldAnnouncement}" AutomationProperties.LiveSetting="Polite" />
+
             <!-- Just deleted: Undo straight away (FR-7.11, FS-707). A toast over the pages, so it's seen wherever the
                  person was looking; it stays at least 10 seconds, and while the pointer or focus is on it. -->
             <Border x:Name="Toast" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasToast}"
@@ -687,7 +672,8 @@
                     AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{Binding Notice}">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Notice}" />
-                    <Button Classes="small" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="{c:Keys 'Undo (Mod+Z)'}" />
+                    <Button Classes="small" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="{c:Keys 'Undo (Mod+Z)'}"
+                            IsVisible="{Binding NoticeOffersUndo}" />
                     <Button Classes="icon small" BorderThickness="0" Background="Transparent" Command="{Binding DismissNoticeCommand}"
                             AutomationProperties.Name="Dismiss">
                         <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />

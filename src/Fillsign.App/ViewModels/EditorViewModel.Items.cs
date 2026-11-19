@@ -111,6 +111,25 @@ public sealed partial class EditorViewModel
     [NotifyPropertyChangedFor(nameof(HasToast))]
     public partial string? Notice { get; private set; }
 
+    /// <summary>The toast offers Undo: after a change (a deletion), not after a note that just tells you something.</summary>
+    public bool NoticeOffersUndo { get; private set; }
+
+    private bool _isTelling;
+
+    /// <summary>A toast that only informs, with no Undo (a read-only field, a form's fields on opening).</summary>
+    private void Tell(string message)
+    {
+        _isTelling = true;
+        Notice = message;
+        _isTelling = false;
+    }
+
+    partial void OnNoticeChanged(string? value)
+    {
+        NoticeOffersUndo = value is not null && !_isTelling;
+        OnPropertyChanged(nameof(NoticeOffersUndo));
+    }
+
     public bool HasToast => Notice is not null;
 
     /// <summary>Closes the toast (its close button, or after its time is up).</summary>
@@ -148,6 +167,8 @@ public sealed partial class EditorViewModel
         EditorTool.Date => "Click to add today’s date (DD/MM/YYYY) · Esc to cancel",
         EditorTool.Shape => "Drag on the page to draw it. Click instead for a standard size · Esc to stop",
         EditorTool.Draw => "Strokes join into one drawing until you’re done.",
+        // FS-950: on a form with fields, filling them is the main way in; the tools add your own on top.
+        _ when HasFillableFields => "Click a field to fill it, or press Tab to go through them. Pick a tool to add your own: Text, Tick, Sign.",
         _ => "Nothing selected. Pick a tool, then click on the page: Tick for boxes, Text for lines, Sign for the signature.",
     };
 
@@ -878,7 +899,7 @@ public sealed partial class EditorViewModel
     {
         // The click marks the middle of the first line, where the caret appears.
         double lineHeight = DefaultFontSize * TextItem.LineHeight;
-        var item = new TextItem(ItemId.New(), page, point.X, point.Y - (lineHeight / 2), text, DefaultFontSize, DefaultColour, DefaultBold, DefaultAlign);
+        var item = new TextItem(ItemId.New(), page, point.X, point.Y - (lineHeight / 2), text, DefaultFontSize, DefaultColour, DefaultBold);
         item = (TextItem)ItemGeometry.MoveTo(item, ItemGeometry.ClampToPage(ItemGeometry.Bounds(item, Measurer), PageSizeOf(page)));
         DocumentState before = State;
         if (startTyping)
@@ -914,6 +935,7 @@ public sealed partial class EditorViewModel
     /// </summary>
     public MarkItem? MarkPreview =>
         Tool is EditorTool.Tick or EditorTool.Cross && Cursor is { } cursor && _gesture is null && TypingItem is null
+            && !IsOverBoxField(cursor.Page, cursor.Point)
             ? MarkAt(cursor.Page, cursor.Point, Tool == EditorTool.Tick ? MarkKind.Tick : MarkKind.Cross)
             : null;
 
@@ -1103,6 +1125,8 @@ public sealed partial class EditorViewModel
         OnPropertyChanged(nameof(OptionsHaveColour));
         OnPropertyChanged(nameof(OptionsHaveSize));
         OnPropertyChanged(nameof(IsSeveralPages));
+        OnPropertyChanged(nameof(FieldAnnouncement));
+        OnPropertyChanged(nameof(ContextHint));
         OnTextStyleChanged();
         AddToEveryPageCommand.NotifyCanExecuteChanged();
         ItemsChanged?.Invoke();
@@ -1235,10 +1259,6 @@ public sealed partial class EditorViewModel
 
     public bool IsRedChosen => CurrentColour == InkColor.Red;
 
-    public bool IsGreenChosen => CurrentColour == InkColor.Green;
-
-    public bool IsPurpleChosen => CurrentColour == InkColor.Purple;
-
     public string OptionsTitle => ContextMode switch
     {
         ContextMode.Typing => "Typing",
@@ -1271,7 +1291,7 @@ public sealed partial class EditorViewModel
 
     private static readonly string[] s_organiseBarDependents = [nameof(ShowsPageActions), nameof(ShowsOrganiseHint)];
 
-    private static readonly string[] s_colourDependents = [nameof(IsBlackChosen), nameof(IsBlueChosen), nameof(IsRedChosen), nameof(IsGreenChosen), nameof(IsPurpleChosen)];
+    private static readonly string[] s_colourDependents = [nameof(IsBlackChosen), nameof(IsBlueChosen), nameof(IsRedChosen)];
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
     {

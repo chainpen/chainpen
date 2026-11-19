@@ -24,22 +24,35 @@
                     <TextBlock x:Name="SizeText" Classes="muted" FontSize="13" VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
+            <ScrollViewer x:Name="Body" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
                 <StackPanel Margin="4,4">
-                    <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
+                    <TextBlock x:Name="Lede" Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
                                Text="Makes a copy to send. It looks the same in any PDF reader and can’t be changed. Your working copy stays as it is." />
 
                     <!-- Possible gaps (FS-609, FR-8.3): hints, never a verdict. -->
                     <Border x:Name="GapsSection" Margin="0,18,0,0" IsVisible="False" CornerRadius="12" ClipToBounds="True"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderControl}">
                         <StackPanel>
-                            <StackPanel Background="{DynamicResource SurfaceSubtle}" Spacing="2" Margin="0">
-                                <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps we spotted" />
-                                <TextBlock x:Name="GapsNote" Classes="muted" Margin="14,0,14,12" FontSize="13" TextWrapping="Wrap" />
-                            </StackPanel>
+                            <!-- Its own rounded top corners (the card's 12 less its 1 border): children are clipped to a
+                                 rectangle, so a square background would paint over the card's rounded border. -->
+                            <Border Background="{DynamicResource SurfaceSubtle}" CornerRadius="11,11,0,0">
+                                <StackPanel Spacing="2">
+                                    <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps we spotted" />
+                                    <TextBlock x:Name="GapsNote" Classes="muted" Margin="14,0,14,12" FontSize="13" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
                             <StackPanel x:Name="GapRows" />
                         </StackPanel>
                     </Border>
+
+                    <!-- FS-950: a filled form can be locked so whoever receives it can't change the answers. -->
+                    <CheckBox x:Name="LockFields" Margin="0,18,0,0" IsChecked="True" IsVisible="False">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Lock the form’s fields" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" MaxWidth="540"
+                                       Text="Your answers show as filled in, but can’t be changed in other PDF apps. Untick to let the person you send it to edit them." />
+                        </StackPanel>
+                    </CheckBox>
 
                     <TextBlock x:Name="NameLabel" Margin="0,20,0,6" FontWeight="SemiBold" Text="File name" />
                     <TextBox x:Name="FileName" FontSize="14" AutomationProperties.LabeledBy="{Binding #NameLabel}" KeyDown="OnNameKeyDown" />
@@ -59,6 +72,7 @@
                         <c:StrokeIcon Data="{StaticResource IconWarningCircle}" Size="16" Foreground="{DynamicResource Danger}" />
                         <TextBlock FontSize="13" Foreground="{DynamicResource Danger}" Text="Type a name for the final copy." />
                     </StackPanel>
+
 
                     <CheckBox x:Name="AlsoSave" Margin="0,16,0,0" IsChecked="True">
                         <StackPanel Spacing="2">

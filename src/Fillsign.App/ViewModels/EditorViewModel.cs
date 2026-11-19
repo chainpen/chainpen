@@ -128,7 +128,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
 
     public string ContextHint => IsLoading
         ? "You can start on page 1 now. The rest of the pages are still loading."
-        : ToolHint;
+        : FieldHint ?? ToolHint;
 
     /// <summary>Loads page sizes in the background so page 1 is usable straight away (FR-1.9).</summary>
     public async Task LoadAsync()
@@ -155,6 +155,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         IsLoading = false;
         LoadedPageCount = Source.PageCount;
         RebuildPages();
+        AnnounceFillableFields();
     }
 
     /// <summary>Pages the view should show as damaged (FS-209): unreadable and not yet kept as they are.</summary>
