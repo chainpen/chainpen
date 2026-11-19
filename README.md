@@ -37,6 +37,11 @@ dotnet run --project src/Fillsign.App
 | `spikes/` | Phase 0 go/no-go experiments (not shipped). |
 | `build/` | Packaging script, macOS Info.plist, app icon, corpus download. |
 
+## Command line and MCP
+
+The `fillsign` command fills a PDF's form fields from scripts, and `fillsign mcp` lets AI assistants do the same over
+the Model Context Protocol. Neither signs: that's done in the app. See [docs/CLI.md](docs/CLI.md).
+
 ## Licence
 
 [Business Source License 1.1](LICENSE) (decision FS-002). In plain words:

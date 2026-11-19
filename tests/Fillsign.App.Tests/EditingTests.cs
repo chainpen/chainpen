@@ -470,6 +470,58 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.Contains(fields, peer => peer.GetName() == "Membership: Family" && peer.GetAutomationControlType() == Avalonia.Automation.Peers.AutomationControlType.RadioButton);
     }
 
+    [AvaloniaFact]
+    public async Task The_pages_panel_resizes_from_its_edge_is_remembered_and_Reset_layout_restores_it()
+    {
+        Platform.AppSettings.Update(settings => settings with { PagesPanelWidth = Platform.AppSettings.DefaultPagesPanelWidth });
+        using var e = await EditorSession.OpenAsync();
+        Border panel = e.View.FindControl<Border>("PagesPanel")!;
+        Border edge = e.View.FindControl<Border>("PagesPanelResizer")!;
+        Assert.Equal(196, panel.Width);
+
+        // Keyboard: focus the edge, then the arrow keys; thumbnails follow the width, and it's remembered.
+        edge.Focus();
+        e.Window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
+        e.Window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
+        Assert.Equal(228, panel.Width);
+        Assert.Equal(148.0, e.View.Resources["PagesThumbWidth"]);
+        Assert.Equal(228, Platform.AppSettings.Load().PagesPanelWidth);
+
+        // It stops at its limits.
+        for (int i = 0; i < 30; i++)
+        {
+            e.Window.KeyPress(Key.Left, RawInputModifiers.None, PhysicalKey.ArrowLeft, null);
+        }
+
+        Assert.Equal(Platform.AppSettings.MinPagesPanelWidth, panel.Width);
+
+        // View → Reset layout: standard width, and the panel shown again.
+        e.Editor.IsPagesPanelVisible = false;
+        e.View.ResetLayout();
+        Assert.Equal(196, panel.Width);
+        Assert.True(e.Editor.IsPagesPanelVisible);
+        Assert.Equal(196, Platform.AppSettings.Load().PagesPanelWidth);
+    }
+
+    [AvaloniaFact]
+    public async Task The_next_window_opens_at_the_size_the_last_one_closed_at()
+    {
+        var first = new MainWindow(isFirstLaunch: false, []);
+        first.Show();
+        first.Width = 1100;
+        first.Height = 780;
+        await Pump(() => true);
+        first.CloseWithoutAsking();
+        await Pump(() => true);
+        Assert.Equal((1100.0, 780.0), (Platform.AppSettings.Load().Window!.Width, Platform.AppSettings.Load().Window!.Height));
+
+        var next = new MainWindow(isFirstLaunch: false, []);
+        Assert.Equal((1100.0, 780.0), (next.Width, next.Height));
+        next.ResetWindowSize();
+        Assert.Equal((MainWindow.DefaultWidth, MainWindow.DefaultHeight), (next.Width, next.Height));
+        Platform.AppSettings.Update(settings => settings with { Window = null });
+    }
+
     private static async Task<T> Await<T>(Func<T?> find)
         where T : class
     {

@@ -21,6 +21,10 @@ rm -rf "$publish" "$releases"
 dotnet publish "$root/src/Fillsign.App/Fillsign.App.csproj" -c Release -r "$rid" --self-contained \
   -p:Version="$version" -o "$publish"
 
+# The `fillsign` command and MCP server (FS-969, FS-970) ship beside the app, sharing its runtime and libraries.
+dotnet publish "$root/src/Fillsign.Cli/Fillsign.Cli.csproj" -c Release -r "$rid" --self-contained \
+  -p:Version="$version" -o "$publish"
+
 # Optional release notes (markdown bullet points), shown in the app's "Update ready" panel.
 notes=()
 if [[ -n "${RELEASE_NOTES:-}" ]]; then notes=(--releaseNotes "$RELEASE_NOTES"); fi

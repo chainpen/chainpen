@@ -169,6 +169,9 @@
     <x:Double x:Key="ContextBarHeight">52</x:Double>
     <x:Double x:Key="StatusBarHeight">40</x:Double>
     <x:Double x:Key="PagesPanelWidth">196</x:Double>
+    <!-- Page thumbnails in the pages panel; resized with the panel (EditorView.SetPagesPanelWidth). -->
+    <x:Double x:Key="PagesThumbWidth">116</x:Double>
+    <x:Double x:Key="PagesThumbHeight">150</x:Double>
     <x:Double x:Key="ControlHeight">36</x:Double>
     <x:Double x:Key="ControlHeightLarge">40</x:Double>
     <CornerRadius x:Key="RadiusSmall">4</CornerRadius>

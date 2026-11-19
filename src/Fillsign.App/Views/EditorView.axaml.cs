@@ -22,6 +22,7 @@ public partial class EditorView : UserControl
     {
         InitializeComponent();
         TitleBar.ActsAsTitleBar(TitleStrip);
+        AttachPagesPanelResizer();
         ShareButton.IsVisible = Platform.ShareSheet.IsAvailable;
         _toastTimer.Tick += (_, _) =>
         {
@@ -325,5 +326,99 @@ public partial class EditorView : UserControl
         Avalonia.Controls.Canvas.SetLeft(InsertMarker, (PageList.Bounds.Width - InsertMarker.Width) / 2);
         Avalonia.Controls.Canvas.SetTop(InsertMarker, Math.Max(0, y));
         InsertMarker.IsVisible = true;
+    }
+
+    // ----- Pages panel width -----
+
+    // The space beside a thumbnail in the panel (its default 196 less the 116 thumbnail), and a page's proportions.
+    private const double PanelAroundThumb = 80;
+    private const double ThumbRatio = 150.0 / 116;
+    private const double ResizeStep = 16;
+
+    private bool _isResizingPanel;
+
+    /// <summary>
+    /// The pages panel can be made wider or narrower from its right edge, by dragging or with the arrow keys once the
+    /// edge has focus; a double-click goes back to the standard width. The width is remembered, and thumbnails follow it.
+    /// </summary>
+    private void AttachPagesPanelResizer()
+    {
+        SetPagesPanelWidth(Platform.AppSettings.Load().PagesPanelWidth);
+        PagesPanelResizer.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(PagesPanelResizer).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+
+            if (e.ClickCount == 2)
+            {
+                SetPagesPanelWidth(Platform.AppSettings.DefaultPagesPanelWidth);
+                RememberPagesPanelWidth();
+            }
+            else
+            {
+                _isResizingPanel = true;
+                e.Pointer.Capture(PagesPanelResizer);
+            }
+
+            e.Handled = true;
+        };
+        PagesPanelResizer.PointerMoved += (_, e) =>
+        {
+            if (_isResizingPanel && PagesPanel.Parent is Visual row)
+            {
+                SetPagesPanelWidth(e.GetPosition(row).X);
+            }
+        };
+        PagesPanelResizer.PointerReleased += (_, e) =>
+        {
+            if (_isResizingPanel)
+            {
+                _isResizingPanel = false;
+                e.Pointer.Capture(null);
+                RememberPagesPanelWidth();
+            }
+        };
+        PagesPanelResizer.KeyDown += (_, e) =>
+        {
+            double step = e.Key switch { Key.Left => -ResizeStep, Key.Right => ResizeStep, _ => 0 };
+            if (step != 0)
+            {
+                SetPagesPanelWidth(PagesPanel.Width + step);
+                RememberPagesPanelWidth();
+                e.Handled = true;
+            }
+        };
+    }
+
+    private void SetPagesPanelWidth(double width)
+    {
+        width = Math.Clamp(Math.Round(width), Platform.AppSettings.MinPagesPanelWidth, Platform.AppSettings.MaxPagesPanelWidth);
+        PagesPanel.Width = width;
+        double thumb = width - PanelAroundThumb;
+        Resources["PagesThumbWidth"] = thumb;
+        Resources["PagesThumbHeight"] = Math.Round(thumb * ThumbRatio);
+        InsertMarker.Width = thumb + 16;
+        Avalonia.Automation.AutomationProperties.SetHelpText(PagesPanelResizer, $"{width:0} points wide. Left and Right arrow keys change it.");
+    }
+
+    /// <summary>View → Reset layout: the pages panel back at its standard width and shown, and the page fitted to the width.</summary>
+    public void ResetLayout()
+    {
+        SetPagesPanelWidth(Platform.AppSettings.DefaultPagesPanelWidth);
+        RememberPagesPanelWidth();
+        if (DataContext is EditorViewModel { IsPagesPanelVisible: false } editor)
+        {
+            editor.IsPagesPanelVisible = true;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(FitWidth, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    private void RememberPagesPanelWidth()
+    {
+        double width = PagesPanel.Width;
+        Platform.AppSettings.Update(settings => settings with { PagesPanelWidth = width });
     }
 }

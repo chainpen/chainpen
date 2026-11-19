@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- FS-969, FS-970: the `fillsign` command and its MCP server, for scripts and AI assistants. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>fillsign</AssemblyName>
+    <RootNamespace>Fillsign.Cli</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Fillsign.Pdf\Fillsign.Pdf.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fillsign.Cli.Tests" />
+  </ItemGroup>
+</Project>

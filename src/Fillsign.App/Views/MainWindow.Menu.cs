@@ -60,7 +60,13 @@ public partial class MainWindow
             new NativeMenuItemSeparator(),
             Item("Zoom in", () => _editorView?.ZoomIn(), Keys(Key.OemPlus), requiresDocument: true),
             Item("Zoom out", () => _editorView?.ZoomOut(), Keys(Key.OemMinus), requiresDocument: true),
-            Item("Fit width", () => _editorView?.FitWidth(), Keys(Key.D0), requiresDocument: true));
+            Item("Fit width", () => _editorView?.FitWidth(), Keys(Key.D0), requiresDocument: true),
+            new NativeMenuItemSeparator(),
+            Item("Reset layout", () =>
+            {
+                ResetWindowSize();
+                _editorView?.ResetLayout();
+            }, requiresDocument: true));
 
         var page = Menu("Page",
             Item("Previous page", () => Editor?.PreviousPageCommand.Execute(null), new KeyGesture(Key.PageUp), requiresDocument: true),

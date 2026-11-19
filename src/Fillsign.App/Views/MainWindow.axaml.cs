@@ -55,6 +55,8 @@ public partial class MainWindow : Window, IEditorHost
     {
         InitializeComponent();
         TitleBar.MergeInto(this);
+        RestorePlacement();
+        Closed += (_, _) => RememberPlacement();
         Opened += (_, _) => WindowFit.KeepOnScreen(this);
         _viewModel = new MainWindowViewModel(isFirstLaunch);
         DataContext = _viewModel;
@@ -308,6 +310,71 @@ public partial class MainWindow : Window, IEditorHost
     {
         _isCloseConfirmed = true;
         Close();
+    }
+
+    // ----- Window size and place -----
+
+    /// <summary>The standard window size, for a first start and View → Reset layout.</summary>
+    public const double DefaultWidth = 1280;
+    public const double DefaultHeight = 860;
+
+    /// <summary>
+    /// New windows open where and as big as the last one was when it closed, so people don't size it again each time.
+    /// A window opened while another is open steps down and right a little, so it isn't hidden exactly behind it; one
+    /// left on a screen that's gone is moved back on screen when it opens (WindowFit).
+    /// </summary>
+    private void RestorePlacement()
+    {
+        if (Platform.AppSettings.Load().Window is not { } placement)
+        {
+            return;
+        }
+
+        Width = Math.Max(MinWidth, placement.Width);
+        Height = Math.Max(MinHeight, placement.Height);
+        int cascade = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.Windows.OfType<MainWindow>().Count(window => window != this && window.IsVisible) * 28
+            : 0;
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Position = new PixelPoint(placement.X + cascade, placement.Y + cascade);
+        if (placement.IsMaximized)
+        {
+            WindowState = WindowState.Maximized;
+        }
+    }
+
+    /// <summary>Remembers this window's size and place for the next one. A minimised window keeps the last good ones.</summary>
+    private void RememberPlacement()
+    {
+        if (WindowState == WindowState.Minimized || Width <= 0 || Height <= 0)
+        {
+            return;
+        }
+
+        bool isMaximized = WindowState is WindowState.Maximized or WindowState.FullScreen;
+        WindowPlacement? earlier = Platform.AppSettings.Load().Window;
+
+        // A maximised window's own size is the screen's; keep the size it had before, to go back to.
+        var placement = isMaximized && earlier is not null
+            ? earlier with { IsMaximized = true }
+            : new WindowPlacement(Width, Height, Position.X, Position.Y, isMaximized);
+        Platform.AppSettings.Update(settings => settings with { Window = placement });
+    }
+
+    /// <summary>View → Reset layout: the window back at its standard size, in the middle of its screen.</summary>
+    public void ResetWindowSize()
+    {
+        WindowState = WindowState.Normal;
+        Width = DefaultWidth;
+        Height = DefaultHeight;
+        if (Screens.ScreenFromWindow(this) is { } screen)
+        {
+            PixelRect area = screen.WorkingArea;
+            var size = PixelSize.FromSize(new Size(Width, Height), screen.Scaling);
+            Position = new PixelPoint(area.X + Math.Max(0, (area.Width - size.Width) / 2), area.Y + Math.Max(0, (area.Height - size.Height) / 2));
+        }
+
+        WindowFit.KeepOnScreen(this);
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)

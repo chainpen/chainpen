@@ -12,6 +12,9 @@ public enum AppearanceChoice
     Dark,
 }
 
+/// <summary>Where the window was and how big, when it was last closed (screen pixels for the position).</summary>
+public sealed record WindowPlacement(double Width, double Height, int X, int Y, bool IsMaximized);
+
 /// <summary>A document in the start screen's Recent list (FR-1.7).</summary>
 /// <param name="IsFinalCopy">It was exported as a final copy, so opening it shows the finished pages.</param>
 public sealed record RecentFile(string Path, DateTimeOffset LastOpened, bool IsFinalCopy = false);
@@ -29,9 +32,16 @@ public sealed record AppSettings(
     bool? SendCrashReports = null,
     ImmutableArray<RecentFile> RecentFiles = default,
     string? InkColour = null,
-    bool UseSingleKeyTools = false)
+    bool UseSingleKeyTools = false,
+    double PagesPanelWidth = AppSettings.DefaultPagesPanelWidth,
+    WindowPlacement? Window = null)
 {
     public const int DefaultRecoveryDays = 7;
+
+    /// <summary>The pages panel's width in the editor, and how far it can be dragged either way.</summary>
+    public const double DefaultPagesPanelWidth = 196;
+    public const double MinPagesPanelWidth = 150;
+    public const double MaxPagesPanelWidth = 420;
     public const int MaxRecentFiles = 10;
 
     /// <summary>The choices Settings offers for how long recovery copies are kept.</summary>
@@ -132,6 +142,7 @@ public sealed record AppSettings(
     {
         RecoveryDays = RecoveryDayChoices.Contains(RecoveryDays) ? RecoveryDays : DefaultRecoveryDays,
         Appearance = Enum.IsDefined(Appearance) ? Appearance : AppearanceChoice.MatchSystem,
+        PagesPanelWidth = double.IsFinite(PagesPanelWidth) ? Math.Clamp(PagesPanelWidth, MinPagesPanelWidth, MaxPagesPanelWidth) : DefaultPagesPanelWidth,
         RecentFiles = [.. Recent.Where(recent => !string.IsNullOrWhiteSpace(recent.Path)).Take(MaxRecentFiles)],
     };
 

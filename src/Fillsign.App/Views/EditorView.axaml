@@ -526,7 +526,12 @@
             <!-- Pages panel (FS-206). -->
             <Border x:Name="PagesPanel" Width="{StaticResource PagesPanelWidth}" IsVisible="{Binding ShowsPagesPanel}"
                     Background="{DynamicResource SurfaceSubtle}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,1,0"
-                    DragDrop.AllowDrop="True">
+                    DragDrop.AllowDrop="True" ZIndex="1">
+                <Panel>
+                <!-- Its right edge resizes it: drag, or focus it and use the arrow keys; a double-click resets it. -->
+                <Border x:Name="PagesPanelResizer" HorizontalAlignment="Right" Width="8" Margin="0,0,-5,0" Background="Transparent"
+                        Cursor="SizeWestEast" Focusable="True" ZIndex="1"
+                        AutomationProperties.Name="Pages panel width" ToolTip.Tip="Drag to resize · double-click to reset" />
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="16,12,12,8">
                         <Button DockPanel.Dock="Right" Classes="link" MinHeight="28" Height="28" FontSize="12" Click="OnAddPages"
@@ -555,7 +560,8 @@
                                     <StackPanel Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,14"
                                                 AutomationProperties.Name="{Binding AccessibleName}">
                                         <Panel>
-                                            <Border Classes="thumb" Classes.current="{Binding IsCurrent}" Classes.selected="{Binding IsSelected}" Width="116" Height="150">
+                                            <Border Classes="thumb" Classes.current="{Binding IsCurrent}" Classes.selected="{Binding IsSelected}"
+                                                    Width="{DynamicResource PagesThumbWidth}" Height="{DynamicResource PagesThumbHeight}">
                                                 <Panel>
                                                     <c:PageThumbnail Requests="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).Thumbnails, FallbackValue={x:Null}}" />
                                                     <c:StrokeIcon Data="{StaticResource IconWarning}" Size="22" Foreground="{DynamicResource DamagedText}"
@@ -585,6 +591,7 @@
                         </Canvas>
                     </Grid>
                 </DockPanel>
+                </Panel>
             </Border>
 
             <ScrollViewer x:Name="Scroller" Grid.Column="1" Background="{DynamicResource Canvas}" IsVisible="{Binding IsEditingContent}"

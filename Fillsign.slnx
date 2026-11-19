@@ -3,11 +3,13 @@
     <Project Path="src/Fillsign.Core/Fillsign.Core.csproj" />
     <Project Path="src/Fillsign.Pdf/Fillsign.Pdf.csproj" />
     <Project Path="src/Fillsign.App/Fillsign.App.csproj" />
+    <Project Path="src/Fillsign.Cli/Fillsign.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Fillsign.Core.Tests/Fillsign.Core.Tests.csproj" />
     <Project Path="tests/Fillsign.Pdf.Tests/Fillsign.Pdf.Tests.csproj" />
     <Project Path="tests/Fillsign.App.Tests/Fillsign.App.Tests.csproj" />
+    <Project Path="tests/Fillsign.Cli.Tests/Fillsign.Cli.Tests.csproj" />
   </Folder>
   <Folder Name="/spikes/">
     <Project Path="spikes/Fillsign.ScrollSpike/Fillsign.ScrollSpike.csproj" />
