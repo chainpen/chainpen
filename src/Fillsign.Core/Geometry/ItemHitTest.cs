@@ -63,7 +63,7 @@ public static class ItemHitTest
             case InkItem ink:
                 return DistanceToInk(local, ink) <= tolerance + (ink.StrokeWidth / 2);
 
-            case TextItem or MarkItem or SignatureItem:
+            case TextItem or MarkItem or SignatureItem or PictureItem:
                 return Inflate(ItemGeometry.Bounds(item, measurer), tolerance).Contains(point);
 
             default:

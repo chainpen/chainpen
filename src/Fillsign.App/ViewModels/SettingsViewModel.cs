@@ -26,6 +26,24 @@ public sealed partial class SettingsViewModel : ObservableObject
         _appearance = settings.Appearance;
         _recoveryDays = settings.RecoveryDays;
         _sendCrashReports = settings.SendCrashReports == true;
+        _singleKeyToolShortcuts = settings.SingleKeyToolShortcuts;
+    }
+
+    // ----- Keyboard (FS-951) -----
+
+    private bool _singleKeyToolShortcuts;
+
+    /// <summary>Single letters pick tools (V, T, C…). On unless turned off.</summary>
+    public bool SingleKeyToolShortcuts
+    {
+        get => _singleKeyToolShortcuts;
+        set
+        {
+            if (SetProperty(ref _singleKeyToolShortcuts, value))
+            {
+                AppSettings.Update(settings => settings with { SingleKeyToolShortcuts = value });
+            }
+        }
     }
 
     // ----- Appearance -----
@@ -115,7 +133,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         string what = count == 1 ? "the recovery copy" : $"all {count} recovery copies";
         if (await _confirm(
                 "Delete all recovery copies?",
-                $"Unsaved changes in {what} will be removed from this computer and can’t be brought back. Documents you’ve saved aren’t affected.",
+                $"Unsaved changes in {what} will be removed from this computer and can’t be brought back. Documents you’ve saved aren’t affected, and documents open now keep a fresh copy while they’re open.",
                 "Delete recovery copies").ConfigureAwait(true))
         {
             RecoveryStore.DeleteAll();
@@ -127,7 +145,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _sendCrashReports;
 
-    /// <summary>Off unless chosen (NFR-2, FS-016). Reporting itself arrives with the beta (FS-902).</summary>
+    /// <summary>Off unless chosen (NFR-2, FS-016). Reports are kept locally and sent only by the person (FS-902).</summary>
     public bool SendCrashReports
     {
         get => _sendCrashReports;

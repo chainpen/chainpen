@@ -47,8 +47,14 @@ public interface IEditorHost
     /// <summary>D8: restoring Fillsign edits removes another app's changes, so ask first.</summary>
     Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt);
 
+    /// <summary>FS-214: files being added forbid changes; true to add their pages anyway.</summary>
+    Task<bool> ConfirmAddRestrictedAsync(IReadOnlyList<string> fileNames);
+
     /// <summary>Shows a file in Finder, Explorer or the file manager (FR-8.5).</summary>
     void ShowInFolder(string path);
+
+    /// <summary>Prints a PDF through the system (FS-808).</summary>
+    Platform.PrintOutcome PrintFile(string path);
 
     /// <summary>"Open final copy instead" (🎨 5): reopens the working copy as other readers show it, without restoring.</summary>
     Task OpenAsFinalCopyAsync(string path);

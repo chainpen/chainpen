@@ -13,6 +13,9 @@ public sealed class SessionJsonTests
         DocumentState document = TestData.FourPagesWithItems();
         document = document.WithPages(document.Pages.SetItem(1, document.Pages[1] with { Rotation = Rotation.FromDegrees(270) }));
         document = ItemEdits.Add(document, new ShapeItem(ItemId.New(), document.Pages[2].Id, 1, 2, ShapeKind.Highlight, 80, 14, InkColor.Blue, 2, true, false));
+        document = ItemEdits.Add(document, new TextItem(ItemId.New(), document.Pages[2].Id, 5, 6, "Bold\nright", 14, InkColor.Purple, IsBold: true, Align: TextAlign.Right));
+        document = ItemEdits.Add(document, new PictureItem(ItemId.New(), document.Pages[3].Id, 50, 60, TestData.Png(), 150, 50));
+        document = document.WithField("A.NOM", "Lee").WithField("R.CM", "Non").WithField("Notes", "two\nlines");
         return new SessionRecord(ByteStamp.Of("original"u8), ByteStamp.Of("original plus edits"u8), 4, document);
     }
 
@@ -28,6 +31,19 @@ public sealed class SessionJsonTests
         Assert.Equal(
             record.Document.Items.OfType<SignatureItem>().Single().Image.Png,
             back.Document.Items.OfType<SignatureItem>().Single().Image.Png);
+        Assert.Equal(
+            record.Document.Items.OfType<PictureItem>().Single().Image.Png,
+            back.Document.Items.OfType<PictureItem>().Single().Image.Png);
+    }
+
+    [Fact]
+    public void Plain_text_leaves_out_bold_and_alignment_so_older_records_read_the_same()
+    {
+        string json = System.Text.Encoding.UTF8.GetString(SessionJson.Write(Sample()));
+        Assert.Equal(1, CountOf(json, "\"bold\""));
+        Assert.Equal(1, CountOf(json, "\"align\":\"right\""));
+
+        static int CountOf(string text, string part) => (text.Length - text.Replace(part, "", StringComparison.Ordinal).Length) / part.Length;
     }
 
     [Fact]
@@ -37,7 +53,9 @@ public sealed class SessionJsonTests
         SignatureItem signature = record.Document.Items.OfType<SignatureItem>().Single();
         DocumentState twice = ItemEdits.Add(record.Document, signature with { Id = ItemId.New() });
         JsonNode json = JsonNode.Parse(SessionJson.Write(record with { Document = twice }))!;
-        Assert.Single(json["images"]!.AsArray());
+
+        // The signature's image once, plus the sample's pasted picture.
+        Assert.Equal(2, json["images"]!.AsArray().Count);
     }
 
     public static TheoryData<string, string> Tampering() => new()

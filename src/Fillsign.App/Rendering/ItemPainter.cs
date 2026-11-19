@@ -77,15 +77,23 @@ public sealed class ItemPainter
                 break;
 
             case SignatureItem signature:
-                if (SignatureBitmap(signature.Image) is { } bitmap)
-                {
-                    using (context.PushRenderOptions(new RenderOptions { BitmapInterpolationMode = BitmapInterpolationMode.HighQuality }))
-                    {
-                        context.DrawImage(bitmap, new Rect(signature.X, signature.Y, signature.Width, signature.Height));
-                    }
-                }
-
+                DrawImage(context, signature.Image, new Rect(signature.X, signature.Y, signature.Width, signature.Height));
                 break;
+
+            case PictureItem picture:
+                DrawImage(context, picture.Image, new Rect(picture.X, picture.Y, picture.Width, picture.Height));
+                break;
+        }
+    }
+
+    private void DrawImage(DrawingContext context, SignatureImage image, Rect box)
+    {
+        if (SignatureBitmap(image) is { } bitmap)
+        {
+            using (context.PushRenderOptions(new RenderOptions { BitmapInterpolationMode = BitmapInterpolationMode.HighQuality }))
+            {
+                context.DrawImage(bitmap, box);
+            }
         }
     }
 
@@ -114,12 +122,27 @@ public sealed class ItemPainter
     {
         var brush = new SolidColorBrush(ToColor(text.Color));
         string[] lines = text.Lines;
+        double[] offsets = ItemGeometry.LineOffsets(text, Pdf.Fonts.NotoTextMeasurer.Instance);
         double lineHeight = text.FontSize * TextItem.LineHeight;
+
+        // Bold is the regular glyphs with an outline, exactly as the final copy draws them (FS-952).
+        Pen? bold = text.IsBold ? new Pen(brush, text.FontSize * TextItem.BoldStroke, lineJoin: PenLineJoin.Round) : null;
         for (int i = 0; i < lines.Length; i++)
         {
-            if (lines[i].Length > 0)
+            if (lines[i].Length == 0)
             {
-                context.DrawText(LineText(lines[i], text.FontSize, brush), new Point(text.X, text.Y + (i * lineHeight)));
+                continue;
+            }
+
+            var origin = new Point(text.X + offsets[i], text.Y + (i * lineHeight));
+            FormattedText line = LineText(lines[i], text.FontSize, brush);
+            if (bold is null)
+            {
+                context.DrawText(line, origin);
+            }
+            else if (line.BuildGeometry(origin) is { } outline)
+            {
+                context.DrawGeometry(brush, bold, outline);
             }
         }
     }

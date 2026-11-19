@@ -134,4 +134,43 @@ internal static partial class PdfiumNative
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool FPDFPath_GetDrawMode(nint path, out int fillMode, [MarshalAs(UnmanagedType.Bool)] out bool stroke);
+
+    // FPDFPage_Flatten: draw annotations as they print.
+    public const int FLAT_PRINT = 1;
+    public const int FLATTEN_FAIL = 0;
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int FPDFPage_Flatten(nint page, int flag);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial nint FPDFPage_GetAnnot(nint page, int index);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void FPDFPage_CloseAnnot(nint annotation);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFAnnot_GetRect(nint annotation, out FsRectF rect);
+
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFPage_RemoveAnnot(nint page, int index);
+
+    /// <summary>The permission flags (/P) the document was opened with; all set when it isn't encrypted or the owner password was given.</summary>
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial CULong FPDF_GetDocPermissions(nint document);
+
+    /// <summary>-1 when the document isn't encrypted.</summary>
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int FPDF_GetSecurityHandlerRevision(nint document);
+
+    // /P bit 4: modify the contents.
+    public const uint PermissionModify = 0x8;
 }

@@ -30,7 +30,11 @@ public delegate Task<string?> PasswordPrompt(string fileName, bool wasWrong);
 /// <param name="Skipped">Files left out, with the reason ("2 of 3 files were opened…"). Files skipped at the password
 /// prompt aren't listed: that was the person's choice.</param>
 /// <param name="Restore">The working copy's editable record when one was found; null for an ordinary PDF.</param>
-public sealed record OpenResult(SourceDocument Source, ImmutableArray<OpenProblem> Skipped, WorkingCopyRestore? Restore = null);
+public sealed record OpenResult(SourceDocument Source, ImmutableArray<OpenProblem> Skipped, WorkingCopyRestore? Restore = null)
+{
+    /// <summary>Files whose owner protected them against changes (FS-214): the person is asked how to go on.</summary>
+    public ImmutableArray<string> RestrictedFiles { get; init; } = [];
+}
 
 /// <summary>Opens PDFs and images as one document (FR-1.1–1.3, 1.6).</summary>
 public static class DocumentLoader
@@ -51,6 +55,7 @@ public static class DocumentLoader
             return problems.Count > 0 ? throw new DocumentOpenException(problems) : throw new OperationCanceledException();
         }
 
+        ImmutableArray<string> restricted = [.. parts.Where(part => part.ForbidsChanges).Select(part => part.File.Name)];
         if (parts is [{ IsImage: false } only])
         {
             // Editable records are restored only when a single document is opened (FR-9.7).
@@ -59,21 +64,21 @@ public static class DocumentLoader
             {
                 only.Pdf.Dispose();
                 PdfiumDocument clean = await Task.Run(() => PdfiumDocument.Open(restore.CleanSource), cancellationToken).ConfigureAwait(false);
-                return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, clean, only.NeedsPassword), [.. problems], restore);
+                return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, clean, only.NeedsPassword), [.. problems], restore) { RestrictedFiles = restricted };
             }
 
-            return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, only.Pdf, only.NeedsPassword), [.. problems], restore);
+            return new OpenResult(new SourceDocument(only.File.Name, only.File.Path, only.Pdf, only.NeedsPassword), [.. problems], restore) { RestrictedFiles = restricted };
         }
 
         PdfiumDocument combined = await Task.Run(() => Combine(parts), cancellationToken).ConfigureAwait(false);
-        return new OpenResult(new SourceDocument(parts[0].File.Name, null, combined, needsPassword: false), [.. problems]);
+        return new OpenResult(new SourceDocument(parts[0].File.Name, null, combined, needsPassword: false), [.. problems]) { RestrictedFiles = restricted };
     }
 
     /// <summary>
     /// Opens files to add to an already-open document (FR-6.8): returns one in-memory PDF of all their pages, which
     /// the caller imports with <see cref="SourceDocument.AppendFrom"/> and then disposes.
     /// </summary>
-    public static async Task<(PdfiumDocument Pages, ImmutableArray<OpenProblem> Skipped)> OpenForAddingAsync(
+    public static async Task<(PdfiumDocument Pages, ImmutableArray<OpenProblem> Skipped, ImmutableArray<string> Restricted)> OpenForAddingAsync(
         IReadOnlyList<InputFile> files,
         PasswordPrompt askPassword,
         CancellationToken cancellationToken)
@@ -84,8 +89,9 @@ public static class DocumentLoader
             return problems.Count > 0 ? throw new DocumentOpenException(problems) : throw new OperationCanceledException();
         }
 
+        ImmutableArray<string> restricted = [.. parts.Where(part => part.ForbidsChanges).Select(part => part.File.Name)];
         PdfiumDocument combined = await Task.Run(() => Combine(parts), cancellationToken).ConfigureAwait(false);
-        return (combined, [.. problems]);
+        return (combined, [.. problems], restricted);
     }
 
     /// <summary>
@@ -206,7 +212,7 @@ public static class DocumentLoader
                     return null;
                 }
 
-                return new Part(file, pdf, IsImage: false, NeedsPassword: password is not null);
+                return new Part(file, pdf, IsImage: false, NeedsPassword: password is not null, ForbidsChanges: pdf.ForbidsChanges);
             }
             catch (PdfOpenException ex) when (ex.Error == PdfOpenError.Password)
             {
@@ -269,5 +275,5 @@ public static class DocumentLoader
         }
     }
 
-    private sealed record Part(InputFile File, PdfiumDocument Pdf, bool IsImage, bool NeedsPassword);
+    private sealed record Part(InputFile File, PdfiumDocument Pdf, bool IsImage, bool NeedsPassword, bool ForbidsChanges = false);
 }

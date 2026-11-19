@@ -325,6 +325,12 @@ public static class FormSpots
         Run? current = null;
         foreach (PageCharacter character in characters)
         {
+            // A damaged font map can give codes that aren't characters at all; they can't be part of a label.
+            if (!Rune.IsValid(character.Code))
+            {
+                continue;
+            }
+
             bool isSpace = character.Code <= char.MaxValue && char.IsWhiteSpace((char)character.Code);
             if (isSpace || character.Box.Height <= 0)
             {

@@ -83,10 +83,19 @@ public static class ItemEdits
             case ShapeItem shape:
                 return shape with { Width = width, Height = shape.IsLine && shape.Height == 0 ? 0 : height };
 
+            case PictureItem picture:
+            {
+                double scale = Math.Max(width / picture.Width, height / picture.Height);
+                return picture with { Width = picture.Width * scale, Height = picture.Height * scale };
+            }
+
             case SignatureItem signature:
             {
+                // The same limits as the size buttons, so "bigger" never shrinks a signature dragged past them.
                 double scale = Math.Max(width / signature.Width, height / signature.Height);
-                return signature with { Width = signature.Width * scale, Height = signature.Height * scale };
+                double clampedWidth = Math.Clamp(signature.Width * scale, SignatureMinWidth, SignatureMaxWidth);
+                scale = clampedWidth / signature.Width;
+                return signature with { Width = clampedWidth, Height = signature.Height * scale };
             }
 
             case InkItem ink:
@@ -166,6 +175,16 @@ public static class ItemEdits
         _ => item,
     };
 
+    /// <summary>Sets bold and/or alignment on the text items among <paramref name="ids"/> (FS-952); null leaves it as it is.</summary>
+    public static DocumentState SetTextStyle(DocumentState document, IReadOnlySet<ItemId> ids, bool? isBold, TextAlign? align)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(ids);
+        return document.WithItems(document.Items.ConvertAll(item => ids.Contains(item.Id) && item is TextItem text
+            ? text with { IsBold = isBold ?? text.IsBold, Align = align ?? text.Align }
+            : item));
+    }
+
     /// <summary>Makes every selected item one step bigger (+1) or smaller (−1): font size, mark size or line width.</summary>
     public static DocumentState BumpSize(DocumentState document, IReadOnlySet<ItemId> ids, int direction)
     {
@@ -181,10 +200,20 @@ public static class ItemEdits
         ShapeItem shape when !shape.IsFilled => shape with { StrokeWidth = BumpStroke(shape.StrokeWidth, direction) },
         InkItem ink => ink with { StrokeWidth = BumpStroke(ink.StrokeWidth, direction) },
         SignatureItem signature => ScaleSignature(signature, direction),
+        PictureItem picture => ScalePicture(picture, direction),
         _ => item,
     };
 
     /// <summary>Signatures grow or shrink by a fifth per step and keep their proportions.</summary>
+    /// <summary>Pictures grow or shrink by a fifth per step, keeping their proportions, from 20 pt to a page width.</summary>
+    private static PictureItem ScalePicture(PictureItem picture, int direction)
+    {
+        const double Step = 1.2, MinWidth = 20, MaxWidth = 1200;
+        double width = Math.Clamp(picture.Width * Math.Pow(Step, direction), MinWidth, MaxWidth);
+        double scale = width / picture.Width;
+        return picture with { Width = width, Height = picture.Height * scale };
+    }
+
     private static SignatureItem ScaleSignature(SignatureItem signature, int direction)
     {
         const double Step = 1.2;
@@ -200,6 +229,70 @@ public static class ItemEdits
         bool isThin = direction < 0 ? width <= 2 : width < 2;
         double step = isThin ? 0.5 : 1;
         return Math.Clamp(width + (direction * step), InkItem.MinStrokeWidth, InkItem.MaxStrokeWidth);
+    }
+
+    /// <summary>
+    /// FS-957: copies the items on one page to every other page, so initials (or a date) can go on each page in one
+    /// step. Each copy keeps its distance from the page edges it's nearest to, so initials in the bottom-right corner
+    /// stay there on pages of another size, and stays on the page. The copies are listed in <paramref name="added"/>.
+    /// </summary>
+    public static DocumentState CopyToEveryPage(
+        DocumentState document,
+        IReadOnlySet<ItemId> ids,
+        Func<PageId, PageSize> pageSize,
+        ITextMeasurer measurer,
+        out ImmutableArray<ItemId> added)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(ids);
+        ArgumentNullException.ThrowIfNull(pageSize);
+        added = [];
+        var selected = document.Items.Where(item => ids.Contains(item.Id)).ToList();
+        if (selected.Count == 0)
+        {
+            return document;
+        }
+
+        // A selection spans one page in practice; if not, the first page's items are the ones copied.
+        PageId source = selected[0].Page;
+        var items = selected.Where(item => item.Page == source).ToList();
+        PageRect group = Union(items.Select(item => ItemGeometry.Bounds(item, measurer)));
+        PageSize from = pageSize(source);
+        bool isNearRight = group.Centre.X > from.Width / 2;
+        bool isNearBottom = group.Centre.Y > from.Height / 2;
+
+        var copies = ImmutableArray.CreateBuilder<Item>();
+        foreach (PageEntry page in document.Pages)
+        {
+            if (page.Id == source)
+            {
+                continue;
+            }
+
+            PageSize to = pageSize(page.Id);
+            double x = isNearRight ? to.Width - (from.Width - group.X) : group.X;
+            double y = isNearBottom ? to.Height - (from.Height - group.Y) : group.Y;
+            PagePoint target = ItemGeometry.ClampToPage(group with { X = x, Y = y }, to);
+            double dx = target.X - group.X, dy = target.Y - group.Y;
+            copies.AddRange(CopiesOn(items, page.Id).Select(copy => ItemGeometry.MoveBy(copy, dx, dy)));
+        }
+
+        added = [.. copies.Select(copy => copy.Id)];
+        return document.WithItems(document.Items.AddRange(copies));
+    }
+
+    private static PageRect Union(IEnumerable<PageRect> boxes)
+    {
+        double left = double.MaxValue, top = double.MaxValue, right = double.MinValue, bottom = double.MinValue;
+        foreach (PageRect box in boxes)
+        {
+            left = Math.Min(left, box.X);
+            top = Math.Min(top, box.Y);
+            right = Math.Max(right, box.Right);
+            bottom = Math.Max(bottom, box.Bottom);
+        }
+
+        return new PageRect(left, top, right - left, bottom - top);
     }
 
     /// <summary>Copies items with fresh ids onto a page.</summary>

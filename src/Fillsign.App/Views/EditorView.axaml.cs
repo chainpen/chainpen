@@ -13,9 +13,27 @@ public partial class EditorView : UserControl
     private EditorViewModel? _editor;
     private int? _insertGap;
 
+    /// <summary>How long the undo toast stays at least (FS-707); it waits longer while it has the pointer or focus.</summary>
+    public static readonly TimeSpan ToastTime = TimeSpan.FromSeconds(10);
+
+    private readonly Avalonia.Threading.DispatcherTimer _toastTimer = new() { Interval = ToastTime };
+
     public EditorView()
     {
         InitializeComponent();
+        TitleBar.ActsAsTitleBar(TitleStrip);
+        ShareButton.IsVisible = Platform.ShareSheet.IsAvailable;
+        _toastTimer.Tick += (_, _) =>
+        {
+            // Someone reaching for Undo, or tabbed onto it, keeps it open; it goes once they've moved on.
+            if (Toast.IsPointerOver || Toast.IsKeyboardFocusWithin)
+            {
+                return;
+            }
+
+            _toastTimer.Stop();
+            _editor?.DismissNoticeCommand.Execute(null);
+        };
         AttachPageList(PageList);
         AttachPageList(OrganiseList);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
@@ -126,6 +144,15 @@ public partial class EditorView : UserControl
             {
                 PageList.ScrollIntoView(editor.CurrentPageIndex);
             }
+
+            if (args.PropertyName == nameof(EditorViewModel.Notice))
+            {
+                _toastTimer.Stop();
+                if (editor.HasToast)
+                {
+                    _toastTimer.Start();
+                }
+            }
         };
         editor.PageSelectionChanged += SyncListSelection;
         editor.PagesChanged += SyncListSelection;
@@ -138,6 +165,15 @@ public partial class EditorView : UserControl
     }
 
     private void OnOpen(object? sender, RoutedEventArgs e) => OpenRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Share… on the export notice (FS-613): the system's share sheet, next to the button.</summary>
+    private void OnShare(object? sender, RoutedEventArgs e)
+    {
+        if (_editor?.Exported is { } exported && sender is Control button)
+        {
+            Platform.ShareSheet.Show(exported.Path, button);
+        }
+    }
 
     private void OnCloseSaveMenu(object? sender, RoutedEventArgs e) => SaveMenuButton.Flyout?.Hide();
 

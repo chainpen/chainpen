@@ -44,10 +44,7 @@ public sealed partial class EditorViewModel
     /// <summary>The blue selection bar with page actions (🎨 4).</summary>
     public bool ShowsPageActions => IsOrganising && HasPageSelection;
 
-    /// <summary>"Page 5 deleted · Undo" in Organise pages.</summary>
-    public bool ShowsPageNotice => IsOrganising && !HasPageSelection && Notice is not null;
-
-    public bool ShowsOrganiseHint => IsOrganising && !HasPageSelection && Notice is null;
+    public bool ShowsOrganiseHint => IsOrganising && !HasPageSelection;
 
     public int SelectedPageCount => SelectedPages.Count;
 
@@ -63,7 +60,7 @@ public sealed partial class EditorViewModel
 
     public string OrganiseHint =>
         $"{Pages.Count} {(Pages.Count == 1 ? "page" : "pages")} · Drag pages to reorder, or drop files between pages to insert them. "
-        + "Shift-click selects a range, Mod-click adds a page. Double-click opens a page.";
+        + Controls.KeysExtension.ForThisComputer("Shift-click selects a range, Mod-click adds a page. Double-click opens a page.", OperatingSystem.IsMacOS());
 
     /// <summary>Raised when the page selection changes, so the page lists show it.</summary>
     public event Action? PageSelectionChanged;

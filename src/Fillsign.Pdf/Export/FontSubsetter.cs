@@ -16,7 +16,8 @@ public static partial class FontSubsetter
     // hb_subset_flags_t
     private const uint NoHinting = 0x1;
 
-    public static byte[] Subset(ReadOnlySpan<byte> font, IEnumerable<int> codepoints)
+    /// <param name="faceIndex">Which font in a collection (.ttc); 0 for a single font file.</param>
+    public static byte[] Subset(ReadOnlySpan<byte> font, IEnumerable<int> codepoints, int faceIndex = 0)
     {
         unsafe
         {
@@ -24,7 +25,7 @@ public static partial class FontSubsetter
             {
                 // HB_MEMORY_MODE_DUPLICATE (0): HarfBuzz copies the bytes, so the pin can end with this scope.
                 nint blob = hb_blob_create(data, (uint)font.Length, 0, 0, 0);
-                nint face = hb_face_create(blob, 0);
+                nint face = hb_face_create(blob, (uint)faceIndex);
                 nint input = hb_subset_input_create_or_fail();
                 nint subset = 0, subsetBlob = 0;
                 try

@@ -92,6 +92,10 @@ public sealed class GoldenExportTests
 
     private static void Compare(string name, byte[] pdf)
     {
+        // The exported file itself, to open in other PDF readers when reviewing a change.
+        Directory.CreateDirectory(s_actual);
+        File.WriteAllBytes(Path.Combine(s_actual, name + ".pdf"), pdf);
+
         using PdfiumDocument document = PdfiumDocument.Open(pdf);
         bool isUpdating = Environment.GetEnvironmentVariable("FILLSIGN_UPDATE_GOLDEN") == "1";
         var failures = new List<string>();

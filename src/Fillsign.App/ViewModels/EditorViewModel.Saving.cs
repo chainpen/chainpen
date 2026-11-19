@@ -145,6 +145,83 @@ public sealed partial class EditorViewModel
         OnPropertyChanged(nameof(DocumentStatus));
     }
 
+    /// <summary>
+    /// Print… (Mod+P, FS-808): prints the document as its final copy would look, through the system. The copy goes in
+    /// a private folder and is cleared after a day.
+    /// </summary>
+    [RelayCommand]
+    private async Task PrintAsync()
+    {
+        FinishTyping();
+        CancelGesture();
+        if (IsLoading)
+        {
+            await _host.ShowMessageAsync("Print", $"Available when all {Source.PageCount} pages have loaded. {LoadingText}.").ConfigureAwait(true);
+            return;
+        }
+
+        WrittenDocument final;
+        IsSaving = true;
+        try
+        {
+            DocumentState state = State;
+            final = await Task.Run(() => DocumentWriter.FinalCopy(CleanSource(), SourcePages(), state)).ConfigureAwait(true);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await ShowSaveProblemAsync("The document couldn’t be printed", ex).ConfigureAwait(true);
+            return;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+
+        string path;
+        try
+        {
+            Printing.ClearOldCopies(DateTime.UtcNow);
+            Directory.CreateDirectory(Printing.Folder);
+            path = Path.Combine(Printing.Folder, $"{Path.GetFileNameWithoutExtension(Title)} ({DateTime.Now:HH.mm.ss}).pdf");
+            await File.WriteAllBytesAsync(path, final.Pdf).ConfigureAwait(true);
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Trace.TraceError($"The print copy couldn't be written: {ex}");
+            await _host.ShowMessageAsync("The document couldn’t be printed", "Fillsign couldn’t make a copy to print. Export a final copy and print it from your PDF viewer instead.").ConfigureAwait(true);
+            return;
+        }
+
+        switch (_host.PrintFile(path))
+        {
+            case PrintOutcome.OpenedInViewer:
+                await _host.ShowMessageAsync("Print from your PDF viewer", "The document opened in your PDF viewer, looking as it will print. Print it from there.").ConfigureAwait(true);
+                break;
+            case PrintOutcome.Failed:
+                await _host.ShowMessageAsync("Printing couldn’t start", "Export a final copy and print it from your PDF viewer instead.").ConfigureAwait(true);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// View only (FS-214): saving or exporting would make a copy without the owner's restriction, so it waits until
+    /// the person chooses Edit anyway. Returns true when it refused.
+    /// </summary>
+    private async Task<bool> RefuseWhileViewOnlyAsync()
+    {
+        if (!IsViewOnly)
+        {
+            return false;
+        }
+
+        await _host.ShowMessageAsync("This document is open to view only", "Its owner set it so it shouldn’t be changed. Choose Edit anyway in the bar above the page to fill it in, save or export it.").ConfigureAwait(true);
+        return true;
+    }
+
     /// <summary>Save (Mod+S): writes the working copy where it was saved before, or asks where the first time (FR-8.1).</summary>
     [RelayCommand]
     public async Task<bool> SaveAsync() => WorkingCopyPath is { } path ? await SaveWorkingCopyToAsync(path).ConfigureAwait(true) : await SaveAsAsync().ConfigureAwait(true);
@@ -153,6 +230,11 @@ public sealed partial class EditorViewModel
     [RelayCommand]
     public async Task<bool> SaveAsAsync()
     {
+        if (await RefuseWhileViewOnlyAsync().ConfigureAwait(true))
+        {
+            return false;
+        }
+
         FinishTyping();
         string? path = await _host.AskWorkingCopyPathAsync(WorkingCopyName(), SuggestedFolder()).ConfigureAwait(true);
         return path is not null && await SaveWorkingCopyToAsync(path).ConfigureAwait(true);
@@ -167,6 +249,11 @@ public sealed partial class EditorViewModel
     {
         FinishTyping();
         CancelGesture();
+        if (await RefuseWhileViewOnlyAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
         if (IsLoading)
         {
             // INTERACTION-PATTERNS §6: say why rather than disabling the button.
@@ -271,6 +358,11 @@ public sealed partial class EditorViewModel
 
     private async Task<bool> SaveWorkingCopyToAsync(string path)
     {
+        if (await RefuseWhileViewOnlyAsync().ConfigureAwait(true))
+        {
+            return false;
+        }
+
         FinishTyping();
         DocumentState saving = State;
         WrittenDocument written;
@@ -349,7 +441,7 @@ public sealed partial class EditorViewModel
     private Task ShowSaveProblemAsync(string title, InvalidOperationException ex)
     {
         System.Diagnostics.Trace.TraceError($"{title}: {ex}");
-        return _host.ShowMessageAsync(title, "PDFium couldn’t write this document. Your edits are still open here, so nothing is lost. Try again, or export the pages as they are.");
+        return _host.ShowMessageAsync(title, "Fillsign couldn’t write this document. Your edits are still open here, so nothing is lost. Try again, or export the pages as they are.");
     }
 
     private const string FormsMovedMessage =

@@ -72,6 +72,249 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task Single_letters_pick_tools_unless_turned_off_in_settings()
+    {
+        using var e = await EditorSession.OpenAsync();
+        e.Window.KeyPress(Key.T, RawInputModifiers.None, PhysicalKey.T, "t");
+        Assert.Equal(EditorTool.Text, e.Editor.Tool);
+        e.Window.KeyPress(Key.C, RawInputModifiers.None, PhysicalKey.C, "c");
+        Assert.Equal(EditorTool.Tick, e.Editor.Tool);
+        e.Window.KeyPress(Key.R, RawInputModifiers.None, PhysicalKey.R, "r");
+        Assert.Equal(EditorTool.Shape, e.Editor.Tool);
+
+        // With a modifier the letter is a command, not a tool: Mod+D duplicates rather than picking Date.
+        e.Window.KeyPress(Key.D, s_command, PhysicalKey.D, "d");
+        Assert.Equal(EditorTool.Shape, e.Editor.Tool);
+        e.Window.KeyPress(Key.V, RawInputModifiers.None, PhysicalKey.V, "v");
+        Assert.Equal(EditorTool.Select, e.Editor.Tool);
+
+        // While typing on the page, letters are text.
+        e.Editor.SelectToolCommand.Execute(EditorTool.Text);
+        e.Click(120, 100);
+        await Pump(() => e.TypingBox?.IsFocused == true);
+        e.Window.KeyPress(Key.X, RawInputModifiers.None, PhysicalKey.X, "x");
+        Assert.Equal(EditorTool.Text, e.Editor.Tool);
+        e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        await Pump(() => e.Editor.TypingItem is null);
+
+        try
+        {
+            Platform.AppSettings.Update(settings => settings with { SingleKeyToolShortcuts = false });
+            e.Window.KeyPress(Key.X, RawInputModifiers.None, PhysicalKey.X, "x");
+            Assert.Equal(EditorTool.Text, e.Editor.Tool);
+        }
+        finally
+        {
+            Platform.AppSettings.Update(settings => settings with { SingleKeyToolShortcuts = true });
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Bold_alignment_and_the_new_inks_apply_to_typing_and_carry_on_to_new_text()
+    {
+        using var e = await EditorSession.OpenAsync();
+        e.Editor.SelectToolCommand.Execute(EditorTool.Text);
+        Assert.True(e.Editor.OptionsHaveTextStyle);
+        e.Click(120, 100);
+        await Pump(() => e.TypingBox?.IsFocused == true);
+        e.Window.KeyTextInput("Jordan Lee");
+        e.Window.KeyPress(Key.B, s_command, PhysicalKey.B, null);
+        e.Editor.SetAlignCommand.Execute(TextAlign.Centre);
+        e.Editor.SetColourCommand.Execute(InkColor.Green);
+        await Pump(() => e.TypingBox?.FontWeight == FontWeight.Bold);
+        Assert.Equal(TextAlignment.Center, e.TypingBox!.TextAlignment);
+        e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        await Pump(() => e.Editor.TypingItem is null);
+
+        TextItem typed = Assert.Single(e.Editor.State.Items.OfType<TextItem>());
+        Assert.True(typed.IsBold);
+        Assert.Equal(TextAlign.Centre, typed.Align);
+        Assert.Equal(InkColor.Green, typed.Color);
+        await e.SaveAsync("edit-bold-centred");
+
+        // The next text starts the same way; the buttons change a selected item too, as one undo step.
+        e.Click(120, 300);
+        await Pump(() => e.Editor.TypingItem is not null);
+        TextItem next = (TextItem)e.Editor.State.FindItem(e.Editor.TypingItem!.Value)!;
+        Assert.True(next.IsBold);
+        e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        await Pump(() => e.Editor.TypingItem is null);
+
+        e.Editor.SelectToolCommand.Execute(EditorTool.Select);
+        e.Click(130, 100);
+        Assert.Equal(ContextMode.Selection, e.Editor.ContextMode);
+        e.Editor.ToggleBoldCommand.Execute(null);
+        Assert.False(Assert.Single(e.Editor.State.Items.OfType<TextItem>()).IsBold);
+        e.Editor.UndoCommand.Execute(null);
+        Assert.True(Assert.Single(e.Editor.State.Items.OfType<TextItem>()).IsBold);
+        Platform.AppSettings.Update(settings => settings with { InkColour = null });
+    }
+
+    [AvaloniaFact]
+    public async Task The_pdfs_own_fields_are_filled_by_clicking_and_typing_and_undo_and_save_with_the_document()
+    {
+        using var e = await EditorSession.OpenAsync(file: "corpus/160F-2019.pdf");
+        Pdf.Pdfium.FormField[] fields = [.. e.Editor.Source.FormFields(0)];
+        var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+        PagePoint Centre(Pdf.Pdfium.FormField field) =>
+            transform.ToDisplay((field.Rect.Left + field.Rect.Right) / 2, (field.Rect.Bottom + field.Rect.Top) / 2);
+
+        // Typing into a text field: a box appears over it, Enter keeps the text as one undo step.
+        PagePoint surname = Centre(fields.Single(field => field.Name == "A.NOM"));
+        Assert.True(e.Editor.IsOverField(e.Editor.State.Pages[0].Id, surname));
+        e.Click(surname.X, surname.Y);
+        Assert.NotNull(e.Editor.EditingField);
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+        TextBox box = e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible);
+        e.Window.KeyTextInput("Lee");
+        e.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        await Pump(() => e.Editor.EditingField is null);
+        Assert.Equal("Lee", e.Editor.State.Fields["A.NOM"]);
+        Assert.False(box.IsVisible);
+
+        // A radio button is chosen with a click; nothing is added as an item.
+        Pdf.Pdfium.FormField non = fields.Single(field => field.Name == "R.CM" && field.OnValue == "Non");
+        PagePoint radio = Centre(non);
+
+        // It's below the window's visible part, so the click goes straight to the editor.
+        e.Editor.PointerPressed(0, radio, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+        e.Editor.PointerReleased(radio);
+        Assert.Equal("Non", e.Editor.State.Fields["R.CM"]);
+        Assert.Empty(e.Editor.State.Items);
+        await Pump(() => e.Editor.Renderer.Has(new Rendering.RenderRequest(0, Rotation.None, e.Editor.Zoom)));
+        await e.SaveAsync("edit-form-fields");
+
+        e.Editor.UndoCommand.Execute(null);
+        Assert.False(e.Editor.State.Fields.ContainsKey("R.CM"));
+        e.Editor.RedoCommand.Execute(null);
+
+        // Read-only fields (calculated totals) can't be filled.
+        PagePoint total = Centre(fields.Single(field => field.Name == "T.TOTREM"));
+        Assert.False(e.Editor.IsOverField(e.Editor.State.Pages[0].Id, total));
+        Assert.True(e.Editor.IsOverReadOnlyField(e.Editor.State.Pages[0].Id, total));
+        e.Editor.PointerPressed(0, total, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+        e.Editor.PointerReleased(total);
+        Assert.Contains("can’t be changed", e.Editor.Notice, StringComparison.Ordinal);
+        Assert.False(e.Editor.State.Fields.ContainsKey("T.TOTREM"));
+
+        // The final copy has the values, with the fields still there to change in another reader.
+        string path = Path.Combine(Path.GetTempPath(), $"fillsign-fields-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            File.WriteAllBytes(path, Fillsign.Pdf.Export.DocumentWriter.FinalCopy(
+                e.Editor.Source.Pdf.SaveCopy(removeSecurity: true),
+                [.. Enumerable.Range(0, e.Editor.Source.PageCount).Select(e.Editor.Source.GetPage)],
+                e.Editor.State).Pdf);
+            using Pdf.Pdfium.PdfiumDocument final = Pdf.Pdfium.PdfiumDocument.Open(File.ReadAllBytes(path));
+            Assert.Equal("Lee", final.GetFormFields(0).Single(field => field.Name == "A.NOM").Value);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Tab_in_a_form_field_keeps_it_and_moves_to_the_next_field()
+    {
+        using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+        Pdf.Pdfium.FormField[] fields = [.. e.Editor.Source.FormFields(0)];
+        var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+        Pdf.Pdfium.FormField name = fields.Single(field => field.Name == "Name");
+        PagePoint at = transform.ToDisplay((name.Rect.Left + name.Rect.Right) / 2, (name.Rect.Bottom + name.Rect.Top) / 2);
+        e.Click(at.X, at.Y);
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+        e.Window.KeyTextInput("Jordan");
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        await Pump(() => e.Editor.State.Fields.ContainsKey("Name"));
+        Assert.Equal("Jordan", e.Editor.State.Fields["Name"]);
+        Assert.Equal("Email", e.Editor.EditingField?.Hit.Field.Name);
+        Assert.True(e.Editor.EditingField?.SelectsAll, "Tab selects the next field's text, as in a browser");
+
+        // Tab carries on past the text fields to the check boxes, which Space ticks.
+        foreach (string next in (string[])["DateOfBirth", "Address"])
+        {
+            await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+            e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            await Pump(() => e.Editor.EditingField?.Hit.Field.Name == next);
+        }
+
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        await Pump(() => e.Editor.FocusedField?.Field.Name == "ContactEmail");
+        Assert.Null(e.Editor.EditingField);
+        e.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        Assert.Equal("Yes", e.Editor.State.Fields["ContactEmail"]);
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        Assert.Equal("ContactPhone", e.Editor.FocusedField?.Field.Name);
+
+        // As in a browser, the arrow keys don't move between check boxes (each is its own Tab stop).
+        e.Window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
+        Assert.Equal("ContactPhone", e.Editor.FocusedField?.Field.Name);
+        Assert.False(e.Editor.State.Fields.ContainsKey("ContactPhone"));
+        e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Assert.Null(e.Editor.FocusedField);
+
+        // A list field picks the row clicked; a drop-down offers a menu instead.
+        Pdf.Pdfium.FormField heard = fields.Single(field => field.Name == "Heard");
+        Assert.True(heard.IsList);
+        Assert.False(fields.Single(field => field.Name == "State").IsList);
+        PagePoint top = transform.ToDisplay(heard.Rect.Left + 20, heard.Rect.Top);
+        var second = new PagePoint(top.X, top.Y + 1 + (heard.ListRowHeight * 1.5));
+        e.Editor.PointerPressed(0, second, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+        e.Editor.PointerReleased(second);
+        Assert.Equal("Search", e.Editor.State.Fields["Heard"]);
+
+        // It's a multi-select list: another row is added, and a chosen row clicked again is taken off.
+        var fourth = new PagePoint(top.X, top.Y + 1 + (heard.ListRowHeight * 3.5));
+        foreach (PagePoint row in (PagePoint[])[fourth, second])
+        {
+            e.Editor.PointerPressed(0, row, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+            e.Editor.PointerReleased(row);
+        }
+
+        Assert.Equal("Newspaper", e.Editor.State.Fields["Heard"]);
+
+        // Arrow keys inside the field Tab reached: radio buttons, a drop-down, and a multi-select list's rows.
+        e.FocusPage();
+        void Press(Key key, PhysicalKey physical) => e.Window.KeyPress(key, RawInputModifiers.None, physical, null);
+
+        // The list click left the focus on "How did you hear?". Shift+Tab goes back to the radio group: one stop, on
+        // its first button since none is chosen; the arrows wrap round the group.
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.Shift, PhysicalKey.Tab, null);
+        Assert.Equal("State", e.Editor.FocusedField?.Field.Name);
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.Shift, PhysicalKey.Tab, null);
+        Assert.Equal("Individual", e.Editor.FocusedField?.Field.OnValue);
+        Press(Key.Left, PhysicalKey.ArrowLeft);
+        Assert.Equal("Business", e.Editor.State.Fields["Membership"]);
+        Press(Key.Right, PhysicalKey.ArrowRight);
+        Assert.Equal("Individual", e.Editor.State.Fields["Membership"]);
+        Press(Key.Tab, PhysicalKey.Tab);
+        Assert.Equal("State", e.Editor.FocusedField?.Field.Name);
+        Press(Key.Down, PhysicalKey.ArrowDown);
+        Press(Key.Down, PhysicalKey.ArrowDown);
+        Assert.Equal("NSW", e.Editor.State.Fields["State"]);
+
+        // Multi-select list keys (WAI-ARIA list box pattern): arrows move the outline without changing what's
+        // chosen, Space ticks or unticks, Shift+arrows choose the rows from where the outline was.
+        Press(Key.Tab, PhysicalKey.Tab);
+        Assert.Equal("Heard", e.Editor.FocusedField?.Field.Name);
+        Assert.Equal(3, e.Editor.FocusedOption); // starts on the chosen row
+        Press(Key.Up, PhysicalKey.ArrowUp);
+        Press(Key.Up, PhysicalKey.ArrowUp);
+        Assert.Equal(1, e.Editor.FocusedOption);
+        Assert.Equal("Newspaper", e.Editor.State.Fields["Heard"]);
+        Press(Key.Space, PhysicalKey.Space);
+        Assert.Equal("Search\nNewspaper", e.Editor.State.Fields["Heard"]);
+        Press(Key.Down, PhysicalKey.ArrowDown);
+        Assert.Equal("Search\nNewspaper", e.Editor.State.Fields["Heard"]);
+        Press(Key.Up, PhysicalKey.ArrowUp);
+        e.Window.KeyPress(Key.Down, RawInputModifiers.Shift, PhysicalKey.ArrowDown, null);
+        e.Window.KeyPress(Key.Down, RawInputModifiers.Shift, PhysicalKey.ArrowDown, null);
+        Assert.Equal("Search\nSocial media\nNewspaper", e.Editor.State.Fields["Heard"]);
+    }
+
+    [AvaloniaFact]
     public async Task Tick_is_centred_on_the_click_and_the_tool_stays_on()
     {
         using var e = await EditorSession.OpenAsync();
@@ -278,7 +521,7 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         e.Key(Key.Delete, RawInputModifiers.None);
         Assert.Equal(3, e.Editor.State.Items.Count);
-        Assert.Equal(ContextMode.Notice, e.Editor.ContextMode);
+        Assert.True(e.Editor.HasToast);
         Assert.Equal("3 items deleted", e.Editor.Notice);
         e.Editor.UndoCommand.Execute(null);
         Assert.Equal(6, e.Editor.State.Items.Count);
@@ -534,13 +777,13 @@ public sealed class EditingTests(ITestOutputHelper output)
 
         public TextBox? TypingBox => Canvas.Children.OfType<TextBox>().FirstOrDefault(box => box.IsVisible);
 
-        public static async Task<EditorSession> OpenAsync(double width = 1280)
+        public static async Task<EditorSession> OpenAsync(double width = 1280, string file = "sample-form.pdf")
         {
             // Each test starts from the default ink, not whatever the last test chose.
             Platform.AppSettings.Update(settings => settings with { InkColour = null });
             var window = new MainWindow(isFirstLaunch: false, []) { Width = width, Height = 860 };
             window.Show();
-            await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
+            await window.OpenPathsAsync([TestFiles.Sample(file)]);
             EditorViewModel editor = Editor(window);
             await Pump(() => !editor.IsLoading && editor.Renderer.TryGet(0, Rotation.None, editor.Zoom) is { } page && Math.Abs(page.Scale - editor.Zoom) < 0.001);
             var view = (EditorView)window.FindControl<ContentControl>("Host")!.Content!;

@@ -57,8 +57,13 @@ public sealed class Clipboard
             return document;
         }
 
-        _pasteCount++;
+        // Only pastes back onto the copied page step down and right; elsewhere the copy lands where it was.
         bool isSamePage = clip.Items.All(item => item.Page == target);
+        if (isSamePage)
+        {
+            _pasteCount++;
+        }
+
         double offset = isSamePage ? PasteOffset * _pasteCount : 0;
         var copies = ItemEdits.CopiesOn(clip.Items, target)
             .Select(item =>

@@ -14,6 +14,8 @@ public partial class SettingsWindow : Window
         DataContext = viewModel;
         Opened += async (_, _) =>
         {
+            Platform.WindowFit.KeepOnScreen(this);
+
             // Reading saved signatures can ask for Keychain or keyring access, so keep it off the UI thread.
             await Task.Run(MainWindow.SignatureStore.Load).ConfigureAwait(true);
             viewModel.LoadSignatures();

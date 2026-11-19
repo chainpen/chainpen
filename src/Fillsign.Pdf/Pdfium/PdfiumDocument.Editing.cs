@@ -82,7 +82,16 @@ public sealed partial class PdfiumDocument
     });
 
     /// <summary>Embeds a subset of <paramref name="fontFile"/> covering <paramref name="characters"/>.</summary>
-    public PdfiumFont LoadSubsetFont(ReadOnlySpan<byte> fontFile, string characters)
+    /// <summary>
+    /// Embeds the part of a font these characters need, named with a subset tag (<c>ABCDEF+NotoSans-Regular</c>,
+    /// FS-612). Null when the font's licence doesn't allow embedding, or PDFium can't read it.
+    /// </summary>
+    /// <param name="faceIndex">Which font in a collection (.ttc); 0 for a single font file.</param>
+    public PdfiumFont LoadSubsetFont(ReadOnlySpan<byte> fontFile, string characters, int faceIndex = 0) =>
+        TryLoadSubsetFont(fontFile, characters, faceIndex) ?? throw new InvalidOperationException("The font can't be embedded.");
+
+    /// <inheritdoc cref="LoadSubsetFont"/>
+    public PdfiumFont? TryLoadSubsetFont(ReadOnlySpan<byte> fontFile, string characters, int faceIndex = 0)
     {
         var codepoints = new HashSet<int>();
         foreach (var rune in characters.EnumerateRunes())
@@ -90,17 +99,24 @@ public sealed partial class PdfiumDocument
             codepoints.Add(rune.Value);
         }
 
-        byte[] subset = FontSubsetter.Subset(fontFile, codepoints);
+        byte[] cut = FontSubsetter.Subset(fontFile, codepoints, faceIndex);
+        if (!FontNaming.AllowsEmbedding(cut))
+        {
+            return null;
+        }
+
+        byte[] subset = FontNaming.WithSubsetTag(cut, FontNaming.SubsetTag(codepoints));
         return WithLock(() =>
         {
             unsafe
             {
                 fixed (byte* data = subset)
                 {
+                    // A font PDFium can't read is left out, like one that may not be embedded: its text falls back.
                     nint font = FPDFText_LoadFont(_document, data, (uint)subset.Length, FPDF_FONT_TRUETYPE, cid: true);
                     if (font == 0)
                     {
-                        throw new InvalidOperationException("PDFium could not load the font.");
+                        return (PdfiumFont?)null;
                     }
 
                     _fonts.Add(font);
@@ -124,6 +140,86 @@ public sealed partial class PdfiumDocument
     });
 
     public int GetAnnotationCount(int pageIndex) => WithPage(pageIndex, FPDFPage_GetAnnotCount);
+
+    /// <summary>
+    /// Whether the file's owner has protected it against changes (FS-214): it's encrypted, opened without the owner
+    /// password, and its permissions don't allow modifying the contents.
+    /// </summary>
+    public bool ForbidsChanges => WithLock(() =>
+        FPDF_GetSecurityHandlerRevision(_document) >= 0 && (FPDF_GetDocPermissions(_document).Value & PermissionModify) == 0);
+
+    /// <summary>
+    /// Before redacting (FS-614): annotations are drawn above the page, so a whiteout can't cover them. When any
+    /// overlaps <paramref name="areas"/>, the page's annotations are drawn into its content, where redaction can remove
+    /// them, and any left (those that don't print, such as hidden fields) that still overlap are deleted.
+    /// </summary>
+    /// <returns>Whether anything changed.</returns>
+    public bool FlattenAnnotationsUnder(int pageIndex, IReadOnlyList<Fillsign.Core.Model.PdfBox> areas)
+    {
+        ArgumentNullException.ThrowIfNull(areas);
+        bool changed = false;
+        WithPage(pageIndex, page =>
+        {
+            if (AnnotationsOverlapping(page, areas).Count == 0)
+            {
+                return;
+            }
+
+            if (FPDFPage_Flatten(page, FLAT_PRINT) == FLATTEN_FAIL)
+            {
+                throw new InvalidOperationException("PDFium could not flatten the page's annotations.");
+            }
+
+            changed = true;
+        });
+
+        if (changed)
+        {
+            // Flattening rewrites the page's content, so what's left is looked at on the page as reloaded.
+            WithPage(pageIndex, page =>
+            {
+                foreach (int index in AnnotationsOverlapping(page, areas).OrderDescending())
+                {
+                    if (!FPDFPage_RemoveAnnot(page, index))
+                    {
+                        throw new InvalidOperationException("PDFium could not remove an annotation under whiteout.");
+                    }
+                }
+            });
+        }
+
+        return changed;
+    }
+
+    private static List<int> AnnotationsOverlapping(nint page, IReadOnlyList<Fillsign.Core.Model.PdfBox> areas)
+    {
+        var overlapping = new List<int>();
+        int count = FPDFPage_GetAnnotCount(page);
+        for (int index = 0; index < count; index++)
+        {
+            nint annotation = FPDFPage_GetAnnot(page, index);
+            if (annotation == 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                if (FPDFAnnot_GetRect(annotation, out FsRectF rect)
+                    && areas.Any(area => Math.Min(rect.Left, rect.Right) < area.Right && Math.Max(rect.Left, rect.Right) > area.Left
+                        && Math.Min(rect.Top, rect.Bottom) < area.Top && Math.Max(rect.Top, rect.Bottom) > area.Bottom))
+                {
+                    overlapping.Add(index);
+                }
+            }
+            finally
+            {
+                FPDFPage_CloseAnnot(annotation);
+            }
+        }
+
+        return overlapping;
+    }
 
     public int GetObjectCount(int pageIndex) => WithPage(pageIndex, FPDFPage_CountObjects);
 
@@ -439,13 +535,28 @@ public sealed partial class PdfiumPageEditor
         AddText(font, fontSize, text, (1, 0, 0, 1, x, baseline), color);
 
     /// <summary>Adds text placed by a matrix that maps text space (origin on the baseline, y up) to user space.</summary>
-    public void AddText(PdfiumFont font, float fontSize, string text, (double A, double B, double C, double D, double E, double F) matrix, (byte R, byte G, byte B) color)
+    /// <param name="boldStroke">For bold (FS-952): the glyphs are also outlined this wide, in text space. 0 for regular.</param>
+    public void AddText(
+        PdfiumFont font,
+        float fontSize,
+        string text,
+        (double A, double B, double C, double D, double E, double F) matrix,
+        (byte R, byte G, byte B) color,
+        float boldStroke = 0)
     {
-        nint obj = FPDFPageObj_CreateTextObj(_document, font.Handle, fontSize);
-        Check(obj != 0 && FPDFText_SetText(obj, text), "create text");
-        FPDFPageObj_SetFillColor(obj, color.R, color.G, color.B, 255);
-        FPDFPageObj_Transform(obj, matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F);
-        Insert(obj);
+        AddObject(FPDFPageObj_CreateTextObj(_document, font.Handle, fontSize), "create text", obj =>
+        {
+            Check(FPDFText_SetText(obj, text), "set the text");
+            FPDFPageObj_SetFillColor(obj, color.R, color.G, color.B, 255);
+            if (boldStroke > 0)
+            {
+                FPDFPageObj_SetStrokeColor(obj, color.R, color.G, color.B, 255);
+                FPDFPageObj_SetStrokeWidth(obj, boldStroke);
+                Check(FPDFTextObj_SetTextRenderMode(obj, TextRenderFillStroke), "set bold text");
+            }
+
+            FPDFPageObj_Transform(obj, matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F);
+        });
     }
 
     /// <summary>Adds a path built by <paramref name="build"/>. Pass a fill colour, a stroke, or both.</summary>
@@ -458,16 +569,15 @@ public sealed partial class PdfiumPageEditor
         float strokeWidth = 1,
         string? blendMode = null)
     {
-        nint obj = FPDFPageObj_CreateNewPath(startX, startY);
-        Check(obj != 0, "create path");
-        build(new PathBuilder(obj));
-        Style(obj, fill, stroke, strokeWidth, blendMode);
-        Check(FPDFPath_SetDrawMode(obj, fill is null ? FPDF_FILLMODE_NONE : FPDF_FILLMODE_WINDING, stroke is not null), "set draw mode");
-        Insert(obj);
-        return new PdfiumObject(obj);
+        return AddObject(FPDFPageObj_CreateNewPath(startX, startY), "create path", obj =>
+        {
+            build(new PathBuilder(obj));
+            Style(obj, fill, stroke, strokeWidth, blendMode);
+            Check(FPDFPath_SetDrawMode(obj, fill is null ? FPDF_FILLMODE_NONE : FPDF_FILLMODE_WINDING, stroke is not null), "set draw mode");
+        });
     }
 
-    /// <summary>Places a BGRA (premultiplied is fine for opaque; alpha becomes a soft mask) image into a rectangle.</summary>
+    /// <summary>Places a BGRA image (straight alpha; alpha becomes a soft mask) into a rectangle.</summary>
     public void AddImage(ReadOnlySpan<byte> bgra, int pixelWidth, int pixelHeight, double x, double y, double width, double height) =>
         AddImage(bgra, pixelWidth, pixelHeight, (width, 0, 0, height, x, y));
 
@@ -477,51 +587,55 @@ public sealed partial class PdfiumPageEditor
     /// </summary>
     public void AddImage(ReadOnlySpan<byte> bgra, int pixelWidth, int pixelHeight, (double A, double B, double C, double D, double E, double F) matrix)
     {
-        nint obj = FPDFPageObj_NewImageObj(_document);
-        Check(obj != 0, "create image");
+        long needed = (long)pixelWidth * pixelHeight * 4;
+        if (pixelWidth <= 0 || pixelHeight <= 0 || bgra.Length < needed)
+        {
+            throw new ArgumentException($"Expected {needed} bytes of BGRA pixels.", nameof(bgra));
+        }
+
         unsafe
         {
             fixed (byte* pixels = bgra)
             {
-                nint bitmap = FPDFBitmap_CreateEx(pixelWidth, pixelHeight, FPDFBitmap_BGRA, (nint)pixels, pixelWidth * 4);
-                try
+                nint pointer = (nint)pixels;
+                AddObject(FPDFPageObj_NewImageObj(_document), "create image", obj =>
                 {
-                    Check(bitmap != 0 && FPDFImageObj_SetBitmap(0, 0, obj, bitmap), "set image bitmap");
-                }
-                finally
-                {
-                    if (bitmap != 0)
+                    nint bitmap = FPDFBitmap_CreateEx(pixelWidth, pixelHeight, FPDFBitmap_BGRA, pointer, pixelWidth * 4);
+                    try
                     {
-                        FPDFBitmap_Destroy(bitmap);
+                        Check(bitmap != 0 && FPDFImageObj_SetBitmap(0, 0, obj, bitmap), "set image bitmap");
                     }
-                }
+                    finally
+                    {
+                        if (bitmap != 0)
+                        {
+                            FPDFBitmap_Destroy(bitmap);
+                        }
+                    }
+
+                    Check(FPDFImageObj_SetMatrix(obj, matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F), "place image");
+                });
             }
         }
-
-        Check(FPDFImageObj_SetMatrix(obj, matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F), "place image");
-        Insert(obj);
     }
 
     /// <summary>Places JPEG data, embedded without re-encoding, into a rectangle in PDF user space.</summary>
     public void AddJpeg(ReadOnlySpan<byte> jpeg, double x, double y, double width, double height)
     {
-        nint obj = FPDFPageObj_NewImageObj(_document);
-        Check(obj != 0, "create image");
         unsafe
         {
             fixed (byte* data = jpeg)
             {
-                var access = new PdfFileAccess { FileLength = new CULong((nuint)jpeg.Length), GetBlock = &GetJpegBlock, Param = data };
-                if (!FPDFImageObj_LoadJpegFileInline(null, 0, obj, &access))
+                byte* pinned = data;
+                int length = jpeg.Length;
+                AddObject(FPDFPageObj_NewImageObj(_document), "create image", obj =>
                 {
-                    FPDFPageObj_Destroy(obj);
-                    throw new InvalidOperationException("PDFium could not read the JPEG image.");
-                }
+                    var access = new PdfFileAccess { FileLength = new CULong((nuint)length), GetBlock = &GetJpegBlock, Param = pinned };
+                    Check(FPDFImageObj_LoadJpegFileInline(null, 0, obj, &access), "read the JPEG image");
+                    Check(FPDFImageObj_SetMatrix(obj, width, 0, 0, height, x, y), "place image");
+                });
             }
         }
-
-        Check(FPDFImageObj_SetMatrix(obj, width, 0, 0, height, x, y), "place image");
-        Insert(obj);
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
@@ -555,13 +669,25 @@ public sealed partial class PdfiumPageEditor
         }
     }
 
-    private void Insert(nint obj)
+    /// <summary>
+    /// Sets up a new object and puts it on the page. Until it's inserted the object is ours, so it's destroyed if setting
+    /// it up fails; once inserting is tried, it's PDFium's, which frees it itself when inserting fails (fpdf_edit.h).
+    /// </summary>
+    private PdfiumObject AddObject(nint obj, string what, Action<nint> prepare)
     {
-        if (!FPDFPage_InsertObject(_page, obj))
+        Check(obj != 0, what);
+        try
+        {
+            prepare(obj);
+        }
+        catch
         {
             FPDFPageObj_Destroy(obj);
-            throw new InvalidOperationException("PDFium could not insert the object.");
+            throw;
         }
+
+        Check(FPDFPage_InsertObject(_page, obj), "insert the object");
+        return new PdfiumObject(obj);
     }
 
     private static void Check(bool ok, string what)

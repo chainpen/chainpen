@@ -15,6 +15,12 @@ public static class ImageToPdf
     /// <summary>Pixel limit for the long side: 300 dpi across A4, plenty for a scan and far smaller than a raw photo.</summary>
     public const int MaxLongSidePixels = 3508;
 
+    /// <summary>
+    /// The most pixels decoded from a file (200 MB as BGRA): a header can claim a huge size in a few bytes, and PNG, GIF
+    /// and BMP decode at full size before being shrunk.
+    /// </summary>
+    public const long MaxDecodePixels = 50_000_000;
+
     private const int JpegQuality = 88;
 
     /// <summary>Whether the bytes look like an image format Skia can decode.</summary>
@@ -44,8 +50,15 @@ public static class ImageToPdf
             return;
         }
 
-        byte[] pixels = upright.Bytes;
-        document.EditPage(pageIndex, page => page.AddImage(pixels, upright.Width, upright.Height, 0, 0, width, height));
+        // PDFium wants straight alpha; decoded pixels are premultiplied, which would darken soft edges twice.
+        using var straight = new SKBitmap(new SKImageInfo(upright.Width, upright.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul));
+        if (!upright.PeekPixels().ReadPixels(straight.Info, straight.GetPixels(), straight.RowBytes, 0, 0))
+        {
+            throw new InvalidDataException("The image could not be prepared.");
+        }
+
+        byte[] pixels = straight.Bytes;
+        document.EditPage(pageIndex, page => page.AddImage(pixels, straight.Width, straight.Height, 0, 0, width, height));
     }
 
     /// <summary>Decodes, downsizes and applies the EXIF orientation. Returns BGRA premultiplied pixels.</summary>
@@ -59,6 +72,13 @@ public static class ImageToPdf
         // Let the codec downscale while decoding (cheap for JPEG), then finish with a high-quality resize.
         float limit = (float)MaxLongSidePixels / Math.Max(size.Width, size.Height);
         SKSizeI decodeSize = limit < 1 ? codec.GetScaledDimensions(limit) : size;
+
+        // The size comes from the file, so check it before allocating: only some formats can shrink while decoding.
+        if ((long)decodeSize.Width * decodeSize.Height > MaxDecodePixels)
+        {
+            throw new InvalidDataException($"This image is too large to open ({size.Width} × {size.Height} pixels).");
+        }
+
         var info = new SKImageInfo(decodeSize.Width, decodeSize.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
         using var decoded = new SKBitmap(info);
         SKCodecResult result = codec.GetPixels(info, decoded.GetPixels());

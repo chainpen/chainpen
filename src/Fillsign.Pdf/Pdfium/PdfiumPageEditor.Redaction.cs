@@ -24,6 +24,9 @@ public sealed partial class PdfiumPageEditor
     private const float Tolerance = 0.01f;
     private const double EdgeInset = 0.5;
 
+    // About a 300 dpi A3 scan; past this a picture is flattened with the page rather than copied and re-encoded.
+    private const long MaxWhitenPixels = 20_000_000;
+
     /// <summary>
     /// Removes what the whiteouts cover: objects entirely under one are deleted, and the covered pixels of pictures
     /// are made white. Returns false, having removed nothing that matters, when something is only partly covered and
@@ -100,10 +103,13 @@ public sealed partial class PdfiumPageEditor
 
         foreach (nint obj in toRemove)
         {
-            if (FPDFPage_RemoveObject(_page, obj))
+            // Anything that stays would still be in the file under the white box, so the page is flattened instead.
+            if (!FPDFPage_RemoveObject(_page, obj))
             {
-                FPDFPageObj_Destroy(obj);
+                return false;
             }
+
+            FPDFPageObj_Destroy(obj);
         }
 
         return true;
@@ -164,11 +170,15 @@ public sealed partial class PdfiumPageEditor
         AddJpeg(jpeg, cropBox.Left, cropBox.Bottom, cropBox.Width, cropBox.Height);
     }
 
-    /// <summary>Pictures with their own colours and no transparency; a stencil or see-through one is flattened instead.</summary>
+    /// <summary>
+    /// Pictures with their own colours, no transparency and a sensible size; a stencil, a see-through picture or a huge
+    /// one (whose size comes from the file) is flattened instead, which is bounded.
+    /// </summary>
     private bool CanWhiten(nint image) =>
         !FPDFPageObj_HasTransparency(image)
         && FPDFImageObj_GetImageMetadata(image, _page, out ImageMetadata metadata)
-        && metadata.Colorspace != FPDF_COLORSPACE_UNKNOWN;
+        && metadata.Colorspace != FPDF_COLORSPACE_UNKNOWN
+        && (long)metadata.Width * metadata.Height <= MaxWhitenPixels;
 
     /// <summary>Whether any stretch of the path runs inside one of the areas (curves judged by their control points).</summary>
     private static bool PathPassesUnder(nint path, List<PdfBox> areas)
@@ -259,7 +269,7 @@ public sealed partial class PdfiumPageEditor
                 return (((m.D * dx) - (m.C * dy)) / determinant, ((m.A * dy) - (m.B * dx)) / determinant);
             }
 
-            var pixels = new byte[stride * height];
+            var pixels = new byte[checked(stride * height)];
             Marshal.Copy(buffer, pixels, 0, pixels.Length);
             foreach (PdfBox area in areas)
             {

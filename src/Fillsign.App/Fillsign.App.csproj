@@ -33,4 +33,11 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Fillsign.App.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Third-party licences and notices, shipped in the app's Licenses folder (see THIRD-PARTY-NOTICES.md). -->
+    <None Include="Licenses\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\LICENSE" Link="Licenses\Fillsign-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\NOTICE" Link="Licenses\Fillsign-NOTICE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.md" Link="Licenses\THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

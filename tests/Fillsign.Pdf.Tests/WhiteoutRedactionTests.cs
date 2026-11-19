@@ -101,6 +101,46 @@ public sealed class WhiteoutRedactionTests
         Assert.Equal(["image"], final.GetObjectKinds(0));
     }
 
+    [Fact]
+    public void Typed_text_under_whiteout_leaves_no_font_behind_to_reveal_its_characters()
+    {
+        (byte[] source, SourcePage[] pages) = Source("four-pages.pdf");
+        var state = DocumentState.ForSourcePages(4);
+        PageId page = state.Pages[0].Id;
+        var secret = new TextItem(ItemId.New(), page, 100, 400, "4417 2290", 20, InkColor.Black);
+        DocumentState document = state.WithItems([secret, Whiteout(page, 90, 390, 200, 50)]);
+
+        // The only typed text is covered, so no font is embedded at all: a font would list the digits it was made for.
+        byte[] final = DocumentWriter.FinalCopy(source, pages, document).Pdf;
+        Assert.DoesNotContain("/FontFile2", System.Text.Encoding.Latin1.GetString(final), StringComparison.Ordinal);
+
+        // Visible text still gets a real, searchable font.
+        var visible = new TextItem(ItemId.New(), page, 100, 600, "Visible", 20, InkColor.Black);
+        byte[] withVisible = DocumentWriter.FinalCopy(source, pages, document.WithItems([.. document.Items, visible])).Pdf;
+        using PdfiumDocument result = PdfiumDocument.Open(withVisible);
+        Assert.Contains("Visible", result.GetText(0), StringComparison.Ordinal);
+        Assert.DoesNotContain("4417", result.GetText(0), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Form_fields_under_whiteout_are_taken_out_and_other_pages_keep_theirs()
+    {
+        (byte[] source, SourcePage[] pages) = Source("corpus/form_two_pages.pdf");
+        using (PdfiumDocument original = PdfiumDocument.Open(source))
+        {
+            Assert.True(original.GetAnnotationCount(0) > 0, "the sample has fields on page 1");
+        }
+
+        var state = DocumentState.ForSourcePages(pages.Length);
+        PageId page = state.Pages[0].Id;
+        PageSize size = new PageTransform(pages[0], Rotation.None).DisplaySize;
+        DocumentState document = state.WithItems([Whiteout(page, 0, 0, size.Width, size.Height)]);
+
+        using PdfiumDocument final = PdfiumDocument.Open(DocumentWriter.FinalCopy(source, pages, document).Pdf);
+        Assert.Equal(0, final.GetAnnotationCount(0));
+        Assert.True(final.GetAnnotationCount(1) > 0, "page 2 has no whiteout, so its fields stay");
+    }
+
     private static ShapeItem Whiteout(PageId page, double x, double y, double width, double height) =>
         new(ItemId.New(), page, x, y, ShapeKind.Whiteout, width, height, InkColor.Black, 1, false, false);
 

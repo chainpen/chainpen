@@ -80,6 +80,15 @@ public sealed class FormSpotsTests
         Assert.Empty(spots);
     }
 
+    [Fact]
+    public void Codes_that_are_not_characters_are_skipped_rather_than_crashing()
+    {
+        // A damaged font map can report lone surrogates or values past Unicode's end.
+        PageCharacter[] line = [.. Line(60, 100, "Name:"), new(0xD800, new PageRect(400, 100, 6, 12)), new(0x110000, new PageRect(420, 100, 6, 12))];
+        BlankSpot blank = Assert.Single(Find(line).OfType<BlankSpot>());
+        Assert.Equal("Name", blank.Label);
+    }
+
     private static IReadOnlyList<FormSpot> Find(params PageCharacter[][] lines) => FormSpots.Find([.. lines.SelectMany(line => line)], PageWidth);
 
     /// <summary>Characters 6 pt wide and 12 pt tall from (x, top), spaces included, as a PDF's text gives them.</summary>

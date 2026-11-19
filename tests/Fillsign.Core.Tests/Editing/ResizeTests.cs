@@ -62,6 +62,18 @@ public sealed class ResizeTests
     }
 
     [Fact]
+    public void Dragging_a_signature_stops_at_the_same_limits_as_the_size_buttons()
+    {
+        SignatureItem signature = TestData.Signature(s_page); // 120 × 40 at (200, 300)
+        var huge = (SignatureItem)ItemEdits.ResizeFromCorner(signature, Corner.BottomRight, new PagePoint(2000, 900), s_measurer);
+        Assert.Equal(ItemEdits.SignatureMaxWidth, huge.Width, 6);
+        Assert.Equal(huge.Width / 3, huge.Height, 6);
+
+        // So "bigger" from there never shrinks it.
+        Assert.True(((SignatureItem)ItemEdits.BumpSize(huge, +1)).Width >= huge.Width);
+    }
+
+    [Fact]
     public void Signature_size_steps_keep_proportions_within_limits()
     {
         SignatureItem signature = TestData.Signature(s_page);

@@ -173,8 +173,105 @@ public sealed class SourceDocument : IDisposable
         }
 
         LoadPages(null, CancellationToken.None);
+        lock (PdfiumLibrary.Sync)
+        {
+            // The preview is a copy of the old page list; the next render makes a fresh one.
+            ClosePreview();
+        }
+
         return [.. Enumerable.Range(first, PageCount - first)];
     }
 
-    public void Dispose() => Pdf.Dispose();
+    // ----- Form fields (FS-950) -----
+
+    private readonly Dictionary<int, IReadOnlyList<FormField>> _fields = [];
+    private PdfiumDocument? _preview;
+    private ImmutableSortedDictionary<string, string> _shown = ImmutableSortedDictionary<string, string>.Empty;
+
+    /// <summary>The fillable fields on a source page as the file has them, read once.</summary>
+    public IReadOnlyList<FormField> FormFields(int sourceIndex)
+    {
+        lock (_lock)
+        {
+            if (_fields.TryGetValue(sourceIndex, out IReadOnlyList<FormField>? known))
+            {
+                return known;
+            }
+        }
+
+        IReadOnlyList<FormField> fields;
+        try
+        {
+            fields = Pdf.GetFormFields(sourceIndex);
+        }
+        catch (PdfPageException)
+        {
+            fields = [];
+        }
+
+        lock (_lock)
+        {
+            _fields[sourceIndex] = fields;
+        }
+
+        return fields;
+    }
+
+    /// <summary>
+    /// Shows these field values on screen (FS-950). The file is never changed: values go into a private copy that pages
+    /// are then rendered from, filled the same way the final copy is, so the screen matches it. Returns whether
+    /// anything shown changed, so the caller knows to render the pages again.
+    /// </summary>
+    public bool ShowFields(ImmutableSortedDictionary<string, string> fields)
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+        lock (PdfiumLibrary.Sync)
+        {
+            if (fields.IsEmpty)
+            {
+                bool wasShowing = _preview is not null;
+                ClosePreview();
+                return wasShowing;
+            }
+
+            // A field set back to how the file has it (undo) needs the file's value: start again from a fresh copy.
+            if (_preview is null || _shown.Keys.Any(name => !fields.ContainsKey(name)))
+            {
+                ClosePreview();
+                _preview = PdfiumDocument.Open(Pdf.SaveCopy(removeSecurity: true));
+            }
+
+            var changed = fields.Where(pair => !_shown.TryGetValue(pair.Key, out string? shown) || shown != pair.Value)
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            _preview.FillFormFields(changed);
+            _shown = fields;
+            return changed.Count > 0;
+        }
+    }
+
+    /// <summary>Renders a page with the field values being shown, if any (see <see cref="PdfiumDocument.RenderPage"/>).</summary>
+    public void RenderPage(int sourceIndex, Span<byte> bgra, int pixelWidth, int pixelHeight, int stride, int extraQuarterTurns)
+    {
+        lock (PdfiumLibrary.Sync)
+        {
+            (_preview ?? Pdf).RenderPage(sourceIndex, bgra, pixelWidth, pixelHeight, stride, extraQuarterTurns);
+        }
+    }
+
+    private void ClosePreview()
+    {
+        _preview?.Dispose();
+        _preview = null;
+        _shown = ImmutableSortedDictionary<string, string>.Empty;
+    }
+
+    public void Dispose()
+    {
+        lock (PdfiumLibrary.Sync)
+        {
+            ClosePreview();
+        }
+
+        Pdf.Dispose();
+    }
 }

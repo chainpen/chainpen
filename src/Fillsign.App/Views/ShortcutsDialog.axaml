@@ -4,10 +4,15 @@
              x:Class="Fillsign.App.Views.ShortcutsDialog">
     <!-- Help → Keyboard shortcuts: the toolbar popover's list as a dialog. -->
     <Border Classes="dialog">
-        <StackPanel>
-            <v:ShortcutsPanel />
-            <TextBlock x:Name="PlatformNote" Classes="muted" FontSize="12" Margin="0,12,0,0" />
-            <Button x:Name="CloseButton" Classes="primary" HorizontalAlignment="Right" Margin="0,16,0,0" Content="Close" Click="OnClose" />
-        </StackPanel>
+        <!-- FS-709: on a short window the list scrolls; Close stays put (S5). -->
+        <DockPanel>
+            <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Classes="primary" HorizontalAlignment="Right" Margin="0,16,0,0" Content="Close" Click="OnClose" />
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
+                <StackPanel Margin="4,4">
+                    <v:ShortcutsPanel />
+                    <TextBlock x:Name="PlatformNote" Classes="muted" FontSize="12" Margin="0,12,0,0" />
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Border>
 </UserControl>

@@ -10,6 +10,7 @@ public partial class StartView : UserControl
     public StartView()
     {
         InitializeComponent();
+        TitleBar.ActsAsTitleBar(TitleStrip);
     }
 
     /// <summary>Raised when the person asks to open files; the window shows the picker.</summary>
@@ -48,6 +49,21 @@ public partial class StartView : UserControl
     private void OnNotNow(object? sender, RoutedEventArgs e) => (DataContext as StartViewModel)?.PutOffRecovery();
 
     private void OnClearRecent(object? sender, RoutedEventArgs e) => (DataContext as StartViewModel)?.ClearRecent();
+
+    private void OnCrashReportsYes(object? sender, RoutedEventArgs e) => (DataContext as StartViewModel)?.AnswerCrashReports(isYes: true);
+
+    private void OnCrashReportsNo(object? sender, RoutedEventArgs e) => (DataContext as StartViewModel)?.AnswerCrashReports(isYes: false);
+
+    private void OnDeleteCrashReports(object? sender, RoutedEventArgs e) => (DataContext as StartViewModel)?.DeleteCrashReports();
+
+    /// <summary>Opens the report as a GitHub issue in the browser, where the person reads it and decides to send it.</summary>
+    private async void OnSendCrashReport(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is StartViewModel start && start.TakeCrashReportLink() is { } link && TopLevel.GetTopLevel(this) is { } top)
+        {
+            await top.Launcher.LaunchUriAsync(link).ConfigureAwait(true);
+        }
+    }
 
     private void OnSettings(object? sender, RoutedEventArgs e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
 

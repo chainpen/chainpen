@@ -34,6 +34,9 @@ public static class DocumentWriter
         ArgumentNullException.ThrowIfNull(cleanSource);
         using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
         bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
+
+        // Before drawing, so a whiteout's redaction also covers a filled field (FS-950).
+        pdf.FillFormFields(document.Fields);
         Draw(pdf, sourcePages, document, redactUnderWhiteout: true);
         return new WrittenDocument(pdf.SaveCopy(removeSecurity: true), haveFormsMoved);
     }
@@ -49,6 +52,7 @@ public static class DocumentWriter
         ArgumentNullException.ThrowIfNull(sourcePages);
         using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
         bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
+        pdf.FillFormFields(document.Fields);
 
         // The working copy keeps what's under whiteout, so the whiteout can still be moved or deleted (FR-9.2).
         Draw(pdf, sourcePages, document, redactUnderWhiteout: false);
@@ -153,8 +157,12 @@ public static class DocumentWriter
     /// </summary>
     private static void Draw(PdfiumDocument pdf, IReadOnlyList<SourcePage> sourcePages, DocumentState document, bool redactUnderWhiteout)
     {
-        string characters = string.Concat(document.Items.OfType<TextItem>().Select(text => text.Text.Replace("\n", string.Empty, StringComparison.Ordinal)));
-        PdfiumFont? font = characters.Length > 0 ? pdf.LoadSubsetFont(BundledFonts.Load(BundledFonts.RegularFace), characters) : null;
+        // Text a whiteout lands on is drawn as outlines, not with the embedded font: the font lists every character it
+        // was made for, so typed-then-covered digits would otherwise stay in the file.
+        HashSet<ItemId> covered = redactUnderWhiteout ? CoveredText(document) : [];
+        EmbeddedFonts fonts = EmbeddedFonts.For(pdf, document.Items.OfType<TextItem>()
+            .Where(text => !covered.Contains(text.Id))
+            .SelectMany(text => text.Lines));
 
         for (int i = 0; i < document.Pages.Length; i++)
         {
@@ -167,12 +175,23 @@ public static class DocumentWriter
 
             var transform = new PageTransform(sourcePages[entry.SourceIndex], entry.Rotation);
             PdfBox cropBox = sourcePages[entry.SourceIndex].CropBox;
+            if (redactUnderWhiteout)
+            {
+                PdfBox[] whiteoutAreas = [.. items.Where(IsWhiteout).Select(item => AreaInPdf(transform, item))];
+                if (whiteoutAreas.Length > 0)
+                {
+                    pdf.FlattenAnnotationsUnder(i, whiteoutAreas);
+                }
+            }
+
             pdf.EditPage(i, page =>
             {
                 var whiteouts = new List<RedactionArea>();
                 foreach (Item item in items)
                 {
-                    PdfiumObject? drawn = DrawItem(pdf, page, transform, font, item);
+                    PdfiumObject? drawn = item is TextItem text && covered.Contains(text.Id)
+                        ? DrawTextAsOutlines(page, transform.ItemToPdf(new PagePoint(item.X, item.Y)), text)
+                        : DrawItem(pdf, page, transform, fonts, item);
                     if (redactUnderWhiteout && item is ShapeItem { Kind: ShapeKind.Whiteout } && drawn is { } cover)
                     {
                         whiteouts.Add(new RedactionArea(cover, AreaInPdf(transform, item)));
@@ -184,6 +203,110 @@ public static class DocumentWriter
                     page.FlattenToPicture(cropBox);
                 }
             });
+        }
+    }
+
+    private static bool IsWhiteout(Item item) => item is ShapeItem { Kind: ShapeKind.Whiteout };
+
+    /// <summary>Text items a whiteout drawn after them touches, on the same page.</summary>
+    private static HashSet<ItemId> CoveredText(DocumentState document)
+    {
+        var covered = new HashSet<ItemId>();
+        foreach (PageEntry entry in document.Pages)
+        {
+            Item[] items = [.. document.ItemsOn(entry.Id)];
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i] is not TextItem text)
+                {
+                    continue;
+                }
+
+                PageRect bounds = ItemGeometry.Bounds(text, NotoTextMeasurer.Instance);
+                if (items.Skip(i + 1).Any(later => IsWhiteout(later) && ItemGeometry.Bounds(later, NotoTextMeasurer.Instance).Intersects(bounds)))
+                {
+                    covered.Add(text.Id);
+                }
+            }
+        }
+
+        return covered;
+    }
+
+    /// <summary>
+    /// Text as filled glyph outlines, laid out like <see cref="DrawText"/> (no kerning, the same line spacing), for text
+    /// a whiteout covers: redaction then removes or flattens the outlines, and no font records the characters.
+    /// </summary>
+    private static PdfiumObject? DrawTextAsOutlines(PdfiumPageEditor page, Affine itemToPdf, TextItem text)
+    {
+        using var noto = new SKFont(TextFontChoice.Primary.Typeface, (float)text.FontSize);
+        double ascent = -noto.Metrics.Ascent;
+        var commands = new List<PathCommand>();
+        IReadOnlyList<TextRun>[] lines = RunsOf(text);
+        double[] offsets = LineOffsets(text, lines);
+        for (int line = 0; line < lines.Length; line++)
+        {
+            double baseline = (line * text.FontSize * TextItem.LineHeight) + ascent;
+            double x = offsets[line];
+            foreach (TextRun run in lines[line])
+            {
+                using var font = new SKFont(run.Source.Typeface, (float)text.FontSize);
+                using SKPath outline = font.GetTextPath(run.Text, new SKPoint((float)x, (float)baseline));
+                commands.AddRange(ToCommands(outline));
+                x += run.Width;
+            }
+        }
+
+        return text.IsBold
+            ? DrawPath(page, itemToPdf, commands, Rgba(text.Color), Rgba(text.Color), text.FontSize * TextItem.BoldStroke)
+            : DrawPath(page, itemToPdf, commands, Rgba(text.Color), stroke: null, 0);
+    }
+
+    private static IReadOnlyList<TextRun>[] RunsOf(TextItem text) =>
+        [.. text.Lines.Select(line => TextFontChoice.Runs(line, text.FontSize))];
+
+    /// <summary>Where each line starts for its alignment (FS-952), from the widths the runs are drawn at.</summary>
+    private static double[] LineOffsets(TextItem text, IReadOnlyList<TextRun>[] lines)
+    {
+        double[] widths = [.. lines.Select(runs => runs.Sum(run => run.Width))];
+        double box = widths.Length == 0 ? 0 : widths.Max();
+        double share = text.Align switch
+        {
+            TextAlign.Centre => 0.5,
+            TextAlign.Right => 1,
+            _ => 0,
+        };
+        return [.. widths.Select(width => (box - width) * share)];
+    }
+
+    private static IEnumerable<PathCommand> ToCommands(SKPath path)
+    {
+        using SKPath.RawIterator iterator = path.CreateRawIterator();
+        var points = new SKPoint[4];
+        static PagePoint At(SKPoint point) => new(point.X, point.Y);
+        SKPathVerb verb;
+        while ((verb = iterator.Next(points)) != SKPathVerb.Done)
+        {
+            switch (verb)
+            {
+                case SKPathVerb.Move:
+                    yield return new MoveTo(At(points[0]));
+                    break;
+                case SKPathVerb.Line:
+                    yield return new LineTo(At(points[1]));
+                    break;
+                case SKPathVerb.Quad:
+                case SKPathVerb.Conic:
+                    // TrueType outlines are quadratic; a conic's weight is close enough to a quad's for covered text.
+                    yield return new QuadTo(At(points[1]), At(points[2]));
+                    break;
+                case SKPathVerb.Cubic:
+                    yield return new CubicTo(At(points[1]), At(points[2]), At(points[3]));
+                    break;
+                case SKPathVerb.Close:
+                    yield return ClosePath.Instance;
+                    break;
+            }
         }
     }
 
@@ -200,13 +323,13 @@ public static class DocumentWriter
     }
 
     /// <summary>Draws one item; returns the path object for a whiteout, so what it covers can be found.</summary>
-    private static PdfiumObject? DrawItem(PdfiumDocument pdf, PdfiumPageEditor page, PageTransform transform, PdfiumFont? font, Item item)
+    private static PdfiumObject? DrawItem(PdfiumDocument pdf, PdfiumPageEditor page, PageTransform transform, EmbeddedFonts fonts, Item item)
     {
         Affine itemToPdf = transform.ItemToPdf(new PagePoint(item.X, item.Y));
         switch (item)
         {
-            case TextItem text when font is { } loaded:
-                DrawText(pdf, page, itemToPdf, loaded, text);
+            case TextItem text when !fonts.IsEmpty:
+                DrawText(pdf, page, itemToPdf, fonts, text);
                 break;
             case MarkItem mark:
                 DrawPath(page, itemToPdf, ItemPaths.MarkPath(mark), fill: null, Rgba(mark.Color), ItemPaths.MarkStrokeWidth(mark));
@@ -225,7 +348,10 @@ public static class DocumentWriter
                 DrawPath(page, itemToPdf, ItemPaths.InkPath(ink), fill: null, Rgba(ink.Color), ink.StrokeWidth);
                 break;
             case SignatureItem signature:
-                DrawSignature(page, itemToPdf, signature);
+                DrawImage(page, itemToPdf, signature.Image, signature.Width, signature.Height);
+                break;
+            case PictureItem picture:
+                DrawImage(page, itemToPdf, picture.Image, picture.Width, picture.Height);
                 break;
         }
 
@@ -236,23 +362,42 @@ public static class DocumentWriter
     /// One text object per line. Lines are 1.2 × the font size apart and each baseline sits at the line's top plus the
     /// font's ascent, exactly as the editor lays them out (docs/FILE-FORMAT.md).
     /// </summary>
-    private static void DrawText(PdfiumDocument pdf, PdfiumPageEditor page, Affine itemToPdf, PdfiumFont font, TextItem text)
+    private static void DrawText(PdfiumDocument pdf, PdfiumPageEditor page, Affine itemToPdf, EmbeddedFonts fonts, TextItem text)
     {
         float size = (float)text.FontSize;
-        double ascent = pdf.GetAscent(font, size);
-        string[] lines = text.Lines;
+        double ascent = NotoAscent(pdf, fonts, size);
+        float boldStroke = text.IsBold ? (float)(text.FontSize * TextItem.BoldStroke) : 0;
+        IReadOnlyList<TextRun>[] lines = RunsOf(text);
+        double[] offsets = LineOffsets(text, lines);
         for (int line = 0; line < lines.Length; line++)
         {
-            if (lines[line].Length == 0)
-            {
-                continue;
-            }
-
-            // Text space has y up; item space has y down from the item's top.
+            // Text space has y up; item space has y down from the item's top. Runs in other fonts (FS-612) follow on
+            // from each other along the same baseline.
             double baseline = (line * text.FontSize * TextItem.LineHeight) + ascent;
-            Affine matrix = Affine.Compose(new Affine(1, 0, 0, -1, 0, baseline), itemToPdf);
-            page.AddText(font, size, lines[line], (matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F), (text.Color.R, text.Color.G, text.Color.B));
+            double x = offsets[line];
+            foreach (TextRun run in lines[line])
+            {
+                if (fonts.FontFor(run.Source) is { } font)
+                {
+                    Affine matrix = Affine.Compose(new Affine(1, 0, 0, -1, x, baseline), itemToPdf);
+                    page.AddText(font, size, run.Text, (matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F), (text.Color.R, text.Color.G, text.Color.B), boldStroke);
+                }
+
+                x += run.Width;
+            }
         }
+    }
+
+    /// <summary>The first baseline sits at the top plus Noto's ascent, as on screen, whichever fonts the line uses.</summary>
+    private static double NotoAscent(PdfiumDocument pdf, EmbeddedFonts fonts, float size)
+    {
+        if (fonts.FontFor(TextFontChoice.Primary) is { } noto)
+        {
+            return pdf.GetAscent(noto, size);
+        }
+
+        using var font = new SKFont(TextFontChoice.Primary.Typeface, size);
+        return -font.Metrics.Ascent;
     }
 
     /// <summary>Writes an item-local path list (the same one the screen draws) as one PDF path object.</summary>
@@ -325,10 +470,10 @@ public static class DocumentWriter
     private static void AddCurve(PdfiumPageEditor.PathBuilder path, (float X, float Y) c1, (float X, float Y) c2, (float X, float Y) to) =>
         path.CurveTo(c1.X, c1.Y, c2.X, c2.Y, to.X, to.Y);
 
-    /// <summary>The signature's PNG with its transparency, stretched over its box and kept upright (FR-6.5).</summary>
-    private static void DrawSignature(PdfiumPageEditor page, Affine itemToPdf, SignatureItem signature)
+    /// <summary>A signature's or picture's PNG with its transparency, stretched over its box and kept upright (FR-6.5).</summary>
+    private static void DrawImage(PdfiumPageEditor page, Affine itemToPdf, SignatureImage image, double width, double height)
     {
-        using SKBitmap? decoded = SKBitmap.Decode(signature.Image.Png.AsSpan());
+        using SKBitmap? decoded = SKBitmap.Decode(image.Png.AsSpan());
         if (decoded is null)
         {
             // A damaged image is left out rather than failing the whole export; the editor draws nothing for it too.
@@ -336,13 +481,14 @@ public static class DocumentWriter
         }
 
         using SKBitmap straight = new(new SKImageInfo(decoded.Width, decoded.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul));
-        if (!decoded.CopyTo(straight, SKColorType.Bgra8888))
+        // ReadPixels converts to straight alpha; CopyTo would keep the pixels premultiplied and darken soft edges.
+        if (!decoded.PeekPixels().ReadPixels(straight.Info, straight.GetPixels(), straight.RowBytes, 0, 0))
         {
             return;
         }
 
         // The image's unit square has y up; its top-left goes to the item's top-left.
-        Affine matrix = Affine.Compose(new Affine(signature.Width, 0, 0, -signature.Height, 0, signature.Height), itemToPdf);
+        Affine matrix = Affine.Compose(new Affine(width, 0, 0, -height, 0, height), itemToPdf);
         page.AddImage(straight.GetPixelSpan(), straight.Width, straight.Height, (matrix.A, matrix.B, matrix.C, matrix.D, matrix.E, matrix.F));
     }
 

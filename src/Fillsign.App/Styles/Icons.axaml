@@ -5,6 +5,8 @@
         Circles and rounded rectangles are written as paths.
     -->
     <StreamGeometry x:Key="IconPages">M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M9 4v16</StreamGeometry>
+    <!-- Share: a box with an arrow up out of it (macOS share sheet). -->
+    <StreamGeometry x:Key="IconShare">M12 3v12M8 7l4-4 4 4M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1</StreamGeometry>
     <StreamGeometry x:Key="IconFolder">M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z</StreamGeometry>
     <StreamGeometry x:Key="IconFileUpload">M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z M14 3v5h5 M12 17v-6 M9 14l3-3 3 3</StreamGeometry>
     <StreamGeometry x:Key="IconFilePlus">M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z M14 3v5h5 M12 11v6 M9 14h6</StreamGeometry>
@@ -46,6 +48,10 @@
     <StreamGeometry x:Key="IconDraw">M4 20l4-1 11-11-3-3L5 16z M14 7l3 3</StreamGeometry>
     <StreamGeometry x:Key="IconChevronDown">M6 9l6 6 6-6</StreamGeometry>
     <StreamGeometry x:Key="IconMore">M5.5 12a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0-1 0z M11.5 12a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0-1 0z M17.5 12a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0-1 0z</StreamGeometry>
+    <!-- FS-952: text alignment, four lines lined up left, centre or right. -->
+    <StreamGeometry x:Key="IconAlignLeft">M4 6h16 M4 10h10 M4 14h16 M4 18h10</StreamGeometry>
+    <StreamGeometry x:Key="IconAlignCentre">M4 6h16 M7 10h10 M4 14h16 M7 18h10</StreamGeometry>
+    <StreamGeometry x:Key="IconAlignRight">M4 6h16 M10 10h10 M4 14h16 M10 18h10</StreamGeometry>
     <StreamGeometry x:Key="IconDuplicate">M10 8h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3</StreamGeometry>
     <StreamGeometry x:Key="IconDelete">M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13</StreamGeometry>
     <StreamGeometry x:Key="IconRectangle">M5 6h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z</StreamGeometry>

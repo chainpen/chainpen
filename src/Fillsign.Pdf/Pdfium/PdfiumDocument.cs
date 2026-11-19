@@ -156,7 +156,9 @@ public sealed partial class PdfiumDocument : IDisposable
                         }
 
                         FPDFBitmap_FillRect(bitmap, 0, 0, pixelWidth, pixelHeight, 0xFFFFFFFF);
-                        FPDF_RenderPageBitmap(bitmap, page, 0, 0, pixelWidth, pixelHeight, ((extraQuarterTurns % 4) + 4) % 4, FPDF_ANNOT);
+                        int rotate = ((extraQuarterTurns % 4) + 4) % 4;
+                        FPDF_RenderPageBitmap(bitmap, page, 0, 0, pixelWidth, pixelHeight, rotate, FPDF_ANNOT);
+                        DrawFormFields(page, bitmap, pixelWidth, pixelHeight, rotate);
                     }
                     finally
                     {
@@ -235,6 +237,7 @@ public sealed partial class PdfiumDocument : IDisposable
             if (_document != 0)
             {
                 CloseFonts();
+                CloseForm();
                 FPDF_CloseDocument(_document);
                 _document = 0;
             }

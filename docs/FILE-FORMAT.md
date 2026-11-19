@@ -56,18 +56,21 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
   "sourcePageCount": 4,
   "pages": [ { "id": "<32 hex>", "source": 0, "rotation": 90 } ],
   "images": [ { "id": "<32 hex>", "png": "<base64>", "pixelWidth": 480, "pixelHeight": 160 } ],
-  "items": [ … ]
+  "items": [ … ],
+  "fields": [ { "name": "A.NOM", "value": "Lee" } ]
 }
 ```
 
 - `pages` is the page list in display order. `source` is a 0-based page index in the clean original. `rotation` is the extra clockwise rotation added in Fillsign (0, 90, 180 or 270).
+- `fields` (optional, FS-950) holds values typed into the PDF's own form fields, by full field name: the text, the chosen option (a multi-select list's chosen options one per line, separated by `\n`), or for check boxes and radio buttons their on-value or `Off`. Only fields changed in Fillsign are listed; it's left out when there are none. Names are up to 1,000 characters and unique.
 - Every item has `type`, `id`, `page` (a page `id`), and `x`, `y`. Coordinates are PDF points from the top-left of the page as displayed, with y pointing down.
 
 | `type` | Other properties |
 |---|---|
-| `text` | `text` (lines separated by `\n`), `fontSize` (6–72), `color` (`#rrggbb`). `x`, `y` is the top-left of the first line; each line is `1.2 × fontSize` tall with its baseline at the line's top plus the Noto Sans ascent, unkerned |
+| `text` | `text` (lines separated by `\n`), `fontSize` (6–72), `color` (`#rrggbb`); optional `bold` (`true`) and `align` (`centre` or `right`), left out for regular, left-aligned text (FS-952). `x`, `y` is the top-left of the first line; each line is `1.2 × fontSize` tall with its baseline at the line's top plus the Noto Sans ascent, unkerned. Aligned lines start where a shorter line leaves space within the longest line's width. Bold is the same glyphs outlined with a stroke `0.05 × fontSize` wide, so it measures like regular text |
 | `mark` | `kind` (`tick` or `cross`), `size` (6–72), `color` |
 | `signature` | `kind` (`signature` or `initials`), `image` (an `images` id), `width`, `height` |
+| `picture` | `image` (an `images` id), `width`, `height`. A picture pasted from another app (FS-715); readers that predate it reject the record as unknown |
 | `shape` | `shape` (`rectangle`, `ellipse`, `line`, `arrow`, `highlight`, `whiteout`), `width`, `height`, `color`, `strokeWidth` (0.5–20), `flipX`, `flipY` |
 | `ink` | `width`, `height`, `color`, `strokeWidth`, `strokes`: arrays of flat `[x0, y0, x1, y1, …]` fractions (0–1) of `width` and `height` |
 

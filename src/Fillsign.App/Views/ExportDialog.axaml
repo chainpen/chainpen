@@ -5,56 +5,17 @@
              Width="640">
     <!-- 🎨 6 / S5: the file to send, kept apart from the working copy. -->
     <Border Classes="dialog">
-        <StackPanel>
-            <DockPanel>
+        <!-- FS-709: on a short window the middle scrolls; the title and buttons stay put (S5). -->
+        <DockPanel>
+            <DockPanel DockPanel.Dock="Top">
                 <Button DockPanel.Dock="Right" Classes="icon" BorderThickness="0" Background="Transparent" Click="OnCancel"
                         AutomationProperties.Name="Close">
                     <c:StrokeIcon Data="{StaticResource IconCross}" Foreground="{DynamicResource TextMuted}" />
                 </Button>
                 <TextBlock Classes="heading-dialog" FontSize="20" VerticalAlignment="Center" Text="Export final copy" />
             </DockPanel>
-            <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
-                       Text="Makes a copy to send. It looks the same in any PDF reader and can’t be changed. Your working copy stays as it is." />
 
-            <!-- Possible gaps (FS-609, FR-8.3): hints, never a verdict. -->
-            <Border x:Name="GapsSection" Margin="0,18,0,0" IsVisible="False" CornerRadius="12" ClipToBounds="True"
-                    BorderThickness="1" BorderBrush="{DynamicResource BorderControl}">
-                <StackPanel>
-                    <StackPanel Background="{DynamicResource SurfaceSubtle}" Spacing="2" Margin="0">
-                        <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps we spotted" />
-                        <TextBlock x:Name="GapsNote" Classes="muted" Margin="14,0,14,12" FontSize="13" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel x:Name="GapRows" />
-                </StackPanel>
-            </Border>
-
-            <TextBlock x:Name="NameLabel" Margin="0,20,0,6" FontWeight="SemiBold" Text="File name" />
-            <TextBox x:Name="FileName" FontSize="14" AutomationProperties.LabeledBy="{Binding #NameLabel}" KeyDown="OnNameKeyDown" />
-            <DockPanel Margin="0,8,0,0">
-                <Button DockPanel.Dock="Right" Classes="small" Content="Change folder…" Click="OnChangeFolder" />
-                <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                    <Run Text="Saves to " /><Run x:Name="FolderText" FontWeight="SemiBold" Foreground="{DynamicResource Text}" />
-                </TextBlock>
-            </DockPanel>
-            <StackPanel x:Name="ReplaceNote" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" IsVisible="False">
-                <c:StrokeIcon Data="{StaticResource IconWarning}" Size="16" Foreground="{DynamicResource Warning}" />
-                <TextBlock FontSize="13" TextWrapping="Wrap" MaxWidth="540"
-                           Text="A file with this name is already in that folder. Exporting replaces it." />
-            </StackPanel>
-            <StackPanel x:Name="NameProblem" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" IsVisible="False"
-                        AutomationProperties.LiveSetting="Assertive">
-                <c:StrokeIcon Data="{StaticResource IconWarningCircle}" Size="16" Foreground="{DynamicResource Danger}" />
-                <TextBlock FontSize="13" Foreground="{DynamicResource Danger}" Text="Type a name for the final copy." />
-            </StackPanel>
-
-            <CheckBox x:Name="AlsoSave" Margin="0,16,0,0" IsChecked="True">
-                <StackPanel Spacing="2">
-                    <TextBlock Text="Also save my working copy" />
-                    <TextBlock x:Name="AlsoSaveDetail" Classes="muted" FontSize="13" TextWrapping="Wrap" MaxWidth="540" />
-                </StackPanel>
-            </CheckBox>
-
-            <Border Margin="0,22,0,0" Padding="0,16,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}">
+            <Border DockPanel.Dock="Bottom" Margin="0,22,0,0" Padding="0,16,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12">
                         <Button Content="Keep editing" Click="OnCancel" />
@@ -63,6 +24,50 @@
                     <TextBlock x:Name="SizeText" Classes="muted" FontSize="13" VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
-        </StackPanel>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
+                <StackPanel Margin="4,4">
+                    <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Text="Makes a copy to send. It looks the same in any PDF reader and can’t be changed. Your working copy stays as it is." />
+
+                    <!-- Possible gaps (FS-609, FR-8.3): hints, never a verdict. -->
+                    <Border x:Name="GapsSection" Margin="0,18,0,0" IsVisible="False" CornerRadius="12" ClipToBounds="True"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderControl}">
+                        <StackPanel>
+                            <StackPanel Background="{DynamicResource SurfaceSubtle}" Spacing="2" Margin="0">
+                                <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps we spotted" />
+                                <TextBlock x:Name="GapsNote" Classes="muted" Margin="14,0,14,12" FontSize="13" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel x:Name="GapRows" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock x:Name="NameLabel" Margin="0,20,0,6" FontWeight="SemiBold" Text="File name" />
+                    <TextBox x:Name="FileName" FontSize="14" AutomationProperties.LabeledBy="{Binding #NameLabel}" KeyDown="OnNameKeyDown" />
+                    <DockPanel Margin="0,8,0,0">
+                        <Button DockPanel.Dock="Right" Classes="small" Content="Change folder…" Click="OnChangeFolder" />
+                        <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                            <Run Text="Saves to " /><Run x:Name="FolderText" FontWeight="SemiBold" Foreground="{DynamicResource Text}" />
+                        </TextBlock>
+                    </DockPanel>
+                    <StackPanel x:Name="ReplaceNote" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" IsVisible="False">
+                        <c:StrokeIcon Data="{StaticResource IconWarning}" Size="16" Foreground="{DynamicResource Warning}" />
+                        <TextBlock FontSize="13" TextWrapping="Wrap" MaxWidth="540"
+                                   Text="A file with this name is already in that folder. Exporting replaces it." />
+                    </StackPanel>
+                    <StackPanel x:Name="NameProblem" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" IsVisible="False"
+                                AutomationProperties.LiveSetting="Assertive">
+                        <c:StrokeIcon Data="{StaticResource IconWarningCircle}" Size="16" Foreground="{DynamicResource Danger}" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource Danger}" Text="Type a name for the final copy." />
+                    </StackPanel>
+
+                    <CheckBox x:Name="AlsoSave" Margin="0,16,0,0" IsChecked="True">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Also save my working copy" />
+                            <TextBlock x:Name="AlsoSaveDetail" Classes="muted" FontSize="13" TextWrapping="Wrap" MaxWidth="540" />
+                        </StackPanel>
+                    </CheckBox>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Border>
 </UserControl>

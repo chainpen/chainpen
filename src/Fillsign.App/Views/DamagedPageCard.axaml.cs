@@ -22,13 +22,33 @@ public partial class DamagedPageCard : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (DataContext is PageViewModel page && _editor is not null)
+        UpdateExplanation();
+    }
+
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        // Pages may have been added or removed since the card was made.
+        UpdateExplanation();
+    }
+
+    private void UpdateExplanation()
+    {
+        if (DataContext is PageViewModel && _editor is not null)
         {
-            int others = _editor.Pages.Count - 1;
-            Explanation.Text = $"This page is damaged in {_editor.Title}. "
-                + (others == 1 ? "The other page is fine and you can keep working on it." : $"The other {others} pages are fine and you can keep working on them.");
+            Explanation.Text = ExplanationFor(_editor.Title, _editor.Pages.Count - 1);
         }
     }
+
+    /// <summary>What the card says (D13), for any number of other pages.</summary>
+    internal static string ExplanationFor(string title, int otherPages) =>
+        $"This page is damaged in {title}. " + otherPages switch
+        {
+            0 => "It’s the only page, so there’s nothing else to work on.",
+            1 => "The other page is fine and you can keep working on it.",
+            _ => $"The other {otherPages} pages are fine and you can keep working on them.",
+        };
 
     private void OnKeep(object? sender, RoutedEventArgs e)
     {

@@ -14,10 +14,11 @@ public static class FormSpotReader
         ArgumentNullException.ThrowIfNull(pdf);
 
         // Drawn boxes join the text as ☐ characters, so they're labelled and grouped the same way.
-        PdfCharacter[] characters = [.. pdf.GetCharacters(sourceIndex), .. pdf.GetDrawnBoxes(sourceIndex)];
+        IReadOnlyList<PdfCharacter> text = pdf.GetCharacters(sourceIndex);
+        PdfCharacter[] characters = [.. text, .. pdf.GetDrawnBoxes(sourceIndex)];
 
         // Lines are found left to right, so look at the page turned the way its text reads, then turn the spots back.
-        Rotation reading = ReadingTurn(pdf.GetCharacters(sourceIndex), source);
+        Rotation reading = ReadingTurn(text, source);
         var transform = new PageTransform(source, reading);
         PageCharacter[] onPage =
         [

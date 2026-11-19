@@ -182,7 +182,9 @@
             <ControlTemplate>
                 <Panel Background="Transparent">
                     <Ellipse Name="Ring" Width="32" Height="32" Stroke="{DynamicResource BorderControl}" StrokeThickness="1" />
-                    <Ellipse Width="26" Height="26" Fill="{TemplateBinding Background}" />
+                    <!-- A 4-point gap is a whole number of pixels at 125–200% scaling, so the colour sits centred in the ring;
+                         a 3-point gap (26 inside 32) splits into half pixels and lands off-centre on Windows at 150%. -->
+                    <Ellipse Margin="4" Fill="{TemplateBinding Background}" />
                 </Panel>
             </ControlTemplate>
         </Setter>
@@ -243,6 +245,22 @@
     <Style Selector="TextBox.onPage:focus /template/ Border#PART_BorderElement, TextBox.onPage:pointerover /template/ Border#PART_BorderElement">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <!-- FS-950: typing into one of the PDF's own fields. Opaque, so the value the page shows underneath is covered. -->
+    <Style Selector="TextBox.formField">
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+        <Setter Property="Background" Value="{DynamicResource Page}" />
+        <Setter Property="Foreground" Value="{DynamicResource InkBlack}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource InkBlack}" />
+    </Style>
+    <Style Selector="TextBox.formField:focus /template/ Border#PART_BorderElement, TextBox.formField:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource Page}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+        <Setter Property="BorderThickness" Value="1" />
     </Style>
 
     <!-- Shapes menu items (E7): icon, name and what it's for. -->

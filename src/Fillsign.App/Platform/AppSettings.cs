@@ -19,7 +19,7 @@ public sealed record RecentFile(string Path, DateTimeOffset LastOpened, bool IsF
 /// <summary>
 /// App preferences kept in the OS app data folder (FR-10.1): the launch count (first-launch screen, FR-1.8), whether
 /// the first-run tips were shown, the appearance, how long recovery copies are kept, the crash-report choice and the
-/// Recent list, and the last ink colour chosen (#rrggbb). Unreadable settings fall back to defaults. Changes take effect immediately and are saved straight away.
+/// Recent list, the last ink colour chosen (#rrggbb), and whether single letters pick tools (FS-951). Unreadable settings fall back to defaults. Changes take effect immediately and are saved straight away.
 /// </summary>
 public sealed record AppSettings(
     int LaunchCount = 0,
@@ -28,7 +28,8 @@ public sealed record AppSettings(
     int RecoveryDays = AppSettings.DefaultRecoveryDays,
     bool? SendCrashReports = null,
     ImmutableArray<RecentFile> RecentFiles = default,
-    string? InkColour = null)
+    string? InkColour = null,
+    bool SingleKeyToolShortcuts = true)
 {
     public const int DefaultRecoveryDays = 7;
     public const int MaxRecentFiles = 10;

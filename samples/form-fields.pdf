@@ -1,0 +1,146 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [20 0 R 21 0 R 22 0 R 23 0 R 24 0 R 25 0 R 26 0 R 27 0 R 31 0 R 32 0 R 33 0 R 34 0 R] /NeedAppearances true /DA (/Helv 11 Tf 0 g) /DR << /Font << /Helv 5 0 R >> >> >> >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> /Annots [20 0 R 21 0 R 22 0 R 23 0 R 24 0 R 25 0 R 26 0 R 28 0 R 29 0 R 30 0 R 31 0 R 32 0 R 33 0 R 34 0 R] >>
+endobj
+4 0 obj
+<<  /Length 991 >>
+stream
+BT /F1 20 Tf 60 772 Td (Fillsign form-field test) Tj ET
+BT /F1 10 Tf 60 752 Td (Click a field with Select or Text to fill it. Totals are read-only.) Tj ET
+BT /F1 11 Tf 60 711 Td (Full name) Tj ET
+BT /F1 11 Tf 60 681 Td (Email) Tj ET
+BT /F1 11 Tf 60 651 Td (Date of birth) Tj ET
+BT /F1 11 Tf 60 621 Td (Address) Tj ET
+BT /F1 11 Tf 60 541 Td (Contact me by) Tj ET
+BT /F1 11 Tf 220 541 Td (Email) Tj ET
+BT /F1 11 Tf 300 541 Td (Phone) Tj ET
+BT /F1 11 Tf 380 541 Td (Post) Tj ET
+BT /F1 11 Tf 60 501 Td (Membership) Tj ET
+BT /F1 11 Tf 220 501 Td (Individual) Tj ET
+BT /F1 11 Tf 320 501 Td (Family) Tj ET
+BT /F1 11 Tf 410 501 Td (Business) Tj ET
+BT /F1 11 Tf 60 461 Td (State) Tj ET
+BT /F1 11 Tf 60 421 Td (How did you hear?) Tj ET
+BT /F1 9 Tf 60 409 Td ((choose any)) Tj ET
+BT /F1 11 Tf 60 331 Td (Amount due) Tj ET
+BT /F1 11 Tf 60 291 Td (Notes) Tj ET
+BT /F1 11 Tf 60 181 Td (Signature) Tj ET
+0.6 G 0.8 w 200 177 m 500 177 l S
+BT /F1 9 Tf 200 163 Td ((sign here with Fillsign's Sign tool)) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+10 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Length 40 >>
+stream
+0 0 0 RG 1.6 w 3 7 m 6 3.5 l 11.5 11 l S
+endstream
+endobj
+11 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Length 0 >>
+stream
+
+endstream
+endobj
+12 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Length 80 >>
+stream
+0 0 0 rg 7 7 m 10 7 10 10 7 10 c 4 10 4 7 4 7 c 4 4 7 4 7 4 c 10 4 10 7 10 7 c f
+endstream
+endobj
+20 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Tx /T (Name) /Rect [200 707 500 725] /F 4 /P 3 0 R /Ff 0 /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1]  >>
+endobj
+21 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Tx /T (Email) /Rect [200 677 500 695] /F 4 /P 3 0 R /Ff 0 /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1]  >>
+endobj
+22 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Tx /T (DateOfBirth) /Rect [200 647 320 665] /F 4 /P 3 0 R /Ff 0 /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1]  >>
+endobj
+23 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Tx /T (Address) /Rect [200 581 500 635] /F 4 /P 3 0 R /Ff 4096 /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1]  >>
+endobj
+24 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Btn /T (ContactEmail) /Rect [200 539 214 553] /F 4 /P 3 0 R /V /Off /AS /Off /MK << /BC [0 0 0] >> /Border [0 0 1] /AP << /N << /Yes 10 0 R /Off 11 0 R >> >> >>
+endobj
+25 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Btn /T (ContactPhone) /Rect [280 539 294 553] /F 4 /P 3 0 R /V /Off /AS /Off /MK << /BC [0 0 0] >> /Border [0 0 1] /AP << /N << /Yes 10 0 R /Off 11 0 R >> >> >>
+endobj
+26 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Btn /T (ContactPost) /Rect [360 539 374 553] /F 4 /P 3 0 R /V /Off /AS /Off /MK << /BC [0 0 0] >> /Border [0 0 1] /AP << /N << /Yes 10 0 R /Off 11 0 R >> >> >>
+endobj
+27 0 obj
+<< /FT /Btn /Ff 49152 /T (Membership) /V /Off /Kids [28 0 R 29 0 R 30 0 R] >>
+endobj
+28 0 obj
+<< /Type /Annot /Subtype /Widget /Parent 27 0 R /Rect [200 499 214 513] /F 4 /P 3 0 R /AS /Off /MK << /BC [0 0 0] >> /Border [0 0 1] /AP << /N << /Individual 12 0 R /Off 11 0 R >> >> >>
+endobj
+29 0 obj
+<< /Type /Annot /Subtype /Widget /Parent 27 0 R /Rect [300 499 314 513] /F 4 /P 3 0 R /AS /Off /MK << /BC [0 0 0] >> /Border [0 0 1] /AP << /N << /Family 12 0 R /Off 11 0 R >> >> >>
+endobj
+30 0 obj
+<< /Type /Annot /Subtype /Widget /Parent 27 0 R /Rect [390 499 404 513] /F 4 /P 3 0 R /AS /Off /MK << /BC [0 0 0] >> /Border [0 0 1] /AP << /N << /Business 12 0 R /Off 11 0 R >> >> >>
+endobj
+31 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Ch /T (State) /Rect [200 455 360 475] /F 4 /P 3 0 R /Ff 131072 /Opt [() (ACT) (NSW) (NT) (QLD) (SA) (TAS) (VIC) (WA)] /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1] >>
+endobj
+32 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Ch /T (Heard) /Rect [200 371 360 435] /F 4 /P 3 0 R /Ff 2097152 /Opt [(Friend) (Search) (Social media) (Newspaper)] /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1] >>
+endobj
+33 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Tx /T (Total) /Rect [200 327 320 345] /F 4 /P 3 0 R /Ff 1 /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1] /V ($120.00) >>
+endobj
+34 0 obj
+<< /Type /Annot /Subtype /Widget /FT /Tx /T (Notes) /Rect [200 225 500 305] /F 4 /P 3 0 R /Ff 4096 /DA (/Helv 11 Tf 0 g) /MK << /BC [0.6 0.6 0.6] >> /Border [0 0 1]  >>
+endobj
+xref
+0 35
+0000000000 65535 f 
+0000000015 00000 n 
+0000000252 00000 n 
+0000000309 00000 n 
+0000000543 00000 n 
+0000001586 00000 n 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000001683 00000 n 
+0000001822 00000 n 
+0000001920 00000 n 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000000000 65535 f 
+0000002099 00000 n 
+0000002280 00000 n 
+0000002462 00000 n 
+0000002650 00000 n 
+0000002837 00000 n 
+0000003052 00000 n 
+0000003267 00000 n 
+0000003481 00000 n 
+0000003575 00000 n 
+0000003777 00000 n 
+0000003975 00000 n 
+0000004175 00000 n 
+0000004416 00000 n 
+0000004655 00000 n 
+0000004849 00000 n 
+trailer
+<< /Size 35 /Root 1 0 R >>
+startxref
+5034
+%%EOF

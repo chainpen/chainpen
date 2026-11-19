@@ -36,7 +36,4 @@ public enum ContextMode
 
     /// <summary>Dragging a selection box (E5).</summary>
     BoxSelecting,
-
-    /// <summary>Something was just deleted: offer Undo straight away (FR-7.11).</summary>
-    Notice,
 }

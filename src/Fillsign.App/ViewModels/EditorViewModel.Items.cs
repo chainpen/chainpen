@@ -55,7 +55,7 @@ public sealed partial class EditorViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ContextMode), nameof(SelectionLabel), nameof(SelectionHint), nameof(OptionsHaveColour), nameof(OptionsHaveSize))]
     [NotifyPropertyChangedFor(nameof(SizeLabel), nameof(SizeTip), nameof(CurrentColour), nameof(SelectedIds))]
-    [NotifyCanExecuteChangedFor(nameof(DeleteSelectionCommand), nameof(DuplicateSelectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectionCommand), nameof(DuplicateSelectionCommand), nameof(AddToEveryPageCommand))]
     public partial Selection Selection { get; private set; } = Selection.None;
 
     /// <summary>Colour for new items, and the last colour chosen (FR-5.5). Blue by default (FR-3.9).</summary>
@@ -103,10 +103,19 @@ public sealed partial class EditorViewModel
     [NotifyPropertyChangedFor(nameof(ContextMode), nameof(BoxSelectingText))]
     public partial int BoxCandidateCount { get; private set; }
 
-    /// <summary>"2 items deleted" with Undo next to it (FR-7.11); cleared by the next action.</summary>
+    /// <summary>
+    /// "2 items deleted" (FR-7.11, FS-707): shown in a toast with Undo, which stays at least 10 seconds and while
+    /// it has the pointer or focus; cleared by the next action.
+    /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ContextMode))]
+    [NotifyPropertyChangedFor(nameof(HasToast))]
     public partial string? Notice { get; private set; }
+
+    public bool HasToast => Notice is not null;
+
+    /// <summary>Closes the toast (its close button, or after its time is up).</summary>
+    [RelayCommand]
+    private void DismissNotice() => Notice = null;
 
     public ImmutableHashSet<ItemId> SelectedIds => Selection is ItemSelection items ? items.Items : [];
 
@@ -120,7 +129,6 @@ public sealed partial class EditorViewModel
         : BoxCandidateCount > 0 || SelectionBox is not null ? ContextMode.BoxSelecting
         : Tool == EditorTool.Draw ? ContextMode.Drawing
         : !Selection.IsEmpty ? ContextMode.Selection
-        : Notice is not null ? ContextMode.Notice
         : Tool == EditorTool.Select ? ContextMode.Hint
         : ContextMode.ToolOptions;
 
@@ -157,7 +165,7 @@ public sealed partial class EditorViewModel
             return items switch
             {
                 [TextItem] => "Double-click to edit · drag to move · drag a corner to change the size · arrow keys nudge",
-                [SignatureItem or InkItem] => "Drag to move · drag a corner to resize (keeps its shape) · arrow keys nudge",
+                [SignatureItem or InkItem or PictureItem] => "Drag to move · drag a corner to resize (keeps its shape) · arrow keys nudge",
                 [_] => "Drag to move · drag a corner to resize · arrow keys nudge",
                 _ => "Drag to move them together · Shift-click to add or remove · arrow keys nudge",
             };
@@ -229,6 +237,12 @@ public sealed partial class EditorViewModel
 
     private void SwitchTool(EditorTool tool)
     {
+        // View only (FS-214): only Select, which can't change anything here.
+        if (IsViewOnly)
+        {
+            tool = EditorTool.Select;
+        }
+
         FinishTyping();
         CancelGesture();
         _joiningInk = null;
@@ -252,7 +266,15 @@ public sealed partial class EditorViewModel
     /// </summary>
     public bool BackOut()
     {
-        if (_gesture is not null)
+        if (EditingField is not null)
+        {
+            CancelFieldEdit();
+        }
+        else if (FocusedField is not null)
+        {
+            LeaveFields();
+        }
+        else if (_gesture is not null)
         {
             CancelGesture();
         }
@@ -319,6 +341,20 @@ public sealed partial class EditorViewModel
         }
 
         PageId page = State.Pages[pageIndex].Id;
+        if (EditingField is not null)
+        {
+            // A click outside the field's text box finishes it; the view passes what was typed first.
+            return;
+        }
+
+        // FS-950: a click on one of the PDF's own fields fills it, unless something of Fillsign's is on top.
+        if (TypingItem is null && ItemHitTest.TopmostAt(State, page, point, tolerance, Measurer) is null && PressField(page, point))
+        {
+            return;
+        }
+
+        LeaveFields();
+
         if (TypingItem is { } typing)
         {
             // A click outside finishes typing (E2); a click inside belongs to the text box.
@@ -407,6 +443,14 @@ public sealed partial class EditorViewModel
             IsKeyboardCursor = false;
         }
 
+        // Just moving over the page changes only what follows the pointer: no need to redraw the pages or refresh
+        // the bars, which on a slow machine falls behind the mouse and leaves a trail.
+        if (_gesture is null)
+        {
+            HoverChanged?.Invoke();
+            return;
+        }
+
         switch (_gesture)
         {
             case MovingItems moving:
@@ -467,7 +511,7 @@ public sealed partial class EditorViewModel
         if (!IsKeyboardCursor)
         {
             Cursor = null;
-            Changed();
+            HoverChanged?.Invoke();
         }
     }
 
@@ -594,9 +638,15 @@ public sealed partial class EditorViewModel
     /// <summary>The text box changed: update the item live; finishing records the undo step.</summary>
     public void UpdateTyping(string text)
     {
-        if (TypingItem is { } id && State.FindItem(id) is TextItem item && item.Text != text)
+        string typed = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        if (typed.Length > TextItem.MaxLength)
         {
-            ApplyLive(ItemEdits.Replace(State, item with { Text = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n') }));
+            typed = typed[..TextItem.MaxLength];
+        }
+
+        if (TypingItem is { } id && State.FindItem(id) is TextItem item && item.Text != typed)
+        {
+            ApplyLive(ItemEdits.Replace(State, item with { Text = typed }));
         }
     }
 
@@ -649,6 +699,28 @@ public sealed partial class EditorViewModel
         _clipboard.CopyItems(State, SelectedIds);
         Paste(SelectedItems().First().Page);
     }
+
+    /// <summary>FS-957: puts a copy of the selection on every other page, at the same place from the nearest edges.</summary>
+    [RelayCommand(CanExecute = nameof(CanAddToEveryPage))]
+    private void AddToEveryPage()
+    {
+        var items = SelectedItems().ToList();
+        if (items.Count == 0 || State.Pages.Length < 2)
+        {
+            return;
+        }
+
+        Change(ItemEdits.CopyToEveryPage(State, SelectedIds, PageSizeOf, Measurer, out _));
+        int pages = State.Pages.Length - 1;
+        string what = items.Count == 1 ? ItemName(items[0]) : $"{items.Count} items";
+        Notice = $"{what} added to {pages} more {(pages == 1 ? "page" : "pages")}";
+        Changed();
+    }
+
+    /// <summary>The document has more than one page, so "Every page" means something.</summary>
+    public bool IsSeveralPages => State.Pages.Length > 1;
+
+    private bool CanAddToEveryPage() => !Selection.IsEmpty && State.Pages.Length > 1;
 
     private bool HasSelection() => !Selection.IsEmpty;
 
@@ -806,7 +878,7 @@ public sealed partial class EditorViewModel
     {
         // The click marks the middle of the first line, where the caret appears.
         double lineHeight = DefaultFontSize * TextItem.LineHeight;
-        var item = new TextItem(ItemId.New(), page, point.X, point.Y - (lineHeight / 2), text, DefaultFontSize, DefaultColour);
+        var item = new TextItem(ItemId.New(), page, point.X, point.Y - (lineHeight / 2), text, DefaultFontSize, DefaultColour, DefaultBold, DefaultAlign);
         item = (TextItem)ItemGeometry.MoveTo(item, ItemGeometry.ClampToPage(ItemGeometry.Bounds(item, Measurer), PageSizeOf(page)));
         DocumentState before = State;
         if (startTyping)
@@ -968,7 +1040,58 @@ public sealed partial class EditorViewModel
     }
 
     /// <summary>Shows a state without recording it (during a drag or while typing).</summary>
-    private void ApplyLive(DocumentState next) => ApplyState(next);
+    private void ApplyLive(DocumentState next)
+    {
+        if (!IsViewOnly)
+        {
+            ApplyState(next);
+        }
+    }
+
+    /// <summary>
+    /// Tab on the page (FS-716): selects the next item in reading order (pages in order, then top to bottom and left
+    /// to right) and brings it into view. Returns false past the last item, or before the first going backwards, so
+    /// focus can move on.
+    /// </summary>
+    public bool SelectNextItem(bool backwards)
+    {
+        // Items whose tops are within a few points share a row, so a tick and its label read left to right.
+        const double RowTolerance = 6;
+        Item[] ordered =
+        [
+            .. State.Pages.SelectMany(page => State.ItemsOn(page.Id)
+                .Select(item => (Item: item, Box: ItemGeometry.Bounds(item, Measurer)))
+                .OrderBy(entry => Math.Round(entry.Box.Y / RowTolerance))
+                .ThenBy(entry => entry.Box.X)
+                .Select(entry => entry.Item)),
+        ];
+        if (ordered.Length == 0)
+        {
+            return false;
+        }
+
+        int current = SelectedItems().ToList() is [var only] ? Array.FindIndex(ordered, item => item.Id == only.Id) : -1;
+        int next = current < 0 ? (backwards ? ordered.Length - 1 : 0) : current + (backwards ? -1 : 1);
+        if (next < 0 || next >= ordered.Length)
+        {
+            return false;
+        }
+
+        Item chosen = ordered[next];
+        SwitchTool(EditorTool.Select);
+        Selection = new ItemSelection([chosen.Id]);
+        int pageIndex = State.IndexOf(chosen.Page);
+        if (pageIndex >= 0)
+        {
+            ScrollToAreaRequested?.Invoke(pageIndex, ItemGeometry.Bounds(chosen, Measurer));
+        }
+
+        Changed();
+        return true;
+    }
+
+    /// <summary>Raised when only what follows the pointer changed (the view repaints just that).</summary>
+    public event Action? HoverChanged;
 
     private void Changed()
     {
@@ -979,6 +1102,9 @@ public sealed partial class EditorViewModel
         OnPropertyChanged(nameof(CurrentColour));
         OnPropertyChanged(nameof(OptionsHaveColour));
         OnPropertyChanged(nameof(OptionsHaveSize));
+        OnPropertyChanged(nameof(IsSeveralPages));
+        OnTextStyleChanged();
+        AddToEveryPageCommand.NotifyCanExecuteChanged();
         ItemsChanged?.Invoke();
     }
 
@@ -1041,6 +1167,7 @@ public sealed partial class EditorViewModel
         SignatureItem => "Signature",
         ShapeItem shape => ShapeName(shape.Kind),
         InkItem => "Drawing",
+        PictureItem => "Picture",
     };
 
     /// <summary>"Signature selected", "3 ticks", "2 items" (E3, S2).</summary>
@@ -1101,13 +1228,16 @@ public sealed partial class EditorViewModel
 
     public bool ShowsBoxSelecting => ContextMode == ContextMode.BoxSelecting;
 
-    public bool ShowsNotice => ContextMode == ContextMode.Notice;
 
     public bool IsBlackChosen => CurrentColour == InkColor.Black;
 
     public bool IsBlueChosen => CurrentColour == InkColor.Blue;
 
     public bool IsRedChosen => CurrentColour == InkColor.Red;
+
+    public bool IsGreenChosen => CurrentColour == InkColor.Green;
+
+    public bool IsPurpleChosen => CurrentColour == InkColor.Purple;
 
     public string OptionsTitle => ContextMode switch
     {
@@ -1130,7 +1260,7 @@ public sealed partial class EditorViewModel
     private static readonly string[] s_contextDependents =
     [
         nameof(ShowsHint), nameof(ShowsOptions), nameof(ShowsSelectionActions), nameof(ShowsDone), nameof(ShowsPlacing),
-        nameof(ShowsBoxSelecting), nameof(ShowsNotice), nameof(OptionsTitle), nameof(OptionsHint),
+        nameof(ShowsBoxSelecting), nameof(OptionsTitle), nameof(OptionsHint),
     ];
 
     private static readonly string[] s_toolDependents =
@@ -1139,9 +1269,9 @@ public sealed partial class EditorViewModel
         nameof(IsDrawTool), nameof(ContextHint),
     ];
 
-    private static readonly string[] s_organiseBarDependents = [nameof(ShowsPageActions), nameof(ShowsPageNotice), nameof(ShowsOrganiseHint)];
+    private static readonly string[] s_organiseBarDependents = [nameof(ShowsPageActions), nameof(ShowsOrganiseHint)];
 
-    private static readonly string[] s_colourDependents = [nameof(IsBlackChosen), nameof(IsBlueChosen), nameof(IsRedChosen)];
+    private static readonly string[] s_colourDependents = [nameof(IsBlackChosen), nameof(IsBlueChosen), nameof(IsRedChosen), nameof(IsGreenChosen), nameof(IsPurpleChosen)];
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
     {

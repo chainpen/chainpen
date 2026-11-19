@@ -118,7 +118,7 @@ public sealed class PagesTests
 
         Assert.Equal(5, s.Editor.State.Pages.Length);
         Assert.Equal("Page 3 deleted", s.Editor.Notice);
-        Assert.True(s.Editor.ShowsPageNotice);
+        Assert.True(s.Editor.HasToast);
         await Pump(() => true);
         Save(s.Window, "phase5-deleted-notice");
 

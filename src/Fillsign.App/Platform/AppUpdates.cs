@@ -37,8 +37,18 @@ public sealed partial class AppUpdates : ObservableObject
 
     public static AppUpdates Instance { get; } = new();
 
-    /// <summary>Saves everyone's unsaved work before a restart; set by the app at start-up.</summary>
-    public Func<Task>? KeepUnsavedWork { get; set; }
+    /// <summary>
+    /// Keeps everyone's unsaved work as recovery copies before a restart, and says whether it all was; set by the app
+    /// at start-up.
+    /// </summary>
+    public Func<Task<bool>>? KeepUnsavedWork { get; set; }
+
+    /// <summary>Why the last "Restart and update" didn't restart, shown under its button; empty otherwise.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRestartProblem))]
+    public partial string RestartProblem { get; private set; } = string.Empty;
+
+    public bool HasRestartProblem => RestartProblem.Length > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReady), nameof(Title))]
@@ -140,10 +150,14 @@ public sealed partial class AppUpdates : ObservableObject
             return;
         }
 
-        if (KeepUnsavedWork is { } keep)
+        // Never restart over work that couldn't be kept: say so, and leave everything open.
+        if (KeepUnsavedWork is { } keep && !await keep().ConfigureAwait(true))
         {
-            await keep().ConfigureAwait(true);
+            RestartProblem = "Fillsign couldn’t keep a copy of your unsaved work, so it hasn’t restarted. Wait for every page to load, or save your work, then try again.";
+            return;
         }
+
+        RestartProblem = string.Empty;
 
         _manager.ApplyUpdatesAndRestart(_downloaded);
     }

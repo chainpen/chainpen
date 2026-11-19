@@ -12,6 +12,19 @@ public sealed class DocumentLoaderTests
     private static InputFile Sample(string name) => new(Path.GetFileName(name), TestFiles.Sample(name), File.ReadAllBytes(TestFiles.Sample(name)));
 
     [Fact]
+    public async Task A_file_whose_owner_forbids_changes_is_reported_so_the_person_can_be_asked()
+    {
+        InputFile restricted = Sample("corpus/empty_protected.pdf");
+        OpenResult result = await DocumentLoader.OpenAsync([restricted], s_noPassword, CancellationToken.None);
+        Assert.Equal(["empty_protected.pdf"], result.RestrictedFiles);
+        result.Source.Dispose();
+
+        OpenResult ordinary = await DocumentLoader.OpenAsync([Sample("four-pages.pdf")], s_noPassword, CancellationToken.None);
+        Assert.Empty(ordinary.RestrictedFiles);
+        ordinary.Source.Dispose();
+    }
+
+    [Fact]
     public async Task A_single_pdf_is_used_as_it_is()
     {
         OpenResult result = await DocumentLoader.OpenAsync([Sample("four-pages.pdf")], s_noPassword, CancellationToken.None);
@@ -125,7 +138,7 @@ public sealed class DocumentLoaderTests
     {
         OpenResult result = await DocumentLoader.OpenAsync([Sample("four-pages.pdf")], s_noPassword, CancellationToken.None);
         using SourceDocument source = result.Source;
-        var (pages, skipped) = await DocumentLoader.OpenForAddingAsync([Sample("four-pages.pdf"), new InputFile("p.jpg", null, Jpeg(50, 80, 1))], s_noPassword, CancellationToken.None);
+        var (pages, skipped, _) = await DocumentLoader.OpenForAddingAsync([Sample("four-pages.pdf"), new InputFile("p.jpg", null, Jpeg(50, 80, 1))], s_noPassword, CancellationToken.None);
         using (pages)
         {
             Assert.Empty(skipped);

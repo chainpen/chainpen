@@ -29,9 +29,11 @@ public partial class ChoiceDialog : UserControl
     /// <param name="otherLabel">A second answer on the left ("Don’t save"), or null for none.</param>
     /// <param name="focusMain">Start on the main button when it's the safe choice; otherwise on Cancel.</param>
     /// <param name="isMainDestructive">Shows the main button in red, for answers that discard something.</param>
-    public ChoiceDialog(string title, string body, string mainLabel, string? otherLabel, bool focusMain, bool isMainDestructive = false)
+    /// <param name="cancelLabel">Names what backing out does when "Cancel" would be unclear ("Don’t open").</param>
+    public ChoiceDialog(string title, string body, string mainLabel, string? otherLabel, bool focusMain, bool isMainDestructive = false, string cancelLabel = "Cancel")
     {
         InitializeComponent();
+        CancelButton.Content = cancelLabel;
         Heading.Text = title;
         Body.Text = body;
         MainButton.Content = mainLabel;

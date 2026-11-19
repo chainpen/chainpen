@@ -6,7 +6,7 @@
              x:DataType="vm:StartViewModel">
     <!-- 🎨 2 / 9: the start screen. -->
     <DockPanel Background="{DynamicResource SurfaceApp}">
-        <Border DockPanel.Dock="Top" Height="44" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}"
+        <Border x:Name="TitleStrip" DockPanel.Dock="Top" Height="{StaticResource TitleStripHeight}" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="0,0,0,1" Padding="12,0">
             <Panel>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Text="Fillsign" />
@@ -17,6 +17,38 @@
                     </StackPanel>
                 </Button>
             </Panel>
+        </Border>
+
+        <!-- FS-902: a crash report is waiting; the person reviews it in a GitHub issue before anything is sent. -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding HasCrashReport}" Background="{DynamicResource InfoTint}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="24,12"
+                AutomationProperties.LiveSetting="Polite">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <Button Classes="primary" MinHeight="36" Content="Review and send…" Click="OnSendCrashReport"
+                            ToolTip.Tip="Opens a GitHub issue with the report filled in. Nothing is sent until you submit it." />
+                    <Button MinHeight="36" Content="Delete" Click="OnDeleteCrashReports" />
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                    <Run FontWeight="SemiBold" Text="Fillsign hit a problem last time." />
+                    <Run Text="A report of what went wrong is ready: the app version, your system and the code that failed. No documents, signatures or file names." />
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <!-- FS-902: asked once, from the second start; off until the person says yes (FS-016). -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding AsksAboutCrashReports}" Background="{DynamicResource InfoTint}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="24,12">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <Button Classes="primary" MinHeight="36" Content="Yes, keep reports" Click="OnCrashReportsYes" />
+                    <Button MinHeight="36" Content="No thanks" Click="OnCrashReportsNo" />
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                    <Run FontWeight="SemiBold" Text="Help fix problems?" />
+                    <Run Text="If something goes wrong, Fillsign can keep a short report on this computer for you to review and send. It never includes your documents, signatures or file names. You can change this in Settings." />
+                </TextBlock>
+            </DockPanel>
         </Border>
 
         <!-- After an unexpected shutdown (FR-8.12): recover, or put it off to Recent. -->
@@ -77,7 +109,7 @@
                         <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding DropHint}" />
                     </StackPanel>
                     <Button Classes="primary" VerticalAlignment="Center" Click="OnOpen" IsEnabled="{Binding !IsOpening}"
-                            ToolTip.Tip="Open a PDF or image (Mod+O)">
+                            ToolTip.Tip="{c:Keys 'Open a PDF or image (Mod+O)'}">
                         <StackPanel Classes="content">
                             <c:StrokeIcon Data="{StaticResource IconFolder}" />
                             <TextBlock Text="Open…" />
@@ -162,6 +194,9 @@
 
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
                        Text="Nothing leaves this computer: Fillsign doesn’t need an account or an internet connection." />
+            <!-- The licence in a sentence (FS-027): free for personal use, and for everyone during the beta. -->
+            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                       Text="Free for personal use, and free for businesses during the beta. About Fillsign has the details." />
         </StackPanel>
     </ScrollViewer>
     </DockPanel>

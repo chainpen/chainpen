@@ -66,6 +66,7 @@ public static class ItemGeometry
         TextItem text => TextSize(text, measurer),
         MarkItem mark => new PageSize(mark.Size, mark.Size),
         SignatureItem signature => new PageSize(signature.Width, signature.Height),
+        PictureItem picture => new PageSize(picture.Width, picture.Height),
         ShapeItem shape => new PageSize(shape.Width, shape.Height),
         InkItem ink => new PageSize(ink.Width, ink.Height),
     };
@@ -77,6 +78,26 @@ public static class ItemGeometry
         string[] lines = text.Lines;
         double width = lines.Max(line => measurer.MeasureLineWidth(line, text.FontSize));
         return new PageSize(width, lines.Length * text.FontSize * TextItem.LineHeight);
+    }
+
+    /// <summary>
+    /// How far each line starts from the item's left edge (FS-952): nothing for left-aligned text, otherwise the space
+    /// left by a shorter line, all or half of it. Screen, typing and export use the same offsets.
+    /// </summary>
+    public static double[] LineOffsets(TextItem text, ITextMeasurer measurer)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(measurer);
+        string[] lines = text.Lines;
+        if (text.Align == TextAlign.Left)
+        {
+            return new double[lines.Length];
+        }
+
+        double[] widths = [.. lines.Select(line => measurer.MeasureLineWidth(line, text.FontSize))];
+        double box = widths.Max();
+        double share = text.Align == TextAlign.Centre ? 0.5 : 1;
+        return [.. widths.Select(width => (box - width) * share)];
     }
 
     /// <summary>

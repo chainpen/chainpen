@@ -35,7 +35,7 @@
         </Border>
 
         <!-- Modal dialogs over a dimmed window. -->
-        <Border x:Name="DialogLayer" IsVisible="False" Background="{DynamicResource Overlay}">
+        <Border x:Name="DialogLayer" IsVisible="False" Background="{DynamicResource Overlay}" KeyboardNavigation.TabNavigation="Cycle">
             <ContentControl x:Name="DialogHost" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,160,0,0" />
         </Border>
     </Panel>

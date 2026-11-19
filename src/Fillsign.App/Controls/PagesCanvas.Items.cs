@@ -43,7 +43,7 @@ public sealed partial class PagesCanvas
         editor.ItemsChanged += () =>
         {
             SyncTypingBox();
-            _layer.InvalidateVisual();
+            InvalidateLayers();
         };
         editor.PropertyChanged += (_, args) =>
         {
@@ -52,6 +52,7 @@ public sealed partial class PagesCanvas
                 UpdatePointerCursor(null);
             }
         };
+        AttachFields(editor);
         PointerPressed += OnPointerPressed;
         PointerMoved += OnPointerMoved;
         PointerReleased += OnPointerReleased;
@@ -96,16 +97,6 @@ public sealed partial class PagesCanvas
                 _painter.Draw(context, preview);
             }
 
-            if (editor.PlacingSignature is { } placing && editor.Cursor is { } cursor && cursor.Page == page.Id)
-            {
-                _painter.Draw(context, editor.SignatureAt(page.Id, cursor.Point, placing.Image, placing.Kind), opacity: 0.55);
-            }
-
-            // Tick and Cross: a faint preview of the mark, exactly where a click would place it.
-            if (editor.MarkPreview is { } mark && mark.Page == page.Id)
-            {
-                _painter.Draw(context, mark, opacity: 0.45);
-            }
         }
 
         DrawOverlays(context, page, rect);
@@ -137,6 +128,27 @@ public sealed partial class PagesCanvas
         if (editor.CheckingGap is { } gap && gap.Page == page.Id)
         {
             DrawCheckingGap(context, rect, gap.Area, editor.CheckingBadge);
+        }
+
+        // FS-950: the field in use, ringed like a focused control: the one Tab reached, or the text field being typed in.
+        if ((editor.FocusedField ?? editor.EditingField?.Hit) is { } ringed && ringed.Page == page.Id)
+        {
+            Fillsign.Core.Model.PageRect ringBox = ringed.Box;
+            var ring = new Rect(rect.X + (ringBox.X * Zoom), rect.Y + (ringBox.Y * Zoom), ringBox.Width * Zoom, ringBox.Height * Zoom).Inflate(3);
+            context.DrawRectangle(null, new Pen(Brush("FocusRing", blue), 2), ring, 3, 3);
+        }
+
+        if (editor.FocusedField is { } focused && focused.Page == page.Id)
+        {
+            Fillsign.Core.Model.PageRect box = focused.Box;
+
+            // In a multi-select list, the row the arrow keys are on.
+            if (focused.Field is { IsMultiSelect: true, IsList: true } list && (editor.FocusedOption + 1) * list.ListRowHeight <= box.Height)
+            {
+                double top = box.Y + 1 + (editor.FocusedOption * list.ListRowHeight);
+                var row = new Rect(rect.X + ((box.X + 1) * Zoom), rect.Y + (top * Zoom), (box.Width - 2) * Zoom, list.ListRowHeight * Zoom);
+                context.DrawRectangle(null, new Pen(Brush("FocusRing", blue), 1, new DashStyle([2, 2], 0)), row);
+            }
         }
 
         foreach (Item item in editor.SelectedItems())
@@ -180,21 +192,54 @@ public sealed partial class PagesCanvas
             context.DrawRectangle(tint, new Pen(blue, 1.5), box.Inflate(new Thickness(6, 2)), 4, 4);
         }
 
-        if (editor.PlacingSignature is { } placing && editor.Cursor is { } ghost && ghost.Page == page.Id)
+    }
+
+    /// <summary>
+    /// What follows the pointer: the tick or cross about to be placed, the signature being placed and the keyboard
+    /// cursor. It has a layer of its own, so moving the mouse repaints only this, not every page and item under it.
+    /// </summary>
+    private void DrawHover(DrawingContext context)
+    {
+        if (_editor is not { Cursor: { } cursor } editor || editor.State.IndexOf(cursor.Page) is not (var index and >= 0) || index >= _tops.Length)
         {
-            // E4: the signature follows the pointer inside a dashed box until it's placed.
-            SignatureItem preview = editor.SignatureAt(page.Id, ghost.Point, placing.Image, placing.Kind);
-            context.DrawRectangle(null, new Pen(blue, 1.5, new DashStyle([4, 3], 0)), ViewBox(preview, rect).Inflate(OutlineGap), 3, 3);
+            return;
         }
 
-        if (editor.IsKeyboardCursor && editor.Cursor is { } cursor && cursor.Page == page.Id)
+        Rect rect = PageRect(index);
+        double zoom = Zoom;
+        IBrush blue = Brush("SelectionOnPage", Brushes.RoyalBlue);
+        using (context.PushClip(rect))
         {
-            // Where Enter will place, when placing with the keyboard (NFR-4).
-            Point centre = rect.TopLeft + new Point(cursor.Point.X * Zoom, cursor.Point.Y * Zoom);
-            var pen = new Pen(Brush("Text", Brushes.Black), 1.5);
-            context.DrawLine(pen, centre - new Point(11, 0), centre + new Point(11, 0));
-            context.DrawLine(pen, centre - new Point(0, 11), centre + new Point(0, 11));
-            context.DrawEllipse(null, new Pen(blue, 1.5), centre, 6, 6);
+            using (context.PushTransform(Matrix.CreateScale(zoom, zoom) * Matrix.CreateTranslation(rect.X, rect.Y)))
+            {
+                if (editor.PlacingSignature is { } placing)
+                {
+                    _painter.Draw(context, editor.SignatureAt(cursor.Page, cursor.Point, placing.Image, placing.Kind), opacity: 0.55);
+                }
+
+                // Tick and Cross: a faint preview of the mark, exactly where a click would place it.
+                if (editor.MarkPreview is { } mark)
+                {
+                    _painter.Draw(context, mark, opacity: 0.45);
+                }
+            }
+
+            if (editor.PlacingSignature is { } ghost)
+            {
+                // E4: the signature follows the pointer inside a dashed box until it's placed.
+                SignatureItem preview = editor.SignatureAt(cursor.Page, cursor.Point, ghost.Image, ghost.Kind);
+                context.DrawRectangle(null, new Pen(blue, 1.5, new DashStyle([4, 3], 0)), ViewBox(preview, rect).Inflate(OutlineGap), 3, 3);
+            }
+
+            if (editor.IsKeyboardCursor)
+            {
+                // Where Enter will place, when placing with the keyboard (NFR-4).
+                Point centre = rect.TopLeft + new Point(cursor.Point.X * zoom, cursor.Point.Y * zoom);
+                var pen = new Pen(Brush("Text", Brushes.Black), 1.5);
+                context.DrawLine(pen, centre - new Point(11, 0), centre + new Point(11, 0));
+                context.DrawLine(pen, centre - new Point(0, 11), centre + new Point(0, 11));
+                context.DrawEllipse(null, new Pen(blue, 1.5), centre, 6, 6);
+            }
         }
     }
 
@@ -260,6 +305,17 @@ public sealed partial class PagesCanvas
         if (_typingBox is not null && _typingBox.IsVisible && _typingBox.Bounds.Contains(position))
         {
             return; // The text box handles its own clicks.
+        }
+
+        if (_fieldBox is { IsVisible: true })
+        {
+            if (_fieldBox.Bounds.Contains(position))
+            {
+                return;
+            }
+
+            // A click away from a form field's text box finishes it, and goes on to do what it would anyway.
+            CommitFieldBox();
         }
 
         _scroller?.Focus();
@@ -412,6 +468,21 @@ public sealed partial class PagesCanvas
             }
         }
 
+        // FS-950: over one of the PDF's own fields, with nothing of Fillsign's on top, a click fills it.
+        if (type is StandardCursorType.Arrow or StandardCursorType.Ibeam && position is { } at && PageAt(at) is var fieldPage and >= 0
+            && ItemHitTest.TopmostAt(_editor.State, _editor.Pages[fieldPage].Id, ToPage(fieldPage, at), GrabDistance / Zoom, _editor.Measurer) is null
+            && IsOverField(fieldPage, at))
+        {
+            type = StandardCursorType.Hand;
+        }
+        else if (type is StandardCursorType.Arrow or StandardCursorType.Ibeam && position is { } over && PageAt(over) is var readOnlyPage and >= 0
+            && _editor.IsOverReadOnlyField(_editor.Pages[readOnlyPage].Id, ToPage(readOnlyPage, over))
+            && ItemHitTest.TopmostAt(_editor.State, _editor.Pages[readOnlyPage].Id, ToPage(readOnlyPage, over), GrabDistance / Zoom, _editor.Measurer) is null)
+        {
+            // A field the form fills in itself (a total): a click explains, but can't change it.
+            type = StandardCursorType.No;
+        }
+
         Cursor = new Cursor(type);
     }
 
@@ -442,6 +513,7 @@ public sealed partial class PagesCanvas
             _typingBox = new TextBox
             {
                 AcceptsReturn = true,
+                MaxLength = TextItem.MaxLength,
                 TextWrapping = TextWrapping.NoWrap,
                 FontFamily = ItemPainter.NotoSans,
                 FontFeatures = ItemPainter.NoKerning,
@@ -469,6 +541,13 @@ public sealed partial class PagesCanvas
         _typingBox.FontSize = fontSize;
         _typingBox.LineHeight = fontSize * TextItem.LineHeight;
         _typingBox.Foreground = new SolidColorBrush(ItemPainter.ToColor(text.Color));
+        _typingBox.FontWeight = text.IsBold ? FontWeight.Bold : FontWeight.Normal;
+        _typingBox.TextAlignment = text.Align switch
+        {
+            TextAlign.Centre => TextAlignment.Center,
+            TextAlign.Right => TextAlignment.Right,
+            _ => TextAlignment.Left,
+        };
         _typingBox.MinWidth = fontSize;
         _typingBaselineOffset = BaselineOffset(fontSize);
 

@@ -87,6 +87,10 @@ public sealed class ClipboardAndSelectionTests
         state = clipboard.PasteItems(state, state.Pages[1].Id, TestData.A4, s_measurer, out var pasted);
         Item copy = state.FindItem(pasted[0])!;
         Assert.Equal((40.0, 60.0), (copy.X, copy.Y));
+
+        // A paste elsewhere doesn't count towards the step down on the copied page: the next one there steps once.
+        state = clipboard.PasteItems(state, state.Pages[0].Id, TestData.A4, s_measurer, out pasted);
+        Assert.Equal(40 + Clipboard.PasteOffset, state.FindItem(pasted[0])!.X);
     }
 
     [Fact]

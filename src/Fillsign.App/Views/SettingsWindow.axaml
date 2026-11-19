@@ -76,10 +76,20 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
+                        <TextBlock Classes="heading-section" Text="Keyboard" />
+                        <CheckBox x:Name="SingleKeyTools" Margin="0,6,0,0" IsChecked="{Binding SingleKeyToolShortcuts}"
+                                  Content="Pick tools with single letters (V, T, C, X, D, S, R, P)" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="Turn this off if you use speech input, or keep pressing letters by accident." />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
                         <TextBlock Classes="heading-section" Text="Crash reports" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="Reports include the app version and what went wrong. They never include your documents, signatures or file names." />
-                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="Send crash reports" IsChecked="{Binding SendCrashReports}" />
+                                   Text="If something goes wrong, a short report is kept on this computer: the app version, your system and the code that failed. It never includes your documents, signatures or file names. Next time you start Fillsign, you can review it and send it as a GitHub issue." />
+                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="Keep reports for me to send" IsChecked="{Binding SendCrashReports}" />
                         <RadioButton GroupName="crash" Content="Don’t send" IsChecked="{Binding DontSendCrashReports}" />
                     </StackPanel>
                 </Border>

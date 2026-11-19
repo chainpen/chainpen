@@ -122,6 +122,8 @@ public sealed class DesktopFitTests : IDisposable
     [AvaloniaFact]
     public async Task Settings_change_the_appearance_and_recovery_period_straight_away()
     {
+        // Tests share one settings file and run in any order, so start from the defaults this test checks.
+        AppSettings.Update(_ => new AppSettings());
         var window = new SettingsWindow();
         window.Show();
         SettingsViewModel settings = window.ViewModel;
@@ -143,11 +145,15 @@ public sealed class DesktopFitTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task Deleting_recovery_copies_asks_first()
+    public async Task Deleting_recovery_copies_asks_first_and_open_documents_keep_a_fresh_one()
     {
         var crashed = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf"));
         crashed.AddTick();
         await crashed.Editor.AutosaveAsync();
+
+        // A copy left by a document that isn't open any more.
+        var leftOver = new RecoveryCopy(Guid.NewGuid(), "old.pdf", null, null, DateTimeOffset.Now, IsForUpdate: false);
+        Assert.True(RecoveryStore.Write(leftOver, File.ReadAllBytes(TestFiles.Sample("sample-form.pdf"))));
 
         var window = new SettingsWindow();
         window.Show();
@@ -156,7 +162,10 @@ public sealed class DesktopFitTests : IDisposable
         Assert.Equal("Delete all recovery copies?", dialog.FindControl<TextBlock>("Heading")!.Text);
         Click(dialog, "Delete recovery copies");
         await deleting;
-        Assert.Empty(RecoveryStore.List());
+        Assert.DoesNotContain(RecoveryStore.List(), copy => copy.Id == leftOver.Id);
+
+        // The open document still has unsaved work, so it isn't left without a copy until its next change.
+        await Pump(() => RecoveryStore.List().Any(copy => copy.Id == crashed.Editor.RecoveryId));
         window.Close();
         crashed.Window.CloseWithoutAsking();
     }

@@ -39,16 +39,46 @@ public closed record Item(ItemId Id, PageId Page, double X, double Y)
     public PagePoint Position => new(X, Y);
 }
 
-/// <summary>Typed text. Lines are separated by '\n'.</summary>
-public sealed record TextItem(ItemId Id, PageId Page, double X, double Y, string Text, double FontSize, InkColor Color)
+/// <summary>How the lines of a text item line up with each other (FS-952).</summary>
+public enum TextAlign
+{
+    Left,
+    Centre,
+    Right,
+}
+
+/// <summary>
+/// Typed text. Lines are separated by '\n'. Bold text is the same font drawn with an outline, so it measures the
+/// same as regular text (FS-952); alignment lines up each line inside the width of the longest one.
+/// </summary>
+public sealed record TextItem(
+    ItemId Id,
+    PageId Page,
+    double X,
+    double Y,
+    string Text,
+    double FontSize,
+    InkColor Color,
+    bool IsBold = false,
+    TextAlign Align = TextAlign.Left)
     : Item(Id, Page, X, Y)
 {
     public const double DefaultFontSize = 12;
+
+    /// <summary>
+    /// The longest text one item holds. The working copy's reader refuses longer text, so the editor stops at the same
+    /// length: otherwise a save would succeed and reopening it would lose every edit.
+    /// </summary>
+    public const int MaxLength = 10_000;
+
     public const double MinFontSize = 6;
     public const double MaxFontSize = 72;
 
     /// <summary>Line height as a multiple of the font size; screen and export share it.</summary>
     public const double LineHeight = 1.2;
+
+    /// <summary>The width of bold's outline as a share of the font size, on screen and in the final copy.</summary>
+    public const double BoldStroke = 0.05;
 
     public string[] Lines => Text.Split('\n');
 }
@@ -67,8 +97,16 @@ public sealed record MarkItem(ItemId Id, PageId Page, double X, double Y, MarkKi
 public sealed record SignatureItem(ItemId Id, PageId Page, double X, double Y, SignatureKind Kind, SignatureImage Image, double Width, double Height)
     : Item(Id, Page, X, Y);
 
+/// <summary>A picture pasted from another app (FR-7.14, FS-715): PNG, kept with its proportions.</summary>
+public sealed record PictureItem(ItemId Id, PageId Page, double X, double Y, SignatureImage Image, double Width, double Height)
+    : Item(Id, Page, X, Y)
+{
+    /// <summary>Pasted pictures start no wider than this, so a screenshot doesn't cover the whole page.</summary>
+    public const double MaxStartWidth = 300;
+}
+
 /// <summary>
-/// The image behind a signature. Shared by every placed copy, so equality is by <see cref="Id"/>, not by bytes.
+/// The image behind a signature or a pasted picture. Shared by every placed copy, so equality is by <see cref="Id"/>, not by bytes.
 /// </summary>
 public sealed record SignatureImage(Guid Id, ImmutableArray<byte> Png, int PixelWidth, int PixelHeight)
 {

@@ -54,6 +54,8 @@ public partial class MainWindow : Window, IEditorHost
     public MainWindow(bool isFirstLaunch, IReadOnlyList<string> pathsToOpen)
     {
         InitializeComponent();
+        TitleBar.MergeInto(this);
+        Opened += (_, _) => WindowFit.KeepOnScreen(this);
         _viewModel = new MainWindowViewModel(isFirstLaunch);
         DataContext = _viewModel;
         BuildMenu();
@@ -68,6 +70,17 @@ public partial class MainWindow : Window, IEditorHost
         AddHandler(DragDrop.DropEvent, OnWindowDrop);
         AddHandler(DragDrop.DragOverEvent, OnWindowDragOver);
         KeyDown += OnKeyDown;
+
+        // Tab on the page steps through items (FS-716); it's caught on the way down, before focus moves away.
+        AddHandler(KeyDownEvent, OnTabOnPage, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, OnFieldKeys, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        SizeChanged += (_, _) =>
+        {
+            if (DialogLayer.IsVisible)
+            {
+                FitDialogToWindow();
+            }
+        };
         Closing += OnClosing;
         Closed += (_, _) =>
         {
@@ -137,7 +150,14 @@ public partial class MainWindow : Window, IEditorHost
         try
         {
             OpenResult result = await DocumentLoader.OpenAsync(files, AskPasswordAsync, CancellationToken.None, restoreRecord).ConfigureAwait(true);
-            var editor = new EditorViewModel(result.Source, this);
+            RestrictedChoice restricted = result.RestrictedFiles.IsEmpty ? RestrictedChoice.EditAnyway : await AskAboutRestrictedAsync(result.RestrictedFiles).ConfigureAwait(true);
+            if (restricted == RestrictedChoice.DontOpen)
+            {
+                result.Source.Dispose();
+                return null;
+            }
+
+            var editor = new EditorViewModel(result.Source, this) { IsViewOnly = restricted == RestrictedChoice.ViewOnly };
             editor.ApplyRestore(result.Restore);
             ReplaceEditor(editor);
             if (files is [{ Path: { } path }])
@@ -216,11 +236,15 @@ public partial class MainWindow : Window, IEditorHost
     }
 
     /// <summary>Keeps this window's unsaved work as a recovery copy before an update restarts the app.</summary>
-    public async Task KeepForUpdateAsync()
+    /// <returns>Whether the work is safe to restart over: kept, or nothing unsaved.</returns>
+    public async Task<bool> KeepForUpdateAsync() =>
+        _viewModel.Editor is not { HasUnsavedChanges: true } editor || await editor.AutosaveAsync(isForUpdate: true).ConfigureAwait(true);
+
+    /// <summary>Every window's work was kept: closing for the restart neither asks nor removes the copy.</summary>
+    public void MarkKeptForUpdate()
     {
-        if (_viewModel.Editor is { HasUnsavedChanges: true } editor)
+        if (_viewModel.Editor is { HasUnsavedChanges: true })
         {
-            await editor.AutosaveAsync(isForUpdate: true).ConfigureAwait(true);
             _isCloseConfirmed = true;
             _isKeptForUpdate = true;
         }
@@ -382,6 +406,18 @@ public partial class MainWindow : Window, IEditorHost
         await OpenPathsAsync(paths).ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Runs a command the way its button does: not while it's already running, so pressing Mod+E twice doesn't make two
+    /// exports. Calling ExecuteAsync directly would skip that check.
+    /// </summary>
+    private static void RunOnce(System.Windows.Input.ICommand? command, object? parameter = null)
+    {
+        if (command?.CanExecute(parameter) == true)
+        {
+            command.Execute(parameter);
+        }
+    }
+
     // ----- Keyboard (FR-7, platform command key) -----
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -405,19 +441,34 @@ public partial class MainWindow : Window, IEditorHost
             return;
         }
 
+        if (editor is { IsOrganising: false, TypingItem: null } && !isTyping && ToolKeys.IsOn
+            && ToolKeys.ToolFor(e.Key, e.KeyModifiers) is { } tool)
+        {
+            RunOnce(editor.SelectToolCommand, tool);
+            e.Handled = true;
+            return;
+        }
+
         switch (e.Key)
         {
+            case Key.B when hasCommand && editor is not null && editor.OptionsHaveTextStyle:
+                // Bold works while typing too, so it's caught here rather than by the text box (FS-952).
+                editor.ToggleBoldCommand.Execute(null);
+                break;
             case Key.O when hasCommand:
                 _ = ChooseAndOpenAsync();
                 break;
             case Key.S when hasCommand && hasShift && editor is not null:
-                _ = editor.SaveAsCommand.ExecuteAsync(null);
+                RunOnce(editor.SaveAsCommand);
                 break;
             case Key.S when hasCommand && editor is not null:
-                _ = editor.SaveCommand.ExecuteAsync(null);
+                RunOnce(editor.SaveCommand);
                 break;
             case Key.E when hasCommand && editor is not null:
-                _ = editor.ExportCommand.ExecuteAsync(null);
+                RunOnce(editor.ExportCommand);
+                break;
+            case Key.P when hasCommand && editor is not null:
+                RunOnce(editor.PrintCommand);
                 break;
             case Key.OemPlus or Key.Add when hasCommand && editor is not null:
                 _editorView?.ZoomIn();
@@ -529,6 +580,7 @@ public partial class MainWindow : Window, IEditorHost
     {
         byte[]? items = null;
         string? text = null;
+        byte[]? picture = null;
         bool hasOther = false;
         if (!editor.IsOrganising && Clipboard is { } clipboard && await clipboard.TryGetDataAsync().ConfigureAwait(true) is { } data)
         {
@@ -536,15 +588,29 @@ public partial class MainWindow : Window, IEditorHost
             {
                 items = data.Contains(s_itemsFormat) ? await data.TryGetValueAsync(s_itemsFormat).ConfigureAwait(true) : null;
                 text = items is null ? await data.TryGetTextAsync().ConfigureAwait(true) : null;
+
+                // Text wins when both are there: apps like Word put a picture of the copied text alongside it.
+                if (items is null && string.IsNullOrWhiteSpace(text) && data.Contains(DataFormat.Bitmap)
+                    && await data.TryGetBitmapAsync().ConfigureAwait(true) is { } bitmap)
+                {
+                    using (bitmap)
+                    {
+                        using var png = new MemoryStream();
+                        bitmap.Save(png, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                        picture = png.ToArray();
+                    }
+                }
+
                 hasOther = data.Formats.Count > 0;
             }
         }
 
-        if (!editor.PasteFromClipboard(items, text) && hasOther && !editor.IsOrganising)
+        bool isPasted = picture is not null ? editor.PastePicture(picture) : editor.PasteFromClipboard(items, text);
+        if (!isPasted && hasOther && !editor.IsOrganising)
         {
             await ShowMessageAsync(
-                "That can’t be pasted yet",
-                "Fillsign can paste its own items and text from other apps. Pasting pictures is coming; for now, add a photo as a page with Add pages, or use it as a signature from the Sign tool.").ConfigureAwait(true);
+                "That can’t be pasted",
+                "Fillsign can paste its own items, text and pictures from other apps. What’s on the clipboard isn’t one of those.").ConfigureAwait(true);
         }
     }
 
@@ -573,6 +639,64 @@ public partial class MainWindow : Window, IEditorHost
                 return false;
             default:
                 return false;
+        }
+    }
+
+    /// <summary>
+    /// FS-716: on the page, Tab and Shift+Tab select the next or previous item in reading order, so items can be
+    /// chosen without a mouse. Past the last item (or before the first), Tab moves focus on as usual.
+    /// </summary>
+    private void OnTabOnPage(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Tab || DialogLayer.IsVisible || _viewModel.Editor is not { } editor || editor.TypingItem is not null
+            || editor.EditingField is not null || !IsOnPage(editor, isTyping: false))
+        {
+            return;
+        }
+
+        // Once a form field is in use, Tab goes from field to field (FS-950); past the last of the items, into the fields.
+        bool backwards = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        bool isMoved = editor.FocusedField is not null
+            ? editor.MoveFieldFocus(backwards)
+            : editor.SelectNextItem(backwards) || editor.MoveFieldFocus(backwards);
+        if (isMoved)
+        {
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Keys for the form field Tab reached (FS-950), caught on the way down so the page's scroll view doesn't take the
+    /// arrow keys or Space first. Space or Enter fills the field as a click would; the arrow keys move within it: the
+    /// next radio button, another choice, another row. In a multi-select list, ⌘/Ctrl+arrows move without choosing
+    /// and Shift+arrows extend, as in a browser.
+    /// </summary>
+    private void OnFieldKeys(object? sender, KeyEventArgs e)
+    {
+        if (DialogLayer.IsVisible || _viewModel.Editor is not { FocusedField: { } focused } editor
+            || FocusManager?.GetFocusedElement() is TextBox)
+        {
+            return;
+        }
+
+        if (e.Key is Key.Space or Key.Enter && e.KeyModifiers == KeyModifiers.None)
+        {
+            e.Handled = editor.ActivateFocusedField();
+            return;
+        }
+
+        KeyModifiers command = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+        int step = e.Key switch { Key.Up or Key.Left => -1, Key.Down or Key.Right => 1, _ => 0 };
+        ListKeys? listKeys = e.KeyModifiers switch
+        {
+            KeyModifiers.None => ListKeys.Choose,
+            KeyModifiers.Shift => ListKeys.Extend,
+            _ when e.KeyModifiers == command => ListKeys.MoveOnly,
+            _ => null,
+        };
+        if (step != 0 && listKeys is { } keys && (keys == ListKeys.Choose || focused.Field.IsMultiSelect))
+        {
+            e.Handled = editor.MoveWithinField(step, keys);
         }
     }
 
@@ -668,6 +792,55 @@ public partial class MainWindow : Window, IEditorHost
     public Task<ExportDecision?> AskExportAsync(ExportRequest request) =>
         ShowDialogAsync(new ExportDialog(request), dialog => dialog.Result, top: 64);
 
+    /// <summary>How to go on with a file whose owner protected it against changes (FS-214, FS-018).</summary>
+    public enum RestrictedChoice
+    {
+        DontOpen,
+        ViewOnly,
+        EditAnyway,
+    }
+
+    /// <summary>
+    /// FS-214: the owner of these files restricted editing. Ask before going on; never remove the restriction quietly.
+    /// View only is the safe default.
+    /// </summary>
+    public async Task<RestrictedChoice> AskAboutRestrictedAsync(IReadOnlyList<string> fileNames)
+    {
+        ArgumentNullException.ThrowIfNull(fileNames);
+        string which = fileNames.Count == 1 ? fileNames[0] : $"{fileNames.Count} of these files";
+        Choice choice = await ShowDialogAsync(
+            new ChoiceDialog(
+                $"{(fileNames.Count == 1 ? which : "These files")} can’t be changed",
+                $"The owner of {which} set it so it shouldn’t be changed. You can view it, or edit it anyway if you’re allowed to fill it in. Copies you save or export from Fillsign won’t carry the restriction.",
+                "View only",
+                otherLabel: "Edit anyway",
+                focusMain: true,
+                cancelLabel: "Don’t open"),
+            dialog => dialog.Result).ConfigureAwait(true);
+        return choice switch
+        {
+            Choice.Main => RestrictedChoice.ViewOnly,
+            Choice.Other => RestrictedChoice.EditAnyway,
+            _ => RestrictedChoice.DontOpen,
+        };
+    }
+
+    public async Task<bool> ConfirmAddRestrictedAsync(IReadOnlyList<string> fileNames)
+    {
+        ArgumentNullException.ThrowIfNull(fileNames);
+        string which = fileNames.Count == 1 ? fileNames[0] : $"{fileNames.Count} of these files";
+        Choice choice = await ShowDialogAsync(
+            new ChoiceDialog(
+                "Add pages that can’t be changed?",
+                $"The owner of {which} set it so it shouldn’t be changed. Adding its pages copies them into this document without the restriction.",
+                "Add pages anyway",
+                otherLabel: null,
+                focusMain: false,
+                cancelLabel: "Don’t add"),
+            dialog => dialog.Result).ConfigureAwait(true);
+        return choice == Choice.Main;
+    }
+
     public async Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt)
     {
         string when = savedAt is { } saved ? $" from {saved.ToLocalTime():dd/MM/yyyy, HH:mm}" : string.Empty;
@@ -682,6 +855,8 @@ public partial class MainWindow : Window, IEditorHost
             dialog => dialog.Result).ConfigureAwait(true);
         return choice == Choice.Main;
     }
+
+    public PrintOutcome PrintFile(string path) => Printing.Print(path, this);
 
     public void ShowInFolder(string path)
     {
@@ -730,6 +905,40 @@ public partial class MainWindow : Window, IEditorHost
 
     /// <summary>Shows one dialog at a time over the dimmed window and returns its answer.</summary>
     /// <param name="top">Distance from the top of the window; tall dialogs sit higher so they fit.</param>
+    /// <summary>
+    /// Once the dialog is laid out, puts focus in it unless the dialog already chose where (a text box, the default
+    /// button): it can't be focused while it's still being attached.
+    /// </summary>
+    private static void FocusInside(Control dialog) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (dialog.IsKeyboardFocusWithin)
+                {
+                    return;
+                }
+
+                Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(dialog).OfType<InputElement>().FirstOrDefault(element => element.Focusable && element.IsEffectivelyEnabled && element.IsEffectivelyVisible)?.Focus(NavigationMethod.Tab);
+            },
+            Avalonia.Threading.DispatcherPriority.Loaded);
+
+    // Below this distance from the window's bottom, a dialog moves up and its middle scrolls (FS-709, S5).
+    private const double DialogBottomGap = 16;
+
+    private double _dialogTop = DefaultDialogTop;
+
+    /// <summary>
+    /// Keeps the dialog inside the window: on a short window it starts nearer the top and is no taller than the space
+    /// left, so tall dialogs scroll their middle and keep their buttons in reach.
+    /// </summary>
+    private void FitDialogToWindow()
+    {
+        double height = Bounds.Height;
+        double top = height < 760 ? Math.Min(_dialogTop, DialogBottomGap) : _dialogTop;
+        DialogHost.Margin = new Thickness(0, top, 0, 0);
+        DialogHost.MaxHeight = Math.Max(200, height - top - DialogBottomGap);
+    }
+
     private async Task<TResult> ShowDialogAsync<TDialog, TResult>(TDialog dialog, Func<TDialog, Task<TResult>> result, double top = DefaultDialogTop)
         where TDialog : Control
     {
@@ -740,13 +949,20 @@ public partial class MainWindow : Window, IEditorHost
         IInputElement? previousFocus = FocusManager?.GetFocusedElement();
         try
         {
-            DialogHost.Margin = new Thickness(0, top, 0, 0);
-            DialogHost.Content = dialog;
+            _dialogTop = top;
+            FitDialogToWindow();
             DialogLayer.IsVisible = true;
+            DialogHost.Content = dialog;
+
+            // Modal: the window under the dim can't be reached by Tab or clicked, so the dialog keeps focus and its
+            // Esc and Enter keep working.
+            Host.IsEnabled = false;
+            FocusInside(dialog);
             return await result(dialog).ConfigureAwait(true);
         }
         finally
         {
+            Host.IsEnabled = true;
             DialogLayer.IsVisible = false;
             DialogHost.Content = null;
             previousFocus?.Focus();

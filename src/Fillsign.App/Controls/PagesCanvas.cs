@@ -32,6 +32,9 @@ public sealed partial class PagesCanvas : Panel
 
     // Panel.Render is sealed, so pages are drawn by a full-size layer under the damaged-page cards.
     private readonly DrawingLayer _layer;
+
+    // Above the pages: only what follows the pointer, repainted on every mouse move (DrawHover).
+    private readonly DrawingLayer _hoverLayer;
     private EditorViewModel? _editor;
     private ScrollViewer? _scroller;
     private double[] _tops = [];
@@ -47,6 +50,8 @@ public sealed partial class PagesCanvas : Panel
         ClipToBounds = true;
         _layer = new DrawingLayer(DrawPages);
         Children.Add(_layer);
+        _hoverLayer = new DrawingLayer(DrawHover) { IsHitTestVisible = false };
+        Children.Add(_hoverLayer);
     }
 
     /// <summary>Creates the D13 card for a damaged page; set by the view.</summary>
@@ -64,11 +69,12 @@ public sealed partial class PagesCanvas : Panel
         editor.PagesChanged += OnPagesChanged;
         editor.ScrollToPageRequested += ScrollToPage;
         editor.ScrollToAreaRequested += ScrollToArea;
-        editor.Renderer.PageRendered += _ => _layer.InvalidateVisual();
+        editor.HoverChanged += () => _hoverLayer.InvalidateVisual();
+        editor.Renderer.PageRendered += _ => InvalidateLayers();
         AttachItems(editor);
         scroller.ScrollChanged += (_, _) =>
         {
-            _layer.InvalidateVisual();
+            InvalidateLayers();
             if (_cards.Count > 0)
             {
                 InvalidateArrange();
@@ -142,7 +148,7 @@ public sealed partial class PagesCanvas : Panel
         double newX = (docX * zoom) + centreNew - viewportAnchor.X;
         double newY = ViewY(docY, zoom) - viewportAnchor.Y;
         _scroller.Offset = new Vector(Math.Max(0, newX), Math.Max(0, newY));
-        _layer.InvalidateVisual();
+        InvalidateLayers();
 
         // Stretch the images we have now; render sharply once zooming pauses.
         _sharpenTimer.Stop();
@@ -168,6 +174,12 @@ public sealed partial class PagesCanvas : Panel
         }
 
         Rect page = PageRect(index);
+        var view = new Rect(page.X + (area.X * Zoom), page.Y + (area.Y * Zoom), area.Width * Zoom, area.Height * Zoom);
+        if (Viewport().Contains(view))
+        {
+            return;
+        }
+
         double y = PageTop(index) + (area.Y * Zoom) - (_scroller.Viewport.Height / 3);
         double x = page.Width > _scroller.Viewport.Width ? page.X + (area.X * Zoom) - (_scroller.Viewport.Width / 3) : _scroller.Offset.X;
         _scroller.Offset = new Vector(Math.Max(0, x), Math.Max(0, y));
@@ -200,7 +212,9 @@ public sealed partial class PagesCanvas : Panel
         }
 
         _layer.Measure(availableSize);
+        _hoverLayer.Measure(availableSize);
         MeasureTypingBox();
+        MeasureFieldBox();
 
         double viewportWidth = _scroller?.Viewport.Width ?? 0;
         return new Size(Math.Max(viewportWidth, maxWidth + (2 * SidePadding)), y);
@@ -209,12 +223,14 @@ public sealed partial class PagesCanvas : Panel
     protected override Size ArrangeOverride(Size finalSize)
     {
         _layer.Arrange(new Rect(finalSize));
+        _hoverLayer.Arrange(new Rect(finalSize));
         if (_editor is null)
         {
             return finalSize;
         }
 
         ArrangeTypingBox();
+        ArrangeFieldBox();
 
         for (int i = 0; i < _editor.Pages.Count; i++)
         {
@@ -295,7 +311,7 @@ public sealed partial class PagesCanvas : Panel
 
         SyncCards();
         InvalidateMeasure();
-        _layer.InvalidateVisual();
+        InvalidateLayers();
         Dispatcher.UIThread.Post(() =>
         {
             UpdateCurrentPage();
@@ -339,7 +355,7 @@ public sealed partial class PagesCanvas : Panel
         _sharpenTimer.Stop();
         _renderZoom = Zoom;
         RequestVisible();
-        _layer.InvalidateVisual();
+        InvalidateLayers();
     }
 
     private void RequestVisible()
@@ -551,6 +567,12 @@ public sealed partial class PagesCanvas : Panel
         }
 
         return lo;
+    }
+
+    private void InvalidateLayers()
+    {
+        _layer.InvalidateVisual();
+        _hoverLayer.InvalidateVisual();
     }
 
     private sealed class DrawingLayer(Action<DrawingContext> draw) : Control

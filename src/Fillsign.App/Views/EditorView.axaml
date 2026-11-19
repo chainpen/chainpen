@@ -9,7 +9,7 @@
     <!-- 🎨 1: document status strip, toolbar, bar under the toolbar, pages + canvas, status bar. -->
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
         <!-- Document status strip (FS-211, FR-2.6). -->
-        <Border Grid.Row="0" Height="{StaticResource TitleStripHeight}" Background="{DynamicResource Surface}"
+        <Border x:Name="TitleStrip" Grid.Row="0" Height="{StaticResource TitleStripHeight}" Background="{DynamicResource Surface}"
                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
                         AutomationProperties.LiveSetting="Polite">
@@ -28,11 +28,11 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
                     <Button Classes="tool icon" Command="{Binding UndoCommand}" AutomationProperties.Name="Undo"
-                            ToolTip.Tip="Undo (Mod+Z)" ToolTip.ShowOnDisabled="True">
+                            ToolTip.Tip="{c:Keys 'Undo (Mod+Z)'}" ToolTip.ShowOnDisabled="True">
                         <c:StrokeIcon Data="{StaticResource IconUndo}" />
                     </Button>
                     <Button Classes="tool icon" Command="{Binding RedoCommand}" AutomationProperties.Name="Redo"
-                            ToolTip.Tip="Redo (Mod+Shift+Z)" ToolTip.ShowOnDisabled="True">
+                            ToolTip.Tip="{c:Keys 'Redo (Mod+Shift+Z)'}" ToolTip.ShowOnDisabled="True">
                         <c:StrokeIcon Data="{StaticResource IconRedo}" />
                     </Button>
                     <Button x:Name="ShortcutsButton" Classes="tool icon" AutomationProperties.Name="Keyboard shortcuts" ToolTip.Tip="Keyboard shortcuts">
@@ -44,7 +44,7 @@
                         </Button.Flyout>
                     </Button>
                     <Border Classes="separator" />
-                    <Button Classes="tool" Click="OnOpen" ToolTip.Tip="Open a PDF or image (Mod+O)" AutomationProperties.Name="Open">
+                    <Button Classes="tool" Click="OnOpen" ToolTip.Tip="{c:Keys 'Open a PDF or image (Mod+O)'}" AutomationProperties.Name="Open">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconFolder}" />
                             <TextBlock x:Name="OpenLabel" Text="Open…" VerticalAlignment="Center" IsVisible="False" />
@@ -55,7 +55,7 @@
                     <Border Classes="splitButton">
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="SaveButton" Classes="split" Command="{Binding SaveCommand}"
-                                    ToolTip.Tip="Save your working copy (Mod+S)" AutomationProperties.Name="Save">
+                                    ToolTip.Tip="{c:Keys 'Save your working copy (Mod+S)'}" AutomationProperties.Name="Save">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <c:StrokeIcon Data="{StaticResource IconSave}" />
                                     <TextBlock Text="Save" VerticalAlignment="Center" />
@@ -76,7 +76,7 @@
                                                         <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                                                                    Text="Keeps your edits changeable next time you open it in Fillsign." />
                                                     </StackPanel>
-                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="Mod S" /></Border>
+                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="{c:Keys 'Mod S'}" /></Border>
                                                 </Grid>
                                             </Button>
                                             <Button Classes="menuRow" Command="{Binding SaveAsCommand}" Click="OnCloseSaveMenu">
@@ -87,7 +87,7 @@
                                                         <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                                                                    Text="Save a copy with a new name or in another folder." />
                                                     </StackPanel>
-                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="Mod Shift S" /></Border>
+                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="{c:Keys 'Mod Shift S'}" /></Border>
                                                 </Grid>
                                             </Button>
                                             <!-- FS-610: a working copy with a signature isn't the file to send. -->
@@ -107,7 +107,7 @@
                         </StackPanel>
                     </Border>
                     <Button x:Name="ExportButton" Classes="primary" MinHeight="36" Height="36" Padding="14,0" Command="{Binding ExportCommand}"
-                            ToolTip.Tip="Make the copy to send (Mod+E)" AutomationProperties.Name="Export final copy">
+                            ToolTip.Tip="{c:Keys 'Make the copy to send (Mod+E)'}" AutomationProperties.Name="Export final copy">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconTick}" StrokeThickness="2" />
                             <TextBlock x:Name="ExportLabel" Text="Export final copy…" VerticalAlignment="Center" />
@@ -140,7 +140,7 @@
                         <TextBlock Text="Add pages…" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
-                <StackPanel x:Name="Tools" Orientation="Horizontal" Spacing="4" AutomationProperties.Name="Tools"
+                <StackPanel x:Name="Tools" Orientation="Horizontal" Spacing="4" AutomationProperties.Name="Tools" IsEnabled="{Binding CanEdit}"
                             IsVisible="{Binding IsEditingContent}">
                     <ToggleButton Classes="tool icon" IsChecked="{Binding IsPagesPanelVisible}"
                                   AutomationProperties.Name="Show or hide pages" ToolTip.Tip="Pages panel">
@@ -149,7 +149,7 @@
                     <Border Classes="separator" />
                     <Button Classes="tool" Classes.on="{Binding IsSelectTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Select}" AutomationProperties.Name="Select"
-                            ToolTip.Tip="Select, move and resize what you’ve added">
+                            ToolTip.Tip="Select, move and resize what you’ve added (V)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconSelect}" />
                             <TextBlock Classes="collapsible" Text="Select" VerticalAlignment="Center" />
@@ -157,7 +157,7 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsTextTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Text}" AutomationProperties.Name="Text"
-                            ToolTip.Tip="Click on the page and type">
+                            ToolTip.Tip="Click on the page and type (T)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconText}" />
                             <TextBlock Text="Text" VerticalAlignment="Center" />
@@ -165,7 +165,7 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsTickTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Tick}" AutomationProperties.Name="Tick"
-                            ToolTip.Tip="Click boxes to tick them">
+                            ToolTip.Tip="Click boxes to tick them (C)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconTick}" />
                             <TextBlock Text="Tick" VerticalAlignment="Center" />
@@ -173,7 +173,7 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsCrossTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Cross}" AutomationProperties.Name="Cross"
-                            ToolTip.Tip="Click boxes to cross them">
+                            ToolTip.Tip="Click boxes to cross them (X)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconCross}" />
                             <TextBlock Classes="collapsible" Text="Cross" VerticalAlignment="Center" />
@@ -181,7 +181,7 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsDateTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Date}" AutomationProperties.Name="Date"
-                            ToolTip.Tip="Click to add today’s date (DD/MM/YYYY)">
+                            ToolTip.Tip="Click to add today’s date, DD/MM/YYYY (D)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconDate}" />
                             <TextBlock Classes="collapsible" Text="Date" VerticalAlignment="Center" />
@@ -189,14 +189,14 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsSignTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Sign}" AutomationProperties.Name="Sign"
-                            ToolTip.Tip="Add your signature or initials">
+                            ToolTip.Tip="Add your signature or initials (S)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconSign}" />
                             <TextBlock Text="Sign" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button x:Name="ShapesButton" Classes="tool" Classes.on="{Binding IsShapeTool}" AutomationProperties.Name="Shapes"
-                            ToolTip.Tip="Rectangle, ellipse, line, arrow, highlight or whiteout">
+                            ToolTip.Tip="Rectangle, ellipse, line, arrow, highlight or whiteout (R)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconShapes}" />
                             <TextBlock Text="Shapes" VerticalAlignment="Center" />
@@ -246,7 +246,7 @@
                     </Button>
                     <Button x:Name="DrawButton" Classes="tool" Classes.on="{Binding IsDrawTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Draw}" AutomationProperties.Name="Draw"
-                            ToolTip.Tip="Draw freely with a pen">
+                            ToolTip.Tip="Draw freely with a pen (P)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconDraw}" />
                             <TextBlock Text="Draw" VerticalAlignment="Center" />
@@ -283,11 +283,7 @@
             <Panel IsVisible="{Binding IsOrganising}">
                 <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding ShowsOrganiseHint}"
-                           Text="Click a page to select it. Shift-click selects a range, Mod-click adds a page." />
-                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsPageNotice}">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Notice}" />
-                    <Button Classes="link" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="Undo (Mod+Z)" />
-                </StackPanel>
+                           Text="{c:Keys 'Click a page to select it. Shift-click selects a range, Mod-click adds a page.'}" />
                 <DockPanel IsVisible="{Binding ShowsPageActions}">
                     <Button DockPanel.Dock="Right" Classes="chip" BorderBrush="Transparent" Background="Transparent"
                             Command="{Binding ClearPageSelectionCommand}" Content="Clear selection" ToolTip.Tip="Clear selection (Esc)" />
@@ -305,7 +301,7 @@
                                 <TextBlock Classes="collapsible" Text="Rotate right" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button Classes="chip" Command="{Binding DuplicatePagesCommand}" ToolTip.Tip="Duplicate (Mod+D)">
+                        <Button Classes="chip" Command="{Binding DuplicatePagesCommand}" ToolTip.Tip="{c:Keys 'Duplicate (Mod+D)'}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <c:StrokeIcon Data="{StaticResource IconDuplicate}" />
                                 <TextBlock Text="Duplicate" VerticalAlignment="Center" />
@@ -370,13 +366,52 @@
                                 <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkRed}" AutomationProperties.Name="Red"
                                              ToolTip.Tip="Red" IsChecked="{Binding IsRedChosen, Mode=OneWay}"
                                              Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Red}" />
+                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkGreen}" AutomationProperties.Name="Green"
+                                             ToolTip.Tip="Green" IsChecked="{Binding IsGreenChosen, Mode=OneWay}"
+                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Green}" />
+                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkPurple}" AutomationProperties.Name="Purple"
+                                             ToolTip.Tip="Purple" IsChecked="{Binding IsPurpleChosen, Mode=OneWay}"
+                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Purple}" />
                             </StackPanel>
                         </StackPanel>
+                        <!-- FS-952: bold and alignment for text. -->
+                        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding OptionsHaveTextStyle}" Margin="6,0,0,0">
+                            <ToggleButton x:Name="BoldButton" Classes="tool icon" IsChecked="{Binding IsBoldChosen, Mode=OneWay}" Command="{Binding ToggleBoldCommand}"
+                                          AutomationProperties.Name="Bold" ToolTip.Tip="{c:Keys 'Bold (Mod+B)'}">
+                                <TextBlock Text="B" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </ToggleButton>
+                            <Border Classes="segments" Margin="4,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.Name="Text alignment">
+                                    <RadioButton Classes="segment icon" GroupName="TextAlign" IsChecked="{Binding IsAlignLeft, Mode=OneWay}"
+                                                 Command="{Binding SetAlignCommand}" CommandParameter="{x:Static m:TextAlign.Left}"
+                                                 AutomationProperties.Name="Align left" ToolTip.Tip="Align left">
+                                        <c:StrokeIcon Data="{StaticResource IconAlignLeft}" />
+                                    </RadioButton>
+                                    <RadioButton Classes="segment icon" GroupName="TextAlign" IsChecked="{Binding IsAlignCentre, Mode=OneWay}"
+                                                 Command="{Binding SetAlignCommand}" CommandParameter="{x:Static m:TextAlign.Centre}"
+                                                 AutomationProperties.Name="Centre" ToolTip.Tip="Centre">
+                                        <c:StrokeIcon Data="{StaticResource IconAlignCentre}" />
+                                    </RadioButton>
+                                    <RadioButton Classes="segment icon" GroupName="TextAlign" IsChecked="{Binding IsAlignRight, Mode=OneWay}"
+                                                 Command="{Binding SetAlignCommand}" CommandParameter="{x:Static m:TextAlign.Right}"
+                                                 AutomationProperties.Name="Align right" ToolTip.Tip="Align right">
+                                        <c:StrokeIcon Data="{StaticResource IconAlignRight}" />
+                                    </RadioButton>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsSelectionActions}" Margin="6,0,0,0">
-                            <Button Classes="chip" Command="{Binding DuplicateSelectionCommand}" ToolTip.Tip="Duplicate (Mod+D)">
+                            <Button Classes="chip" Command="{Binding DuplicateSelectionCommand}" ToolTip.Tip="{c:Keys 'Duplicate (Mod+D)'}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <c:StrokeIcon Data="{StaticResource IconDuplicate}" />
                                     <TextBlock Text="Duplicate" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="chip" Command="{Binding AddToEveryPageCommand}" IsVisible="{Binding IsSeveralPages}"
+                                    ToolTip.Tip="Put a copy in the same place on every other page, for initials or a date">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <c:StrokeIcon Data="{StaticResource IconPages}" />
+                                    <TextBlock Text="Every page" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                             <Button Classes="chip" Command="{Binding DeleteSelectionCommand}" ToolTip.Tip="Delete">
@@ -415,17 +450,24 @@
                                Text="Let go to select them · hold Shift to add to the current selection · Esc to cancel" />
                 </StackPanel>
 
-                <!-- Just deleted: Undo straight away (FR-7.11). -->
-                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsNotice}">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Notice}" />
-                    <Button Classes="link" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="Undo (Mod+Z)" />
-                </StackPanel>
             </Panel>
             </Panel>
         </Border>
 
         <!-- Notices that stay until dismissed: checking before export (E10), restored (🎨 5), changed elsewhere (D8), exported (🎨 8). -->
         <StackPanel Grid.Row="3">
+            <Border x:Name="ViewOnlyBar" Classes="notice info" IsVisible="{Binding IsViewOnly}" AutomationProperties.LiveSetting="Polite">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Content="Edit anyway" Command="{Binding EditAnywayCommand}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource Accent}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                            <Run FontWeight="SemiBold" Text="View only." />
+                            <Run Text=" The owner of this file set it so it shouldn’t be changed. Choose Edit anyway if you’re allowed to fill it in." />
+                        </TextBlock>
+                    </Grid>
+                </DockPanel>
+            </Border>
             <Border x:Name="CheckingBar" Classes="notice warning" IsVisible="{Binding IsCheckingGaps}" AutomationProperties.LiveSetting="Polite">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent" Margin="8,0,0,0"
@@ -476,6 +518,13 @@
                     <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent"
                             Command="{Binding DismissExportedCommand}" AutomationProperties.Name="Dismiss">
                         <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                    <Button x:Name="ShareButton" DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Click="OnShare"
+                            ToolTip.Tip="Send the final copy with Mail, Messages, AirDrop and more">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconShare}" Size="16" />
+                            <TextBlock Text="Share…" VerticalAlignment="Center" />
+                        </StackPanel>
                     </Button>
                     <Button DockPanel.Dock="Right" Classes="small" Margin="12,0" Command="{Binding ShowExportedInFolderCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -628,6 +677,23 @@
                 <TextBlock x:Name="DropCaption" Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" FontSize="13"
                            HorizontalAlignment="Center" TextWrapping="Wrap" />
             </Grid>
+
+            <!-- Just deleted: Undo straight away (FR-7.11, FS-707). A toast over the pages, so it's seen wherever the
+                 person was looking; it stays at least 10 seconds, and while the pointer or focus is on it. -->
+            <Border x:Name="Toast" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasToast}"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="16,0,16,24" Padding="16,8,8,8"
+                    Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderControl}" BorderThickness="1"
+                    CornerRadius="{StaticResource RadiusLarge}" BoxShadow="{StaticResource ShadowDialog}"
+                    AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{Binding Notice}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Notice}" />
+                    <Button Classes="small" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="{c:Keys 'Undo (Mod+Z)'}" />
+                    <Button Classes="icon small" BorderThickness="0" Background="Transparent" Command="{Binding DismissNoticeCommand}"
+                            AutomationProperties.Name="Dismiss">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Status bar. -->
@@ -658,6 +724,9 @@
                                     <Run FontWeight="SemiBold" Text="Your unsaved changes come back after the restart." />
                                     <Run Foreground="{DynamicResource TextMuted}" Text=" Restarting takes a few seconds." />
                                 </TextBlock>
+                                <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource Danger}"
+                                           Text="{Binding Updates.RestartProblem}" IsVisible="{Binding Updates.HasRestartProblem}"
+                                           AutomationProperties.LiveSetting="Assertive" />
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <Button Classes="primary" Content="Restart and update" Command="{Binding Updates.RestartAndUpdateCommand}" />
                                     <Button Content="When I close Fillsign" Command="{Binding Updates.UpdateWhenClosedCommand}" />
@@ -667,15 +736,15 @@
                     </Button.Flyout>
                 </Button>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
-                    <Button Classes="tool icon small" Click="OnZoomOut" AutomationProperties.Name="Zoom out" ToolTip.Tip="Zoom out (Mod+−)">
+                    <Button Classes="tool icon small" Click="OnZoomOut" AutomationProperties.Name="Zoom out" ToolTip.Tip="{c:Keys 'Zoom out (Mod+−)'}">
                         <c:StrokeIcon Data="{StaticResource IconZoomOut}" />
                     </Button>
                     <TextBlock MinWidth="40" TextAlignment="Center" VerticalAlignment="Center" FontSize="12"
                                Foreground="{DynamicResource TextMuted}" Text="{Binding ZoomText}" />
-                    <Button Classes="tool icon small" Click="OnZoomIn" AutomationProperties.Name="Zoom in" ToolTip.Tip="Zoom in (Mod+=)">
+                    <Button Classes="tool icon small" Click="OnZoomIn" AutomationProperties.Name="Zoom in" ToolTip.Tip="{c:Keys 'Zoom in (Mod+=)'}">
                         <c:StrokeIcon Data="{StaticResource IconZoomIn}" />
                     </Button>
-                    <Button Classes="tool small" Click="OnFitWidth" Content="Fit width" ToolTip.Tip="Fit the page width (Mod+0)" />
+                    <Button Classes="tool small" Click="OnFitWidth" Content="Fit width" ToolTip.Tip="{c:Keys 'Fit the page width (Mod+0)'}" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="Page" />

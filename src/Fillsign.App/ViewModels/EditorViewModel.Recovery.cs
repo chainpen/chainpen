@@ -17,6 +17,12 @@ public sealed partial class EditorViewModel
 
     private DocumentState? _autosavedState;
 
+    // The autosave in progress, so timer ticks don't overlap and an update can wait for it.
+    private Task<bool>? _autosaving;
+
+    // Bumped when the copy is discarded or the editor closes: an autosave already under way then doesn't write.
+    private int _recoveryGeneration;
+
     /// <summary>Names this document's recovery copy; a recovered document keeps the id of the copy it came from.</summary>
     public Guid RecoveryId { get; private set; } = Guid.NewGuid();
 
@@ -38,38 +44,83 @@ public sealed partial class EditorViewModel
     /// Runs the writing off the UI thread.
     /// </summary>
     /// <param name="isForUpdate">The app is about to restart to update; the start screen says so instead of "closed unexpectedly".</param>
-    public async Task AutosaveAsync(bool isForUpdate = false)
+    /// <returns>Whether the work is safe: a current copy is kept, or there's nothing unsaved to keep.</returns>
+    public async Task<bool> AutosaveAsync(bool isForUpdate = false)
+    {
+        if (_autosaving is { IsCompleted: false } running)
+        {
+            if (!isForUpdate)
+            {
+                return await running.ConfigureAwait(true);
+            }
+
+            await running.ConfigureAwait(true);
+        }
+
+        _autosaving = WriteRecoveryCopyAsync(isForUpdate);
+        return await _autosaving.ConfigureAwait(true);
+    }
+
+    private async Task<bool> WriteRecoveryCopyAsync(bool isForUpdate)
     {
         if (!HasUnsavedChanges)
         {
             DiscardRecoveryCopy();
-            return;
+            return true;
         }
 
-        if (IsLoading || (State.Equals(_autosavedState) && !isForUpdate))
+        // A copy needs every page; until they've loaded there's nothing complete to write.
+        if (IsLoading)
         {
-            return;
+            return false;
+        }
+
+        if (State.Equals(_autosavedState) && !isForUpdate)
+        {
+            return true;
         }
 
         DocumentState state = State;
+        int generation = _recoveryGeneration;
         try
         {
             byte[] bytes = await Task.Run(() => DocumentWriter.WorkingCopy(CleanSource(), SourcePages(), state).Pdf).ConfigureAwait(true);
+            if (generation != _recoveryGeneration)
+            {
+                // Saved, discarded or closed while the copy was being made: writing it now would bring the work back.
+                return false;
+            }
+
             DateTimeOffset now = DateTimeOffset.Now;
-            RecoveryStore.Write(new RecoveryCopy(RecoveryId, Title, WorkingCopyPath, Source.Path, now, IsForUpdate: isForUpdate), bytes);
+            if (!RecoveryStore.Write(new RecoveryCopy(RecoveryId, Title, WorkingCopyPath, Source.Path, now, IsForUpdate: isForUpdate), bytes))
+            {
+                return false;
+            }
+
             _autosavedState = state;
             RecoveryKeptAt = now;
+            return true;
         }
         catch (InvalidOperationException ex)
         {
             // The next autosave tries again; the work is still open here.
             System.Diagnostics.Trace.TraceWarning($"A recovery copy could not be made. {ex.Message}");
+            return false;
         }
+    }
+
+    /// <summary>Settings deleted copies: write this document's again now, so it isn't left without one.</summary>
+    private void OnRecoveryCopiesDeleted()
+    {
+        _autosavedState = null;
+        RecoveryKeptAt = null;
+        _ = AutosaveAsync();
     }
 
     /// <summary>Removes the recovery copy: the work was saved, or the person chose not to keep it.</summary>
     public void DiscardRecoveryCopy()
     {
+        _recoveryGeneration++;
         if (_autosavedState is null && RecoveryKeptAt is null)
         {
             return;

@@ -50,7 +50,11 @@ public sealed partial class EditorViewModel
 
         Copy();
         ImmutableArray<Item> items = [.. State.Items.Where(item => SelectedIds.Contains(item.Id))];
-        _lastCopied = Serialise(items);
+
+        // Signatures stay in this window: the system clipboard is readable by every app and kept by clipboard history
+        // and syncing, while saved signatures are encrypted at rest. Pasting here still brings them, from this
+        // window's own clipboard, because the system clipboard's copy matches what was put there.
+        _lastCopied = Serialise([.. items.Where(item => item is not SignatureItem)]);
         string text = string.Join(Environment.NewLine, items.OfType<TextItem>().Select(item => item.Text.Replace("\n", Environment.NewLine, StringComparison.Ordinal)));
         return new SystemClip(_lastCopied, text.Length > 0 ? text : null);
     }
@@ -114,6 +118,43 @@ public sealed partial class EditorViewModel
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// A picture from another app (FR-7.14, FS-715) goes in the middle of the page in view at up to 300 pt wide,
+    /// keeping its shape, then is selected to move or resize. Returns false when it can't be read.
+    /// </summary>
+    public bool PastePicture(byte[] imageFile)
+    {
+        ArgumentNullException.ThrowIfNull(imageFile);
+        if (IsOrganising || IsViewOnly || Pages.Count == 0)
+        {
+            return false;
+        }
+
+        SignatureImage image;
+        try
+        {
+            image = Fillsign.Pdf.Import.PictureImport.FromImageFile(imageFile);
+        }
+        catch (InvalidDataException ex)
+        {
+            System.Diagnostics.Trace.TraceWarning($"The pasted picture couldn't be read. {ex.Message}");
+            return false;
+        }
+
+        PageId target = Pages[CurrentPageIndex].Id;
+        PageSize page = PageSizeOf(target);
+
+        // Screen pixels are about 0.75 pt; big pictures start smaller so they don't cover the page.
+        double width = Math.Min(Math.Min(image.PixelWidth * 0.75, PictureItem.MaxStartWidth), page.Width * 0.8);
+        double height = width * image.PixelHeight / Math.Max(1, image.PixelWidth);
+        var picture = new PictureItem(ItemId.New(), target, (page.Width - width) / 2, (page.Height - height) / 2, image, width, height);
+        SwitchTool(EditorTool.Select);
+        Change(ItemEdits.Add(State, picture));
+        Selection = new ItemSelection([picture.Id]);
+        Changed();
+        return true;
     }
 
     /// <summary>Another app's text becomes a text item near the top-left of the page in view, then is selected.</summary>

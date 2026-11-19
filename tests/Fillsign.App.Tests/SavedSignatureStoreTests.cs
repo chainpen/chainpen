@@ -200,6 +200,27 @@ public sealed class SavedSignatureStoreTests : IDisposable
         }
     }
 
+    /// <summary>On Windows: DPAPI protects the key file for this user, and it reads back the same key.</summary>
+    [Fact]
+    public void Windows_DPAPI_keeps_the_key()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows only.");
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string keyFile = Path.Combine(_folder, "signatures.key");
+        var vault = new WindowsDpapiVault(keyFile);
+        byte[] created = vault.GetOrCreateKey()!;
+        Assert.Equal(SignatureKeyVaults.KeyLength, created.Length);
+        Assert.Equal(created, new WindowsDpapiVault(keyFile).GetOrCreateKey());
+
+        // What's on disk is protected, not the key itself.
+        byte[] onDisk = File.ReadAllBytes(keyFile);
+        Assert.False(onDisk.AsSpan().IndexOf(created) >= 0, "the key file holds the key in plain form");
+    }
+
     private string FilePath => Path.Combine(_folder, SavedSignatureStore.FileName);
 
     private static IEqualityComparer<ImmutableArray<byte>> ImmutableArrayComparer { get; } =

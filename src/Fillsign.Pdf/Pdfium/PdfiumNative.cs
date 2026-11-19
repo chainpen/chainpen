@@ -222,6 +222,14 @@ internal static partial class PdfiumNative
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool FPDFPageObj_SetStrokeWidth(nint pageObject, float width);
 
+    /// <summary>Text render mode (PDF Tr): 0 fill, 2 fill then stroke.</summary>
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDFTextObj_SetTextRenderMode(nint textObject, int renderMode);
+
+    public const int TextRenderFillStroke = 2;
+
     /// <summary>Blend mode name, e.g. "Multiply" (PDF ExtGState /BM).</summary>
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

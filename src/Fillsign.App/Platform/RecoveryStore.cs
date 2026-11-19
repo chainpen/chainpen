@@ -25,7 +25,7 @@ public static class RecoveryStore
     public static string Folder => Path.Combine(AppSettings.Folder, "Recovery");
 
     /// <summary>Writes or replaces a copy. Failing to write one isn't worth interrupting anyone over.</summary>
-    public static void Write(RecoveryCopy copy, byte[] workingCopy)
+    public static bool Write(RecoveryCopy copy, byte[] workingCopy)
     {
         ArgumentNullException.ThrowIfNull(copy);
         try
@@ -33,10 +33,13 @@ public static class RecoveryStore
             Directory.CreateDirectory(Folder);
             WriteReplacing(PdfPath(copy.Id), workingCopy);
             WriteReplacing(InfoPath(copy.Id), JsonSerializer.SerializeToUtf8Bytes(copy, RecoveryJson.Default.RecoveryCopy));
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            // The caller says no copy was kept rather than claiming one was.
             System.Diagnostics.Trace.TraceWarning($"A recovery copy could not be written. {ex.Message}");
+            return false;
         }
     }
 
@@ -91,6 +94,12 @@ public static class RecoveryStore
         TryDelete(InfoPath(id));
     }
 
+    /// <summary>
+    /// Raised after Settings deletes copies, so documents still open write theirs again straight away rather than being
+    /// left without one until their next change.
+    /// </summary>
+    public static event Action? CopiesDeleted;
+
     /// <summary>"Delete all recovery copies" in Settings (FR-10.1).</summary>
     public static void DeleteAll()
     {
@@ -98,6 +107,8 @@ public static class RecoveryStore
         {
             Delete(copy.Id);
         }
+
+        CopiesDeleted?.Invoke();
     }
 
     /// <summary>Removes copies older than the kept period (FR-8.12: 7 days by default).</summary>
@@ -107,6 +118,8 @@ public static class RecoveryStore
         {
             Delete(copy.Id);
         }
+
+        CopiesDeleted?.Invoke();
     }
 
     private static string PdfPath(Guid id) => Path.Combine(Folder, $"{id:N}.pdf");

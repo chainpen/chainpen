@@ -52,9 +52,44 @@ public sealed partial class StartViewModel : ObservableObject
         ? $"Changes to {copy.Name} from {When(copy.SavedAt)} weren’t saved to the file, and can be recovered. If you choose Not now, you can still recover them from Recent for {AppSettings.Load().RecoveryDays} days."
         : string.Empty;
 
+    // ----- Crash reports (FS-902) -----
+
+    /// <summary>From the second start, until answered: may Fillsign keep reports of unexpected errors to send?</summary>
+    [ObservableProperty]
+    public partial bool AsksAboutCrashReports { get; private set; }
+
+    /// <summary>A report from an unexpected error is waiting to be sent or deleted.</summary>
+    [ObservableProperty]
+    public partial bool HasCrashReport { get; private set; }
+
+    public void AnswerCrashReports(bool isYes)
+    {
+        AppSettings.Update(settings => settings with { SendCrashReports = isYes });
+        Refresh();
+    }
+
+    /// <summary>The report as a pre-filled GitHub issue to review and send; the waiting reports are then cleared.</summary>
+    public Uri? TakeCrashReportLink()
+    {
+        Uri? link = CrashReports.IssueLinkForNewest();
+        CrashReports.DeleteAll();
+        Refresh();
+        return link;
+    }
+
+    public void DeleteCrashReports()
+    {
+        CrashReports.DeleteAll();
+        Refresh();
+    }
+
     /// <summary>Re-reads Recent and the recovery copies, after a window opens or closes or Settings change.</summary>
     public void Refresh()
     {
+        AppSettings current = AppSettings.Load();
+        AsksAboutCrashReports = !IsFirstLaunch && current.LaunchCount >= 2 && current.SendCrashReports is null;
+        HasCrashReport = current.SendCrashReports == true && CrashReports.Pending().Count > 0;
+
         IReadOnlyList<RecoveryCopy> copies = RecoveryStore.List();
         Recovery = copies.FirstOrDefault(copy => !copy.IsDismissed);
 

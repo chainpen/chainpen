@@ -19,7 +19,7 @@ public static class SessionJson
 
     public const int MaxPages = 10_000;
     public const int MaxItems = 100_000;
-    public const int MaxTextLength = 10_000;
+    public const int MaxTextLength = TextItem.MaxLength;
     public const int MaxInkPoints = 200_000;
     public const int MaxImageBytes = 8 * 1024 * 1024;
 
@@ -53,7 +53,11 @@ public static class SessionJson
 
             json.WriteEndArray();
 
-            var images = record.Document.Items.OfType<SignatureItem>().Select(item => item.Image).Distinct().ToList();
+            var images = record.Document.Items
+                .Select(item => item switch { SignatureItem signature => signature.Image, PictureItem picture => picture.Image, _ => null })
+                .OfType<SignatureImage>()
+                .Distinct()
+                .ToList();
             json.WriteStartArray("images");
             foreach (SignatureImage image in images)
             {
@@ -74,6 +78,22 @@ public static class SessionJson
             }
 
             json.WriteEndArray();
+
+            // FS-950: values typed into the PDF's own form fields. Left out when there are none.
+            if (!record.Document.Fields.IsEmpty)
+            {
+                json.WriteStartArray("fields");
+                foreach ((string name, string value) in record.Document.Fields)
+                {
+                    json.WriteStartObject();
+                    json.WriteString("name", name);
+                    json.WriteString("value", value);
+                    json.WriteEndObject();
+                }
+
+                json.WriteEndArray();
+            }
+
             json.WriteEndObject();
         }
 
@@ -132,6 +152,7 @@ public static class SessionJson
             TextItem => "text",
             MarkItem => "mark",
             SignatureItem => "signature",
+            PictureItem => "picture",
             ShapeItem => "shape",
             InkItem => "ink",
         });
@@ -145,6 +166,16 @@ public static class SessionJson
                 json.WriteString("text", text.Text);
                 json.WriteNumber("fontSize", text.FontSize);
                 json.WriteString("color", text.Color.ToHex());
+                if (text.IsBold)
+                {
+                    json.WriteBoolean("bold", true);
+                }
+
+                if (text.Align != TextAlign.Left)
+                {
+                    json.WriteString("align", text.Align == TextAlign.Centre ? "centre" : "right");
+                }
+
                 break;
 
             case MarkItem mark:
@@ -158,6 +189,12 @@ public static class SessionJson
                 json.WriteString("image", signature.Image.Id.ToString("N", CultureInfo.InvariantCulture));
                 json.WriteNumber("width", signature.Width);
                 json.WriteNumber("height", signature.Height);
+                break;
+
+            case PictureItem picture:
+                json.WriteString("image", picture.Image.Id.ToString("N", CultureInfo.InvariantCulture));
+                json.WriteNumber("width", picture.Width);
+                json.WriteNumber("height", picture.Height);
                 break;
 
             case ShapeItem shape:
@@ -285,8 +322,24 @@ public static class SessionJson
             items.Add(item);
         }
 
+        var fields = ImmutableSortedDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        if (record.Has("fields"))
+        {
+            foreach (JsonElement element in record.Array("fields", 0, MaxItems))
+            {
+                var field = new StrictObject(element, "field");
+                string name = field.String("name", DocumentState.MaxFieldNameLength);
+                string value = field.String("value", DocumentState.MaxFieldValueLength);
+                field.EnsureNoOtherProperties();
+                if (name.Length == 0 || !fields.TryAdd(name, value))
+                {
+                    throw new SessionFormatException("A form field is named twice, or not at all.");
+                }
+            }
+        }
+
         record.EnsureNoOtherProperties();
-        return new SessionRecord(baseStamp, content, sourcePageCount, new DocumentState(pages.ToImmutable(), items.ToImmutable()));
+        return new SessionRecord(baseStamp, content, sourcePageCount, new DocumentState(pages.ToImmutable(), items.ToImmutable()) { Fields = fields.ToImmutable() });
     }
 
     private static ByteStamp ReadStamp(StrictObject stamp)
@@ -323,7 +376,17 @@ public static class SessionJson
                 y,
                 item.String("text", MaxTextLength),
                 item.Number("fontSize", TextItem.MinFontSize, TextItem.MaxFontSize),
-                item.Color("color")),
+                item.Color("color"),
+                item.Has("bold") && item.Bool("bold"),
+                item.Has("align")
+                    ? item.String("align", 8) switch
+                    {
+                        "left" => TextAlign.Left,
+                        "centre" => TextAlign.Centre,
+                        "right" => TextAlign.Right,
+                        _ => throw new SessionFormatException("A text alignment isn't known."),
+                    }
+                    : TextAlign.Left),
             "mark" => new MarkItem(
                 id,
                 page,
@@ -349,6 +412,14 @@ public static class SessionJson
                     _ => throw new SessionFormatException("Unknown signature kind."),
                 },
                 images.TryGetValue(item.Guid("image"), out SignatureImage? image) ? image : throw new SessionFormatException("A signature's image is missing."),
+                item.Number("width", 0.1, MaxCoordinate),
+                item.Number("height", 0.1, MaxCoordinate)),
+            "picture" => new PictureItem(
+                id,
+                page,
+                x,
+                y,
+                images.TryGetValue(item.Guid("image"), out SignatureImage? picture) ? picture : throw new SessionFormatException("A picture's image is missing."),
                 item.Number("width", 0.1, MaxCoordinate),
                 item.Number("height", 0.1, MaxCoordinate)),
             "shape" => new ShapeItem(
@@ -487,6 +558,9 @@ public static class SessionJson
         }
 
         public bool Bool(string name) => Get(name).GetBoolean();
+
+        /// <summary>Whether an optional property is there (FS-952: "bold" and "align" are left out when not used).</summary>
+        public bool Has(string name) => _element.TryGetProperty(name, out _);
 
         public InkColor Color(string name) =>
             InkColor.TryParseHex(String(name, 7), out InkColor color) ? color : throw new SessionFormatException($"'{name}' isn't a colour.");

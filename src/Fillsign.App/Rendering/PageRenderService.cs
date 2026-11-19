@@ -116,9 +116,38 @@ public sealed class PageRenderService : IDisposable
     {
         lock (_lock)
         {
-            return _cache.ContainsKey(CacheKey.For(request));
+            return IsCurrent(CacheKey.For(request));
         }
     }
+
+    /// <summary>
+    /// The pages look different now (form field values, FS-950): their images are kept for drawing until fresh ones
+    /// replace them, so nothing flashes blank, and the pages are drawn again.
+    /// </summary>
+    public void MarkStale(IReadOnlyCollection<int> sourceIndices)
+    {
+        if (_isStopping)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            // Everything already drawn is drawn again, after what's currently wanted: thumbnails and other zooms too.
+            foreach (var (key, entry) in _cache)
+            {
+                if (sourceIndices.Contains(key.SourceIndex))
+                {
+                    entry.IsStale = true;
+                    _wanted[RenderLane.Thumbnails].Add(new RenderRequest(key.SourceIndex, Rotation.FromDegrees(key.QuarterTurns * 90), entry.Scale));
+                }
+            }
+        }
+
+        _wake.Release();
+    }
+
+    private bool IsCurrent(CacheKey key) => _cache.TryGetValue(key, out CacheEntry? entry) && !entry.IsStale;
 
     /// <summary>Replaces a lane's outstanding requests. Order is priority: visible pages first.</summary>
     public void Request(RenderLane lane, IEnumerable<RenderRequest> wanted)
@@ -131,7 +160,7 @@ public sealed class PageRenderService : IDisposable
 
         lock (_lock)
         {
-            _wanted[lane] = [.. wanted.Where(request => !_cache.ContainsKey(CacheKey.For(request)))];
+            _wanted[lane] = [.. wanted.Where(request => !IsCurrent(CacheKey.For(request)))];
         }
 
         _wake.Release();
@@ -188,7 +217,7 @@ public sealed class PageRenderService : IDisposable
                 {
                     request = list[0];
                     list.RemoveAt(0);
-                    if (!_cache.ContainsKey(CacheKey.For(request)))
+                    if (!IsCurrent(CacheKey.For(request)))
                     {
                         return true;
                     }
@@ -217,7 +246,7 @@ public sealed class PageRenderService : IDisposable
             unsafe
             {
                 var span = new Span<byte>((void*)buffer.Address, buffer.RowBytes * pixels.Height);
-                _source.Pdf.RenderPage(request.SourceIndex, span, pixels.Width, pixels.Height, buffer.RowBytes, request.Rotation.QuarterTurns);
+                _source.RenderPage(request.SourceIndex, span, pixels.Width, pixels.Height, buffer.RowBytes, request.Rotation.QuarterTurns);
             }
         }
         catch (PdfPageException)
@@ -322,5 +351,8 @@ public sealed class PageRenderService : IDisposable
     private sealed record CacheEntry(WriteableBitmap Bitmap, PixelSize PixelSize, double Scale)
     {
         public long LastUsed { get; set; }
+
+        /// <summary>Drawn before the page changed; shown until its replacement is ready.</summary>
+        public bool IsStale { get; set; }
     }
 }

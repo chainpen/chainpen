@@ -34,6 +34,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         _host = host;
         Renderer = new PageRenderService(source);
         Renderer.PageFailed += OnPageFailed;
+        Platform.RecoveryStore.CopiesDeleted += OnRecoveryCopiesDeleted;
         Thumbnails = new ThumbnailRequests(Renderer);
         State = DocumentState.ForSourcePages(source.PageCount);
         _savedState = State;
@@ -237,9 +238,10 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         var files = await Task.WhenAll(paths.Select(path => InputFile.ReadAsync(path, CancellationToken.None))).ConfigureAwait(true);
         PdfiumDocument pages;
         ImmutableArray<OpenProblem> skipped;
+        ImmutableArray<string> restricted;
         try
         {
-            (pages, skipped) = await DocumentLoader.OpenForAddingAsync(files, _host.AskPasswordAsync, CancellationToken.None).ConfigureAwait(true);
+            (pages, skipped, restricted) = await DocumentLoader.OpenForAddingAsync(files, _host.AskPasswordAsync, CancellationToken.None).ConfigureAwait(true);
         }
         catch (DocumentOpenException ex)
         {
@@ -248,6 +250,12 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         }
         catch (OperationCanceledException)
         {
+            return;
+        }
+
+        if (!restricted.IsEmpty && !await _host.ConfirmAddRestrictedAsync(restricted).ConfigureAwait(true))
+        {
+            pages.Dispose();
             return;
         }
 
@@ -266,6 +274,8 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _recoveryGeneration++;
+        Platform.RecoveryStore.CopiesDeleted -= OnRecoveryCopiesDeleted;
         _loading.Cancel();
         Renderer.PageFailed -= OnPageFailed;
         Renderer.Dispose();
@@ -273,8 +283,27 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         _loading.Dispose();
     }
 
+    /// <summary>
+    /// FS-214: the person chose View only for a file its owner protected against changes. Nothing can be added, moved
+    /// or saved until they choose Edit anyway.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
+    public partial bool IsViewOnly { get; set; }
+
+    public bool CanEdit => !IsViewOnly;
+
+    /// <summary>Edit anyway, from the view-only bar: the person decides, having been told about the restriction.</summary>
+    [RelayCommand]
+    private void EditAnyway() => IsViewOnly = false;
+
     private void Change(DocumentState next)
     {
+        if (IsViewOnly)
+        {
+            return;
+        }
+
         _history.Record(State, next);
         ApplyState(next);
     }

@@ -26,9 +26,10 @@ public partial class MainWindow
             recentItem,
             Item("Add pages…", () => _ = AddPagesAsync(), requiresDocument: true),
             new NativeMenuItemSeparator(),
-            Item("Save", () => _ = Editor?.SaveCommand.ExecuteAsync(null), Keys(Key.S), requiresDocument: true),
-            Item("Save as…", () => _ = Editor?.SaveAsCommand.ExecuteAsync(null), Keys(Key.S, KeyModifiers.Shift), requiresDocument: true),
-            Item("Export final copy…", () => _ = Editor?.ExportCommand.ExecuteAsync(null), Keys(Key.E), requiresDocument: true),
+            Item("Save", () => RunOnce(Editor?.SaveCommand), Keys(Key.S), requiresDocument: true),
+            Item("Save as…", () => RunOnce(Editor?.SaveAsCommand), Keys(Key.S, KeyModifiers.Shift), requiresDocument: true),
+            Item("Export final copy…", () => RunOnce(Editor?.ExportCommand), Keys(Key.E), requiresDocument: true),
+            Item("Print…", () => RunOnce(Editor?.PrintCommand), Keys(Key.P), requiresDocument: true),
             new NativeMenuItemSeparator(),
             Item("Close window", Close, Keys(Key.W)));
 
@@ -41,16 +42,16 @@ public partial class MainWindow
         }
 
         var edit = Menu("Edit",
-            Item("Undo", () => Editor?.UndoCommand.Execute(null), Keys(Key.Z), requiresDocument: true),
-            Item("Redo", () => Editor?.RedoCommand.Execute(null), Keys(Key.Z, KeyModifiers.Shift), requiresDocument: true),
+            Item("Undo", () => InTextBoxOr(box => box.Undo(), () => Editor?.UndoCommand.Execute(null)), Keys(Key.Z), requiresDocument: true),
+            Item("Redo", () => InTextBoxOr(box => box.Redo(), () => Editor?.RedoCommand.Execute(null)), Keys(Key.Z, KeyModifiers.Shift), requiresDocument: true),
             new NativeMenuItemSeparator(),
-            Item("Cut", () => { if (Editor is { } editor) { _ = CutAsync(editor); } }, Keys(Key.X), requiresDocument: true),
-            Item("Copy", () => { if (Editor is { } editor) { _ = PutOnClipboardAsync(editor.CopyToClipboard()); } }, Keys(Key.C), requiresDocument: true),
-            Item("Paste", () => { if (Editor is { } editor) { _ = PasteAsync(editor); } }, Keys(Key.V), requiresDocument: true),
+            Item("Cut", () => InTextBoxOr(box => box.Cut(), () => { if (Editor is { } editor) { _ = CutAsync(editor); } }), Keys(Key.X), requiresDocument: true),
+            Item("Copy", () => InTextBoxOr(box => box.Copy(), () => { if (Editor is { } editor) { _ = PutOnClipboardAsync(editor.CopyToClipboard()); } }), Keys(Key.C), requiresDocument: true),
+            Item("Paste", () => InTextBoxOr(box => box.Paste(), () => { if (Editor is { } editor) { _ = PasteAsync(editor); } }), Keys(Key.V), requiresDocument: true),
             Item("Duplicate", Duplicate, Keys(Key.D), requiresDocument: true),
-            Item("Delete", Delete, new KeyGesture(Key.Delete), requiresDocument: true),
+            Item("Delete", () => InTextBoxOr(DeleteForward, Delete), new KeyGesture(Key.Delete), requiresDocument: true),
             new NativeMenuItemSeparator(),
-            Item("Select all", SelectAll, Keys(Key.A), requiresDocument: true));
+            Item("Select all", () => InTextBoxOr(box => box.SelectAll(), SelectAll), Keys(Key.A), requiresDocument: true));
 
         var view = Menu("View",
             Item("Edit content", () => Editor?.ShowEditContentCommand.Execute(null), requiresDocument: true),
@@ -148,6 +149,39 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// On macOS the menu bar sees ⌘A, ⌘C and the rest before the focused control does. While a text box has focus
+    /// (typing on the page, a form field, Go to page), the command is for its text, not for the page's items.
+    /// </summary>
+    private void InTextBoxOr(Action<TextBox> forText, Action otherwise)
+    {
+        if (FocusManager?.GetFocusedElement() is TextBox box)
+        {
+            forText(box);
+        }
+        else
+        {
+            otherwise();
+        }
+    }
+
+    /// <summary>The Delete key in a text box: removes the selection, or the character after the caret.</summary>
+    private static void DeleteForward(TextBox box)
+    {
+        string text = box.Text ?? string.Empty;
+        int start = Math.Min(box.SelectionStart, box.SelectionEnd), end = Math.Max(box.SelectionStart, box.SelectionEnd);
+        if (end == start && end < text.Length)
+        {
+            end++;
+        }
+
+        if (end > start)
+        {
+            box.Text = text.Remove(start, end - start);
+            box.CaretIndex = start;
+        }
+    }
+
     private void Duplicate()
     {
         if (Editor is not { } editor)
@@ -223,11 +257,14 @@ public partial class MainWindow
         await ShowMessageAsync(title, message).ConfigureAwait(true);
     }
 
-    /// <summary>About Fillsign: the version, and that it works offline.</summary>
+    /// <summary>About Fillsign: the version, that it works offline, and the licence in plain words (FS-027).</summary>
     public void ShowAbout() =>
         _ = ShowMessageAsync(
             "About Fillsign",
-            $"Version {App.DisplayVersion}. Fill in and sign PDF forms on this computer. Your documents never leave it.");
+            $"Version {App.DisplayVersion}. Fill in and sign PDF forms on this computer. Your documents never leave it.\n\n"
+            + "Free for personal use. Free for businesses and other organisations during the beta; after it, they’ll need a "
+            + "business licence. The full terms "
+            + "and the licences of the libraries and fonts Fillsign uses are in the Licenses folder that comes with the app.");
 
     private void ShowHowItWorks() =>
         _ = ShowMessageAsync(

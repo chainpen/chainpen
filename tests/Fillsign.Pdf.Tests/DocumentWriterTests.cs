@@ -4,6 +4,7 @@ using Fillsign.Core.Geometry;
 using Fillsign.Core.Model;
 using Fillsign.Core.Session;
 using Fillsign.Pdf.Export;
+using Fillsign.Pdf.Fonts;
 using Fillsign.Pdf.Pdfium;
 using SkiaSharp;
 
@@ -93,6 +94,82 @@ public sealed class DocumentWriterTests
 
         // The font is a subset: far smaller than the full 600 KB Noto Sans.
         Assert.True(written.Pdf.Length < source.Length + 60_000, $"{written.Pdf.Length:N0} bytes");
+    }
+
+    [Fact]
+    public void Bold_text_is_heavier_and_alignment_lines_up_each_line_as_on_screen()
+    {
+        (byte[] source, SourcePage[] pages) = Source("four-pages.pdf");
+        var state = DocumentState.ForSourcePages(4);
+        PageId page = state.Pages[0].Id;
+        var regular = new TextItem(ItemId.New(), page, 60, 100, "Heavy", 24, InkColor.Black);
+        TextItem bold = regular with { Id = ItemId.New(), Y = 160, IsBold = true };
+        var right = new TextItem(ItemId.New(), page, 60, 250, "A much longer line\nshort", 20, InkColor.Black, Align: TextAlign.Right);
+        var centre = right with { Id = ItemId.New(), Y = 350, Align = TextAlign.Centre };
+        WrittenDocument written = DocumentWriter.FinalCopy(source, pages, state.WithItems([regular, bold, right, centre]));
+
+        using PdfiumDocument result = PdfiumDocument.Open(written.Pdf);
+        Assert.Contains("Heavy", result.GetText(0), StringComparison.Ordinal);
+        Bitmap image = Render(result, 0, new PageTransform(pages[0], Rotation.None).DisplaySize);
+        int regularInk = image.CountDark(55, 100, 120, 30), boldInk = image.CountDark(55, 160, 120, 30);
+        Assert.True(boldInk > regularInk * 1.15, $"bold {boldInk} vs regular {regularInk}");
+
+        // The short second line ends where the long first line ends (right), or sits in its middle (centre).
+        double box = NotoTextMeasurer.Instance.MeasureLineWidth("A much longer line", 20);
+        double shortWidth = NotoTextMeasurer.Instance.MeasureLineWidth("short", 20);
+        double lineTwo = 250 + (20 * TextItem.LineHeight);
+        // Within 2.5 pt: ink stops short of a glyph's advance by its side bearing.
+        Assert.InRange(LastDarkColumn(image, lineTwo, 24), 60 + box - 2.5, 60 + box);
+        Assert.InRange(FirstDarkColumn(image, lineTwo + 100, 24), 60 + ((box - shortWidth) / 2), 60 + ((box - shortWidth) / 2) + 2.5);
+
+        // Left-aligned, the short line would start at the item's left edge instead.
+        Assert.True(LastDarkColumn(image, lineTwo, 24) > 60 + shortWidth + 20);
+    }
+
+    private static double LastDarkColumn(Bitmap image, double top, double height)
+    {
+        for (double x = image.Width / Scale; x > 0; x -= 0.5)
+        {
+            if (image.CountDark(x, top, 0.5, height) > 0)
+            {
+                return x;
+            }
+        }
+
+        return 0;
+    }
+
+    private static double FirstDarkColumn(Bitmap image, double top, double height)
+    {
+        for (double x = 0; x < image.Width / Scale; x += 0.5)
+        {
+            if (image.CountDark(x, top, 0.5, height) > 0)
+            {
+                return x;
+            }
+        }
+
+        return 0;
+    }
+
+    [Fact]
+    public void Embedded_fonts_carry_a_subset_tag_and_characters_noto_lacks_use_another_font()
+    {
+        (byte[] source, SourcePage[] pages) = Source("four-pages.pdf");
+        var state = DocumentState.ForSourcePages(4);
+        PageId page = state.Pages[0].Id;
+        var text = new TextItem(ItemId.New(), page, 100, 300, "Contract 契约 signed", 20, InkColor.Black);
+        byte[] final = DocumentWriter.FinalCopy(source, pages, state.WithItems([text])).Pdf;
+
+        // ISO 32000 §9.6.4: an embedded subset is named TAG+Name, the tag six capital letters.
+        Assert.Matches(@"/BaseFont\s*/[A-Z]{6}\+NotoSans", Encoding.Latin1.GetString(final));
+
+        using SKTypeface? cjk = SKFontManager.Default.MatchCharacter('契');
+        Assert.SkipWhen(cjk is null, "No font on this computer has Chinese characters.");
+        using PdfiumDocument result = PdfiumDocument.Open(final);
+        string extracted = result.GetText(0);
+        Assert.True(extracted.Contains("契约", StringComparison.Ordinal), $"{cjk!.FamilyName}: «{extracted}» fonts: {string.Join(", ", System.Text.RegularExpressions.Regex.Matches(Encoding.Latin1.GetString(final), @"/BaseFont\s*/[^\s/>]+").Select(m => m.Value))}");
+        Assert.Contains("Contract", result.GetText(0), StringComparison.Ordinal);
     }
 
     [Fact]

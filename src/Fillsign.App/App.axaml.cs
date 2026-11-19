@@ -22,14 +22,25 @@ public partial class App : Application
         }
     }
 
-    /// <summary>The window in front, which About and update messages open over.</summary>
-    private MainWindow? FrontWindow() =>
-        ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            ? desktop.Windows.OfType<MainWindow>().FirstOrDefault(window => window.IsActive) ?? desktop.MainWindow as MainWindow
-            : null;
+    /// <summary>
+    /// The window in front, which About, messages and opened files go to: the active one, else any still open. The
+    /// lifetime's MainWindow is the first window ever shown and may have closed.
+    /// </summary>
+    private MainWindow? FrontWindow()
+    {
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return null;
+        }
+
+        MainWindow[] open = [.. desktop.Windows.OfType<MainWindow>()];
+        return open.FirstOrDefault(window => window.IsActive) ?? open.FirstOrDefault();
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
+        CatchUnexpectedErrors();
+
         // The appearance follows Settings in every window, straight away (FR-10.1).
         ApplyAppearance(AppSettings.Load().Appearance);
         AppSettings.Changed += changed => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyAppearance(changed.Appearance));
@@ -48,7 +59,22 @@ public partial class App : Application
             desktop.MainWindow = new MainWindow(isFirstLaunch, paths);
 
             // Updates: check quietly once the first window is up; before restarting, keep every window's unsaved work.
-            AppUpdates.Instance.KeepUnsavedWork = () => Task.WhenAll(desktop.Windows.OfType<MainWindow>().Select(window => window.KeepForUpdateAsync()));
+            AppUpdates.Instance.KeepUnsavedWork = async () =>
+            {
+                MainWindow[] windows = [.. desktop.Windows.OfType<MainWindow>()];
+                bool[] kept = await Task.WhenAll(windows.Select(window => window.KeepForUpdateAsync())).ConfigureAwait(true);
+                if (!kept.All(isKept => isKept))
+                {
+                    return false;
+                }
+
+                foreach (MainWindow window in windows)
+                {
+                    window.MarkKeptForUpdate();
+                }
+
+                return true;
+            };
             Avalonia.Threading.DispatcherTimer.RunOnce(() => _ = AppUpdates.Instance.CheckAsync(), TimeSpan.FromSeconds(10));
 
             // Files opened from Finder or Explorer while Fillsign is running ("Open with", FS-705).
@@ -56,16 +82,76 @@ public partial class App : Application
             {
                 activatable.Activated += (_, e) =>
                 {
-                    if (e is FileActivatedEventArgs files && desktop.MainWindow is MainWindow window)
+                    if (e is not FileActivatedEventArgs files)
                     {
-                        string[] opened = [.. files.Files.Select(file => file.TryGetLocalPath()).OfType<string>()];
+                        return;
+                    }
+
+                    string[] opened = [.. files.Files.Select(file => file.TryGetLocalPath()).OfType<string>()];
+                    if (FrontWindow() is { } window)
+                    {
                         _ = window.OpenPathsAsync(opened);
+                    }
+                    else
+                    {
+                        new MainWindow(isFirstLaunch: false, opened).Show();
                     }
                 };
             }
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// The last line of defence: an error nothing else expected is logged and explained instead of closing Fillsign,
+    /// so the person can still save. Recovery copies keep running either way. Errors from tasks nobody awaited are
+    /// logged too, rather than vanishing.
+    /// </summary>
+    private void CatchUnexpectedErrors()
+    {
+        Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            System.Diagnostics.Trace.TraceError($"Unexpected error: {e.Exception}");
+            CrashReports.Record(e.Exception);
+            e.Handled = true;
+            if (!_isShowingUnexpectedError && FrontWindow() is { } window)
+            {
+                _isShowingUnexpectedError = true;
+                _ = ShowUnexpectedErrorAsync(window);
+            }
+        };
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            System.Diagnostics.Trace.TraceError($"Unexpected error in background work: {e.Exception}");
+            CrashReports.Record(e.Exception);
+            e.SetObserved();
+        };
+
+        // Errors that end the app can't be caught, but they can still be written down first (FS-902).
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            if (e.ExceptionObject is Exception exception)
+            {
+                CrashReports.Record(exception);
+            }
+        };
+    }
+
+    private bool _isShowingUnexpectedError;
+
+    private async Task ShowUnexpectedErrorAsync(MainWindow window)
+    {
+        try
+        {
+            await window.ShowMessageAsync(
+                "Something went wrong",
+                "Fillsign hit a problem it didn’t expect, and what you were doing may not have finished. Your document is still open: save it to be safe, and check that your last change is there.").ConfigureAwait(true);
+        }
+        finally
+        {
+            _isShowingUnexpectedError = false;
+        }
     }
 
     /// <summary>
