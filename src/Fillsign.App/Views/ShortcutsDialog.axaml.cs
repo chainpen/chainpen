@@ -11,6 +11,7 @@ public partial class ShortcutsDialog : UserControl
     public ShortcutsDialog()
     {
         InitializeComponent();
+        Panel.UseDialogHeading();
         PlatformNote.Text = OperatingSystem.IsMacOS() ? "Shown for this Mac: ⌘ is the Command key." : "On a Mac, Ctrl is ⌘.";
         Loaded += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() => CloseButton.Focus(), Avalonia.Threading.DispatcherPriority.Loaded);
         KeyDown += (_, e) =>

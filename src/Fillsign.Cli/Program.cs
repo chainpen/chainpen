@@ -9,7 +9,6 @@ namespace Fillsign.Cli;
 /// </summary>
 public static class Program
 {
-    internal static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     private const string Usage = """
         fillsign: fill in PDF forms from scripts and AI assistants. Signing is done in the Fillsign app.
@@ -80,13 +79,16 @@ public static class Program
         DocumentInfo info = form.Info();
         if (arguments.Has("--json"))
         {
-            Console.Out.WriteLine(JsonSerializer.Serialize(info, Json));
+            Console.Out.WriteLine(JsonSerializer.Serialize(info, CliJson.Default.DocumentInfo));
             return 0;
         }
 
         Console.Out.WriteLine(info.Path);
         Console.Out.WriteLine($"  {info.Pages} {(info.Pages == 1 ? "page" : "pages")}{(info.IsWorkingCopy ? ", a Fillsign working copy" : string.Empty)}");
-        Console.Out.WriteLine($"  {info.FillableFields} fields to fill");
+        // The same count the app gives (UX review 9): signature fields are fields too, signed in the app.
+        Console.Out.WriteLine(info.SignatureFields == 0
+            ? $"  {info.FillableFields} fields to fill"
+            : $"  {info.FillableFields + info.SignatureFields} fields: {info.FillableFields} to fill, {info.SignatureFields} to sign in the Fillsign app");
         if (info.OwnerForbidsChanges)
         {
             Console.Out.WriteLine("  Its owner has set it so it can't be changed.");
@@ -101,7 +103,7 @@ public static class Program
         IReadOnlyList<FieldInfo> fields = form.Fields();
         if (arguments.Has("--json"))
         {
-            Console.Out.WriteLine(JsonSerializer.Serialize(fields, Json));
+            Console.Out.WriteLine(JsonSerializer.Serialize(fields, CliJson.Default.IReadOnlyListFieldInfo));
             return 0;
         }
 
@@ -224,6 +226,12 @@ public static class Program
         return result;
     }
 }
+
+/// <summary>The JSON the command and MCP server write, generated at build time so it works under Native AOT (FS-809).</summary>
+[System.Text.Json.Serialization.JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = System.Text.Json.Serialization.JsonKnownNamingPolicy.CamelCase)]
+[System.Text.Json.Serialization.JsonSerializable(typeof(DocumentInfo))]
+[System.Text.Json.Serialization.JsonSerializable(typeof(IReadOnlyList<FieldInfo>))]
+internal sealed partial class CliJson : System.Text.Json.Serialization.JsonSerializerContext;
 
 /// <summary>The command was mistyped.</summary>
 internal sealed class UsageException(string message) : Exception(message);

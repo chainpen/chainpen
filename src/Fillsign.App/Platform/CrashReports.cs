@@ -130,9 +130,10 @@ internal static class CrashReports
             text.AppendLine(depth == 0 ? current.GetType().FullName : $"Caused by {current.GetType().FullName}");
             foreach (StackFrame frame in new StackTrace(current, fNeedFileInfo: false).GetFrames())
             {
-                if (frame.GetMethod() is { } method)
+                // DiagnosticMethodInfo rather than GetMethod(), which Native AOT can't support (FS-809).
+                if (DiagnosticMethodInfo.Create(frame) is { } method)
                 {
-                    text.AppendLine(CultureInfo.InvariantCulture, $"  at {method.DeclaringType?.FullName}.{method.Name}");
+                    text.AppendLine(CultureInfo.InvariantCulture, $"  at {method.DeclaringTypeName}.{method.Name}");
                 }
             }
         }

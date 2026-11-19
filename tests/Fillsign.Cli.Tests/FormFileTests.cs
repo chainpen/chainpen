@@ -26,6 +26,7 @@ public sealed class FormFileTests : IDisposable
         Assert.False(fields.Single(field => field.Name == "Signature").CanFill);
         Assert.DoesNotContain(fields, field => field.Name == "Reset");
         Assert.Equal(13, form.Info().FillableFields);
+        Assert.Equal(1, form.Info().SignatureFields);
     }
 
     [Fact]

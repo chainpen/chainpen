@@ -76,7 +76,7 @@ internal abstract class FieldAutomationPeer(PagesCanvas canvas, EditorViewModel 
 
     protected override IReadOnlyList<AutomationPeer> GetOrCreateChildrenCore() => [];
 
-    protected override string? GetNameCore() => Field.DisplayName;
+    protected override string? GetNameCore() => Editor.AccessibleName(Hit);
 
     protected override string? GetAutomationIdCore() => Field.Kind == FormFieldKind.Radio ? $"{Field.Name}:{Field.OnValue}" : Field.Name;
 

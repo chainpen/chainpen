@@ -32,8 +32,11 @@ public interface IEditorHost
     /// <summary>A message that's just information: no warning icon.</summary>
     Task ShowInformationAsync(string title, string message);
 
-    /// <summary>FR-3.4: picks or makes a signature or initials to place. Null when cancelled.</summary>
-    Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync();
+    /// <summary>
+    /// FR-3.4: picks or makes a signature, or initials, to place. The dialog makes the one kind it was asked for
+    /// (UX review 7). Null when cancelled.
+    /// </summary>
+    Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync(SignatureKind kind = SignatureKind.Signature);
 
     /// <summary>
     /// "Move to…" (FR-6.4): asks where <paramref name="count"/> pages should go. Returns the gap (0 is before page 1,

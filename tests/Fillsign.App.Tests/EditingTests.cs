@@ -217,6 +217,27 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task Tab_past_the_last_field_goes_back_to_the_first_and_says_how_to_leave()
+    {
+        using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+        e.View.FindControl<ScrollViewer>("Scroller")!.Focus(NavigationMethod.Tab);
+        e.Editor.MoveFieldFocus(backwards: true);
+        Assert.Equal("Signature", e.Editor.FocusedField?.Field.Name);
+        Assert.Contains("Tab to go back to the first field · F6 to leave the form", e.Editor.ContextHint, StringComparison.Ordinal);
+
+        // Tab on the last field: back to the first, never an unseen stop (UX review 5).
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        await Pump(() => true);
+        Assert.Equal("Name", e.Editor.EditingField?.Hit.Field.Name);
+
+        // Shift+Tab in the first (a text field): round to the last.
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
+        e.Window.KeyPress(Key.Tab, RawInputModifiers.Shift, PhysicalKey.Tab, null);
+        await Pump(() => true);
+        Assert.Equal("Signature", e.Editor.FocusedField?.Field.Name);
+    }
+
+    [AvaloniaFact]
     public async Task Tab_in_a_form_field_keeps_it_and_moves_to_the_next_field()
     {
         using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
@@ -227,8 +248,14 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.Click(at.X, at.Y);
         await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused));
         e.Window.KeyTextInput("Jordan");
+        TextBox first = e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible && control.IsFocused);
         e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         await Pump(() => e.Editor.State.Fields.ContainsKey("Name"));
+
+        // Focus really moves to a box named for the next field, so screen readers announce it.
+        await Pump(() => e.Canvas.Children.OfType<TextBox>().Any(control => control.IsVisible && control.IsFocused && !ReferenceEquals(control, first)));
+        TextBox emailBox = e.Canvas.Children.OfType<TextBox>().Single(control => control.IsVisible && control.IsFocused);
+        Assert.Equal("Your email address, text field", Avalonia.Automation.AutomationProperties.GetName(emailBox));
         Assert.Equal("Jordan", e.Editor.State.Fields["Name"]);
         Assert.Equal("Email", e.Editor.EditingField?.Hit.Field.Name);
         Assert.True(e.Editor.EditingField?.SelectsAll, "Tab selects the next field's text, as in a browser");
@@ -245,10 +272,10 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         await Pump(() => e.Editor.FocusedField?.Field.Name == "ContactEmail");
         Assert.Null(e.Editor.EditingField);
-        Assert.Equal("Email, check box, not ticked", e.Editor.FieldAnnouncement);
+        Assert.Equal("Contact me by: Email, check box, not ticked", e.Editor.FieldAnnouncement);
         e.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
         Assert.Equal("Yes", e.Editor.State.Fields["ContactEmail"]);
-        Assert.Equal("Email, check box, ticked", e.Editor.FieldAnnouncement);
+        Assert.Equal("Contact me by: Email, check box, ticked", e.Editor.FieldAnnouncement);
         e.Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         Assert.Equal("ContactPhone", e.Editor.FocusedField?.Field.Name);
 
@@ -405,6 +432,7 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.Equal("Prof", e.Editor.State.Fields["Title"]);
 
         // A signature field: sign, and the signature lands inside its box; that gap is then filled.
+        Assert.Single(e.Editor.UnsignedSignatureFields(page));
         Press(Centre("Signature"));
         SignatureDialog dialog = await Await(() => e.Window.FindControl<ContentControl>("DialogHost")!.Content as SignatureDialog);
         var signing = (SignatureDialogViewModel)dialog.DataContext!;
@@ -417,6 +445,7 @@ public sealed class EditingTests(ITestOutputHelper output)
         Assert.True(signature.X >= box.X && signature.X + signature.Width <= box.Right + 0.01, "fits across");
         Assert.True(signature.Y >= box.Y && signature.Y + signature.Height <= box.Bottom + 0.01, "fits down");
         Assert.DoesNotContain("Your signature", e.Editor.FindGaps().Gaps.Select(gap => gap.Label));
+        Assert.Empty(e.Editor.UnsignedSignatureFields(page));
         await e.SaveAsync("edit-form-signature");
     }
 
@@ -429,11 +458,12 @@ public sealed class EditingTests(ITestOutputHelper output)
         Pdf.Pdfium.FormField phone = e.Editor.Source.FormFields(0).Single(field => field.Name == "ContactPhone");
         PagePoint phoneCentre = transform.ToDisplay((phone.Rect.Left + phone.Rect.Right) / 2, (phone.Rect.Bottom + phone.Rect.Top) / 2);
 
-        // Opening says the form has fields, as information (no Undo), and the bar points at them.
-        await Pump(() => e.Editor.Notice is not null);
-        Assert.StartsWith("This form has ", e.Editor.Notice, StringComparison.Ordinal);
-        Assert.False(e.Editor.NoticeOffersUndo);
-        Assert.StartsWith("Click a field to fill it", e.Editor.ContextHint, StringComparison.Ordinal);
+        // Opening says how many fields there are in the bar, with nothing over the page; filling one shows progress.
+        await Pump(() => e.Editor.ContextHint.StartsWith("14 fields to fill", StringComparison.Ordinal));
+        Assert.Null(e.Editor.Notice);
+        e.Editor.SetField("Name", "Jordan");
+        Assert.Equal("1 of 14 filled · Tab for the next field · Export when you’re done", e.Editor.ContextHint);
+        e.Editor.SetField("Name", string.Empty);
 
         // Tick on one of the form's boxes ticks the box itself; no separate mark is added.
         e.Editor.SelectToolCommand.Execute(EditorTool.Tick);

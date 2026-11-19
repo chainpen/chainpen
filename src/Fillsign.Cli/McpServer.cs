@@ -76,8 +76,7 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
         ["instructions"] = "Reads and fills PDF form fields on this computer. Use list_form_fields first to learn the field names and their options. Paths must be absolute. Signing is never done here: the person signs in the Fillsign app.",
     };
 
-    private static JsonArray Tools() =>
-    [
+    private static JsonArray Tools() => new(
         Tool(
             "document_info",
             "What a PDF is: pages, whether it's a Fillsign working copy, how many form fields can be filled, and whether its owner forbids changes.",
@@ -111,8 +110,8 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
                 ("lock_fields", "boolean", "Make the fields read-only (default true)."),
                 ("overwrite", "boolean", "Replace output_path if it exists (default false).")),
             ["path", "output_path"],
-            readOnly: false),
-    ];
+            readOnly: false)
+    );
 
     private async Task<JsonObject> CallAsync(JsonObject? parameters, CancellationToken cancellationToken)
     {
@@ -145,13 +144,13 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
     private static async Task<string> InfoAsync(JsonObject arguments, CancellationToken cancellationToken)
     {
         using FormFile form = await FormFile.OpenAsync(AbsolutePath(arguments, "path"), cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.Serialize(form.Info(), Program.Json);
+        return JsonSerializer.Serialize(form.Info(), CliJson.Default.DocumentInfo);
     }
 
     private static async Task<string> FieldsAsync(JsonObject arguments, CancellationToken cancellationToken)
     {
         using FormFile form = await FormFile.OpenAsync(AbsolutePath(arguments, "path"), cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.Serialize(form.Fields(), Program.Json);
+        return JsonSerializer.Serialize(form.Fields(), CliJson.Default.IReadOnlyListFieldInfo);
     }
 
     private static async Task<string> FillAsync(JsonObject arguments, CancellationToken cancellationToken)

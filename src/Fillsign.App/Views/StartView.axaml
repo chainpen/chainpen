@@ -126,27 +126,27 @@
                         <Button DockPanel.Dock="Right" Classes="link" Content="Clear list" Click="OnClearRecent" />
                         <TextBlock x:Name="RecentHeading" Classes="heading-section" FontSize="15" VerticalAlignment="Center" Text="Recent" />
                     </DockPanel>
-                    <Grid Classes="recentHeader" ColumnDefinitions="*,140,220">
+                    <Grid Classes="recentHeader" ColumnDefinitions="*,140">
                         <TextBlock Text="Name" />
                         <TextBlock Grid.Column="1" Text="Last opened" />
-                        <TextBlock Grid.Column="2" Text="Status" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Recent}" AutomationProperties.LabeledBy="{Binding #RecentHeading}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:RecentItemViewModel">
                                 <Button Classes="recentRow" Click="OnOpenRecent" AutomationProperties.Name="{Binding AccessibleName}">
-                                    <Grid ColumnDefinitions="*,140,220">
+                                    <Grid ColumnDefinitions="*,140">
                                         <StackPanel Orientation="Horizontal" Spacing="12">
                                             <Border Width="32" Height="40" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BorderControl}"
                                                     Background="{DynamicResource Page}" />
-                                            <StackPanel VerticalAlignment="Center" MaxWidth="400">
+                                            <StackPanel VerticalAlignment="Center" MaxWidth="560">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Classes="muted" FontSize="12" Text="{Binding Folder}" TextTrimming="CharacterEllipsis" />
+                                                <!-- Only when there's something to say: a column of dashes was noise (UX review 9). -->
+                                                <TextBlock FontSize="12" Margin="0,2,0,0" IsVisible="{Binding HasStatus}"
+                                                           Classes.warning="{Binding IsWarning}" Classes="status" Text="{Binding Status}" />
                                             </StackPanel>
                                         </StackPanel>
                                         <TextBlock Grid.Column="1" Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding LastOpened}" />
-                                        <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"
-                                                   Classes.warning="{Binding IsWarning}" Classes="status" Text="{Binding Status}" />
                                     </Grid>
                                 </Button>
                             </DataTemplate>

@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
+    <IsAotCompatible>true</IsAotCompatible>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Fillsign.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>

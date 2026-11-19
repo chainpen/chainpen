@@ -36,15 +36,7 @@
                         <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding FirstTimeHint}"
                                    IsVisible="{Binding !HasSaved}" />
 
-                        <!-- Signature or initials is chosen here and only here (INTERACTION-PATTERNS §8). -->
-                        <Border Classes="segments" Margin="0,14,0,0" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal" Spacing="2">
-                                <RadioButton Classes="segment" GroupName="kind" Content="Signature" IsChecked="{Binding IsSignature}"
-                                             AutomationProperties.Name="Signature" />
-                                <RadioButton Classes="segment" GroupName="kind" Content="Initials" IsChecked="{Binding IsInitials}"
-                                             AutomationProperties.Name="Initials" />
-                            </StackPanel>
-                        </Border>
+                        <!-- The dialog makes the one kind it was opened for: Sign, or Sign ▾ → Initials (UX review 7). -->
 
                         <!-- Saved ones, most recently used first and preselected, then New (FR-4.6). -->
                         <StackPanel IsVisible="{Binding HasSaved}">

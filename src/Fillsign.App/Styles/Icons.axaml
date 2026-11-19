@@ -44,6 +44,8 @@
     <StreamGeometry x:Key="IconCross">M6 6l12 12 M18 6L6 18</StreamGeometry>
     <StreamGeometry x:Key="IconDate">M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z M3 10h18 M8 3v4 M16 3v4</StreamGeometry>
     <StreamGeometry x:Key="IconSign">M3 16c3-6 5-9 6-9s-1 8 1 8 3-5 4-5 0 4 2 4 2-2 5-2 M3 20h18</StreamGeometry>
+    <!-- Initials: two capitals on the signing line, beside Sign's scrawl. -->
+    <StreamGeometry x:Key="IconInitials">M3 16l3.5-10 3.5 10 M4.4 12h4.2 M14 6v10h6 M3 20h18</StreamGeometry>
     <StreamGeometry x:Key="IconShapes">M4.5 3h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 3 12.5v-8A1.5 1.5 0 0 1 4.5 3z M21 16a5 5 0 1 1-10 0a5 5 0 1 1 10 0z</StreamGeometry>
     <StreamGeometry x:Key="IconDraw">M4 20l4-1 11-11-3-3L5 16z M14 7l3 3</StreamGeometry>
     <StreamGeometry x:Key="IconChevronDown">M6 9l6 6 6-6</StreamGeometry>

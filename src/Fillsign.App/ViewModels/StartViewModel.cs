@@ -175,7 +175,10 @@ public sealed class RecentItemViewModel
     /// <summary>Opening this row recovers this copy instead of opening the file.</summary>
     public RecoveryCopy? Recovery { get; }
 
-    public string AccessibleName => $"{Name}, {Folder}, last opened {LastOpened}, {Status}";
+    /// <summary>Most files have nothing to say, so the status only shows when there's one (UX review 9).</summary>
+    public bool HasStatus => Status.Length > 0;
+
+    public string AccessibleName => HasStatus ? $"{Name}, {Folder}, last opened {LastOpened}, {Status}" : $"{Name}, {Folder}, last opened {LastOpened}";
 
     public static RecentItemViewModel ForFile(RecentFile file, RecoveryCopy? recovery)
     {
@@ -192,7 +195,7 @@ public sealed class RecentItemViewModel
             return new(name, folder, opened, "Can’t find this file", isWarning: true, file.Path, null);
         }
 
-        return new(name, folder, opened, file.IsFinalCopy ? "Final copy (can’t be edited)" : "—", isWarning: false, file.Path, null);
+        return new(name, folder, opened, file.IsFinalCopy ? "Final copy (can’t be edited)" : string.Empty, isWarning: false, file.Path, null);
     }
 
     public static RecentItemViewModel ForUnsavedWork(RecoveryCopy copy) =>

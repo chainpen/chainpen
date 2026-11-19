@@ -26,7 +26,9 @@ public sealed record FieldInfo(
     bool AcceptsOtherAnswers);
 
 /// <summary>What a file is, before anything is done to it.</summary>
-public sealed record DocumentInfo(string Path, int Pages, bool IsWorkingCopy, int FillableFields, bool OwnerForbidsChanges);
+/// <param name="FillableFields">Fields this command can fill.</param>
+/// <param name="SignatureFields">Fields to sign in the app. With <paramref name="FillableFields"/>, the count the app gives.</param>
+public sealed record DocumentInfo(string Path, int Pages, bool IsWorkingCopy, int FillableFields, int SignatureFields, bool OwnerForbidsChanges);
 
 /// <summary>
 /// One PDF opened for scripting (FS-969, FS-970): its form fields, filling them, and writing a final copy or a working
@@ -89,7 +91,11 @@ public sealed class FormFile : IDisposable
         return new FormFile(full, result.Source, state, isWorkingCopy, !result.RestrictedFiles.IsEmpty);
     }
 
-    public DocumentInfo Info() => new(Path, State.Pages.Length, IsWorkingCopy, Fields().Count(field => field.CanFill), OwnerForbidsChanges);
+    public DocumentInfo Info()
+    {
+        IReadOnlyList<FieldInfo> fields = Fields();
+        return new(Path, State.Pages.Length, IsWorkingCopy, fields.Count(field => field.CanFill), fields.Count(field => field.Kind == "signature"), OwnerForbidsChanges);
+    }
 
     /// <summary>The fillable fields, page by page in the form's order; buttons left out, signature fields listed but not fillable.</summary>
     public IReadOnlyList<FieldInfo> Fields()

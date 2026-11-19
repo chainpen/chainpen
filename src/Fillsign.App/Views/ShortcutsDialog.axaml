@@ -9,7 +9,7 @@
             <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Classes="primary" HorizontalAlignment="Right" Margin="0,16,0,0" Content="Close" Click="OnClose" />
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
                 <StackPanel Margin="4,4">
-                    <v:ShortcutsPanel />
+                    <v:ShortcutsPanel x:Name="Panel" />
                     <TextBlock x:Name="PlatformNote" Classes="muted" FontSize="12" Margin="0,12,0,0" />
                 </StackPanel>
             </ScrollViewer>

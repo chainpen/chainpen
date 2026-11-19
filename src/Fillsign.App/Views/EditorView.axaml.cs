@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Fillsign.App.ViewModels;
 
@@ -24,6 +25,9 @@ public partial class EditorView : UserControl
         TitleBar.ActsAsTitleBar(TitleStrip);
         AttachPagesPanelResizer();
         ShareButton.IsVisible = Platform.ShareSheet.IsAvailable;
+        ShowToolLetters(ToolKeys.IsOn);
+        AttachedToVisualTree += (_, _) => Platform.AppSettings.Changed += OnSettingsChanged;
+        DetachedFromVisualTree += (_, _) => Platform.AppSettings.Changed -= OnSettingsChanged;
         _toastTimer.Tick += (_, _) =>
         {
             // Someone reaching for Undo, or tabbed onto it, keeps it open; it goes once they've moved on.
@@ -45,12 +49,12 @@ public partial class EditorView : UserControl
     }
 
     /// <summary>Widths below which the toolbar collapses (INTERACTION-PATTERNS §3); the smallest window (S2, 1024) has both.</summary>
-    private const double CompactSwitchBelowWidth = 1480;
+    private const double CompactSwitchBelowWidth = 1640;
     private const double IconsBelowWidth = 1340;
-    private const double MoreMenuBelowWidth = 1100;
-
-    /// <summary>The person asked to open files (Open… or Mod+O).</summary>
-    public event EventHandler? OpenRequested;
+    private const double LateIconsBelowWidth = 1248;
+    private const double MoreMenuBelowWidth = 1248;
+    private const double DateInMoreBelowWidth = 1100;
+    private const double ShortcutsBelowWidth = 1340;
 
     /// <summary>Files dropped on "Add to this document" or between pages: (paths, insert position or null for the end).</summary>
     public event Action<IReadOnlyList<string>, int?>? AddFilesRequested;
@@ -68,8 +72,9 @@ public partial class EditorView : UserControl
     public void FitWidth() => Canvas.FitWidth();
 
     /// <summary>
-    /// Narrower windows first turn Select, Cross, Date, Rotate left and Rotate right into icons, then move Shapes and
-    /// Draw into More and show the Edit content / Organise pages switch as icons (S3).
+    /// Narrower windows first turn Select, Rotate left and Rotate right into icons, then Cross and Date, then move Shapes
+    /// and Draw into More, hide Keyboard shortcuts (it's in the Help menu) and show the Edit content / Organise pages
+    /// switch as icons (S3). Nothing may overlap at any width down to the smallest window.
     /// Tick, Text and Sign always keep their labels (NFR-11).
     /// </summary>
     private void CollapseToolbar(double width)
@@ -77,15 +82,52 @@ public partial class EditorView : UserControl
         bool isIconsOnly = width < IconsBelowWidth;
         // A style hides every "collapsible" label, including ones in bars that haven't been shown yet.
         Classes.Set("iconsOnly", isIconsOnly);
+        Classes.Set("iconsOnlyLate", width < LateIconsBelowWidth);
 
         bool usesMoreMenu = width < MoreMenuBelowWidth;
         ShapesButton.IsVisible = !usesMoreMenu;
         DrawButton.IsVisible = !usesMoreMenu;
         MoreButton.IsVisible = usesMoreMenu;
+
+        // At this width the tools row is wider than its slot and was drawn under Undo: the shortcuts are in Help.
+        ShortcutsButton.IsVisible = width >= ShortcutsBelowWidth;
+
+        // The smallest windows: Date joins Shapes and Draw in More, so Sign's arrow fits.
+        bool isDateInMore = width < DateInMoreBelowWidth;
+        DateButton.IsVisible = !isDateInMore;
+        MoreDateItem.IsVisible = isDateInMore;
         bool isCompact = width < CompactSwitchBelowWidth;
         ExportLabel.Text = isCompact ? "Export…" : "Export final copy…";
         EditContentLabel.IsVisible = !isCompact;
         OrganiseLabel.IsVisible = !isCompact;
+    }
+
+    private readonly Dictionary<Control, (string Plain, string Letter)> _toolTips = [];
+
+    private void OnSettingsChanged(Platform.AppSettings settings) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowToolLetters(settings.UseSingleKeyTools));
+
+    /// <summary>
+    /// Tool tooltips name the tool's letter, "(X)", only while single-letter tools are on (UX review 9): off, as they
+    /// are by default, the letter would do nothing.
+    /// </summary>
+    private void ShowToolLetters(bool isOn)
+    {
+        if (_toolTips.Count == 0)
+        {
+            foreach (Control control in Tools.GetLogicalDescendants().OfType<Button>())
+            {
+                if (ToolTip.GetTip(control) is string tip && System.Text.RegularExpressions.Regex.Match(tip, @" \([A-Z]\)$") is { Success: true } letter)
+                {
+                    _toolTips[control] = (tip[..letter.Index], letter.Value);
+                }
+            }
+        }
+
+        foreach ((Control control, (string plain, string letter)) in _toolTips)
+        {
+            ToolTip.SetTip(control, isOn ? plain + letter : plain);
+        }
     }
 
     /// <summary>
@@ -165,7 +207,6 @@ public partial class EditorView : UserControl
         Scroller.Focus();
     }
 
-    private void OnOpen(object? sender, RoutedEventArgs e) => OpenRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Share… on the export notice (FS-613): the system's share sheet, next to the button.</summary>
     private void OnShare(object? sender, RoutedEventArgs e)

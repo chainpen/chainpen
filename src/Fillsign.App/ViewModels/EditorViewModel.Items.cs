@@ -168,7 +168,7 @@ public sealed partial class EditorViewModel
         EditorTool.Shape => "Drag on the page to draw it. Click instead for a standard size · Esc to stop",
         EditorTool.Draw => "Strokes join into one drawing until you’re done.",
         // FS-950: on a form with fields, filling them is the main way in; the tools add your own on top.
-        _ when HasFillableFields => "Click a field to fill it, or press Tab to go through them. Pick a tool to add your own: Text, Tick, Sign.",
+        _ when HasFillableFields && !IsViewOnly => FormHint(),
         _ => "Nothing selected. Pick a tool, then click on the page: Tick for boxes, Text for lines, Sign for the signature.",
     };
 
@@ -232,6 +232,10 @@ public sealed partial class EditorViewModel
         SwitchTool(tool);
     }
 
+    /// <summary>Sign ▾ → Initials (UX review 7): as Sign, but the dialog makes initials.</summary>
+    [RelayCommand]
+    private Task AddInitialsAsync() => StartSigningAsync(SignatureKind.Initials);
+
     [RelayCommand]
     private void ChooseShape(ShapeKind kind)
     {
@@ -248,9 +252,14 @@ public sealed partial class EditorViewModel
         Changed();
     }
 
-    private async Task StartSigningAsync()
+    private async Task StartSigningAsync(SignatureKind kind = SignatureKind.Signature)
     {
-        if (await _host.ChooseSignatureAsync().ConfigureAwait(true) is { } chosen)
+        if (IsViewOnly)
+        {
+            return;
+        }
+
+        if (await _host.ChooseSignatureAsync(kind).ConfigureAwait(true) is { } chosen)
         {
             BeginPlacingSignature(chosen.Image, chosen.Kind);
         }

@@ -49,6 +49,54 @@ public sealed class SmallWindowTests
         }
     }
 
+    [AvaloniaFact]
+    public async Task Toolbar_buttons_never_overlap_at_any_window_width()
+    {
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1024, Height = 720 };
+        window.Show();
+        try
+        {
+            await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
+            await Pump(() => window.DataContext is MainWindowViewModel { Editor: { IsLoading: false } });
+            var problems = new List<string>();
+            foreach (bool organising in (bool[])[false, true])
+            {
+                Editor(window).IsOrganising = organising;
+                for (double width = 1024; width <= 1600; width += 16)
+                {
+                    window.Width = width;
+                    await Pump(() => true);
+                    Control toolbar = window.GetVisualDescendants().OfType<Border>().First(border => border.Name == "ToolbarBar");
+                    Rect[] buttons = [.. toolbar.GetVisualDescendants().OfType<Button>()
+                        .Where(control => control.IsEffectivelyVisible && control.Bounds.Width > 0)
+                        .Select(control => new Rect(control.TranslatePoint(default, window)!.Value, control.Bounds.Size))];
+                    for (int i = 0; i < buttons.Length; i++)
+                    {
+                        if (buttons[i].Right > width + 0.5)
+                        {
+                            problems.Add($"{width}px{(organising ? " organising" : string.Empty)}: a button runs off the window");
+                        }
+
+                        for (int j = i + 1; j < buttons.Length; j++)
+                        {
+                            Rect overlap = buttons[i].Intersect(buttons[j]);
+                            if (overlap.Width > 0.5 && overlap.Height > 0.5)
+                            {
+                                problems.Add($"{width}px{(organising ? " organising" : string.Empty)}: buttons at x {buttons[i].X:0} and {buttons[j].X:0} overlap");
+                            }
+                        }
+                    }
+                }
+            }
+
+            Assert.True(problems.Count == 0, string.Join("; ", problems));
+        }
+        finally
+        {
+            window.CloseWithoutAsking();
+        }
+    }
+
     private static void AssertInside(Window window, Button button)
     {
         Point? bottomRight = button.TranslatePoint(new Point(button.Bounds.Width, button.Bounds.Height), window);

@@ -22,8 +22,8 @@ public partial class ShortcutsPanel : UserControl
         ("Selecting", ["Shift or Mod + click"], "Add to or remove from the selection"),
         ("Selecting", ["← → ↑ ↓"], "Nudge (hold Shift for bigger steps)"),
         ("Selecting", ["Esc"], "Clear the selection, or stop what you’re doing"),
-        ("Tools", ["V", "T", "C", "X"], "Select, text, tick, cross"),
-        ("Tools", ["D", "S", "R", "P"], "Date, sign, shapes, draw (turn on in Settings → Keyboard)"),
+        ("Tools", ["V", "T", "C", "X"], "Select, text, tick (C for check), cross"),
+        ("Tools", ["D", "S", "R", "P"], "Date, sign, shapes, draw. All eight are off until turned on in Settings → Keyboard"),
         ("Document", ["Mod O"], "Open"),
         ("Document", ["Mod S", "Mod Shift S"], "Save working copy, save as"),
         ("Document", ["Mod E"], "Export final copy"),
@@ -33,6 +33,13 @@ public partial class ShortcutsPanel : UserControl
         ("Document", ["F6"], "Move between toolbar, page list, page and status bar"),
         ("Document", ["Mod ,"], "Settings"),
     ];
+
+    /// <summary>In the Help → Keyboard shortcuts dialog the title matches other dialogs' (UX review 9).</summary>
+    public void UseDialogHeading()
+    {
+        Title.Classes.Remove("heading-section");
+        Title.Classes.Add("heading-dialog");
+    }
 
     public ShortcutsPanel()
     {

@@ -4,7 +4,7 @@
              Width="440">
     <!-- E8: every shortcut, with the system's own command key (FR-7.13). -->
     <StackPanel x:Name="Rows" Spacing="2">
-        <TextBlock Classes="heading-section" Text="Keyboard shortcuts" Margin="0,0,0,4" />
+        <TextBlock x:Name="Title" Classes="heading-section" Text="Keyboard shortcuts" Margin="0,0,0,4" />
     </StackPanel>
     <UserControl.Styles>
         <Style Selector="TextBlock.group">

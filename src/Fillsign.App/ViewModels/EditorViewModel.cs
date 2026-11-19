@@ -155,7 +155,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         IsLoading = false;
         LoadedPageCount = Source.PageCount;
         RebuildPages();
-        AnnounceFillableFields();
+        OnPropertyChanged(nameof(ContextHint));
     }
 
     /// <summary>Pages the view should show as damaged (FS-209): unreadable and not yet kept as they are.</summary>

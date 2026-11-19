@@ -203,6 +203,28 @@ public sealed partial class EditorViewModel
         ShowGap(next);
     }
 
+    /// <summary>Previous gap (UX review 8): looks again, then moves to the last gap still open before this one.</summary>
+    [RelayCommand]
+    private void PreviousGap()
+    {
+        Gap? current = CheckingGap;
+        FinishTyping();
+        CheckingReport = FindGaps();
+        IReadOnlyList<Gap> open = CheckingReport.Gaps;
+        Gap? previous = current is null
+            ? (open.Count > 0 ? open[^1] : null)
+            : open.LastOrDefault(gap => Comes(current, after: gap)) ?? open.LastOrDefault(gap => !SameGap(gap, current));
+        if (previous is null)
+        {
+            _isCheckingDone = true;
+            CheckingGap = null;
+            SwitchTool(EditorTool.Select);
+            return;
+        }
+
+        ShowGap(previous);
+    }
+
     /// <summary>Back to export: leaves the checking mode and opens Export final copy again, with the gaps looked at afresh.</summary>
     [RelayCommand]
     private async Task BackToExportAsync()
@@ -222,8 +244,10 @@ public sealed partial class EditorViewModel
 
     private void ShowGap(Gap gap)
     {
-        // The tool that fills it is ready: Tick for boxes, Date for dates, Text for other blanks.
-        EditorTool tool = gap.Kind == GapKind.Unticked ? EditorTool.Tick
+        // The tool that fills it is ready: Tick for boxes, Date for dates, Text for other blanks. A form's own field is
+        // filled by clicking it with Select, so that stays as it is.
+        EditorTool tool = gap.IsField ? EditorTool.Select
+            : gap.Kind == GapKind.Unticked ? EditorTool.Tick
             : gap.BlankKind == BlankKind.Date ? EditorTool.Date
             : gap.BlankKind is BlankKind.Signature or BlankKind.Initials ? EditorTool.Select
             : EditorTool.Text;

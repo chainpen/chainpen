@@ -165,6 +165,16 @@ public sealed class FormFieldTests
     }
 
     [Fact]
+    public void The_print_copy_drops_empty_signature_fields_and_keeps_the_rest()
+    {
+        byte[] source = File.ReadAllBytes(TestFiles.Sample("form-fields.pdf"));
+        using PdfiumDocument printed = PdfiumDocument.Open(Export.DocumentWriter.ForPrinting(source));
+        IReadOnlyList<FormField> fields = printed.GetFormFields(0);
+        Assert.DoesNotContain(fields, field => field.Kind == FormFieldKind.Signature);
+        Assert.Contains(fields, field => field.Name == "Name");
+    }
+
+    [Fact]
     public void A_signature_field_signed_over_leaves_the_final_copy_but_stays_in_the_working_copy()
     {
         byte[] source = File.ReadAllBytes(TestFiles.Sample("form-fields.pdf"));

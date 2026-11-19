@@ -5,6 +5,8 @@
     <AssemblyName>fillsign</AssemblyName>
     <RootNamespace>Fillsign.Cli</RootNamespace>
     <Version>1.0.0</Version>
+    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fillsign.Pdf\Fillsign.Pdf.csproj" />

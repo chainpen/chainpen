@@ -415,7 +415,6 @@ public partial class MainWindow : Window, IEditorHost
     private void ShowEditor(EditorViewModel editor)
     {
         _editorView = new EditorView { DataContext = editor };
-        _editorView.OpenRequested += async (_, _) => await ChooseAndOpenAsync().ConfigureAwait(true);
         _editorView.AddPagesRequested += async (_, _) =>
         {
             IReadOnlyList<string> paths = await ChooseFilesAsync().ConfigureAwait(true);
@@ -817,13 +816,13 @@ public partial class MainWindow : Window, IEditorHost
     internal static SavedSignatureStore SignatureStore => SignatureStoreOverride ?? s_defaultSignatureStore.Value;
 
     /// <summary>The signature dialog (FR-3.4, FR-4): choose a saved one or make one, then place it.</summary>
-    public async Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync()
+    public async Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync(SignatureKind kind = SignatureKind.Signature)
     {
         SavedSignatureStore store = SignatureStore;
 
         // Reading saved signatures can ask for Keychain or keyring access, so keep it off the UI thread.
         await Task.Run(store.Load).ConfigureAwait(true);
-        using var viewModel = new SignatureDialogViewModel(store, ChoosePhotoFileAsync, TimeProvider.System);
+        using var viewModel = new SignatureDialogViewModel(store, ChoosePhotoFileAsync, TimeProvider.System) { Kind = kind };
         return await ShowDialogAsync(new SignatureDialog(viewModel), _ => viewModel.Result, top: 40).ConfigureAwait(true);
     }
 

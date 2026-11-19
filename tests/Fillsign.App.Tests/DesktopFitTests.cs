@@ -50,7 +50,7 @@ public sealed class DesktopFitTests : IDisposable
         using var s = await Session.StartAsync();
         RecentItemViewModel row = Assert.Single(s.Start.Recent);
         Assert.Equal("lease.pdf", row.Name);
-        Assert.Equal("—", row.Status);
+        Assert.False(row.HasStatus);
         await Pump(() => true);
         Save(s.Window, "phase7-2-recent");
 

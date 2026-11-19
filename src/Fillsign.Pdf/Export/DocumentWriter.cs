@@ -53,6 +53,24 @@ public static class DocumentWriter
     }
 
     /// <summary>
+    /// The copy to print (FS-808): the final copy without its empty signature fields. On paper there's nothing to sign
+    /// into, and the system's print path draws each one as a crossed box. A final copy you send keeps them.
+    /// </summary>
+    public static byte[] ForPrinting(byte[] finalCopy)
+    {
+        ArgumentNullException.ThrowIfNull(finalCopy);
+        using PdfiumDocument pdf = PdfiumDocument.Open(finalCopy);
+        var everywhere = new PdfBox[] { new(-1e6, -1e6, 1e6, 1e6) };
+        int removed = 0;
+        for (int i = 0; i < pdf.PageCount; i++)
+        {
+            removed += pdf.RemoveSignatureFieldsUnder(i, everywhere);
+        }
+
+        return removed > 0 ? pdf.SaveCopy(removeSecurity: true) : finalCopy;
+    }
+
+    /// <summary>
     /// The working copy (FR-8.1, FR-9.1): the clean source unchanged, then an incremental update with the finished
     /// pages (what other readers show), then Fillsign's editable record. Reopening it in Fillsign restores the clean
     /// pages and every item (FR-9.2); saving again rewrites it from the clean source, so it doesn't grow (FR-9.8).

@@ -36,7 +36,12 @@ public sealed record CheckGapChoice(int GapIndex) : ExportDecision;
 /// <summary>The green notice after exporting (🎨 8).</summary>
 public sealed record ExportedNotice(string FileName, string Folder, string Path, long Size)
 {
-    public string Text => $"{FileName} ({SaveSizes.Describe(Size)}) in {SaveSizes.ShortFolder(Folder)}. This is the one to send.";
+    /// <summary>Names the folder, not its whole path, so the notice stays on one line; the path is in its tooltip.</summary>
+    public string Text => $"{FileName} ({SaveSizes.Describe(Size)}) in the “{FolderName}” folder. This is the one to send.";
+
+    public string FolderName => System.IO.Path.GetFileName(Folder.TrimEnd(System.IO.Path.DirectorySeparatorChar)) is { Length: > 0 } name ? name : Folder;
+
+    public string Where => System.IO.Path.Combine(SaveSizes.ShortFolder(Folder), FileName);
 }
 
 /// <summary>Sizes in words people use: "640 KB", "1.1 MB".</summary>
@@ -187,7 +192,7 @@ public sealed partial class EditorViewModel
             Printing.ClearOldCopies(DateTime.UtcNow);
             Directory.CreateDirectory(Printing.Folder);
             path = Path.Combine(Printing.Folder, $"{Path.GetFileNameWithoutExtension(Title)} ({DateTime.Now:HH.mm.ss}).pdf");
-            await File.WriteAllBytesAsync(path, final.Pdf).ConfigureAwait(true);
+            await File.WriteAllBytesAsync(path, DocumentWriter.ForPrinting(final.Pdf)).ConfigureAwait(true);
             if (!OperatingSystem.IsWindows())
             {
                 File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);

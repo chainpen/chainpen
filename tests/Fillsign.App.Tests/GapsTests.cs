@@ -56,6 +56,15 @@ public sealed class GapsTests
             Assert.Equal(EditorTool.Text, editor.Tool);
             Assert.StartsWith("Checking before export · gap 1 of 2", editor.CheckingText, StringComparison.Ordinal);
 
+            // The checking bar takes the place of the bar under the toolbar, so the page keeps its height.
+            Assert.True(window.GetVisualDescendants().OfType<Control>().Single(control => control.Name == "CheckingBar").IsEffectivelyVisible);
+
+            // Next gap, then Previous gap comes back (UX review 8).
+            editor.NextGapCommand.Execute(null);
+            Assert.NotEqual("Name", editor.CheckingGap?.Label);
+            editor.PreviousGapCommand.Execute(null);
+            Assert.Equal("Name", editor.CheckingGap?.Label);
+
             // Back to export: the list is looked at afresh, so the boxes are all ticked now.
             editor.BackToExportCommand.Execute(null);
             await Pump(() => DialogOf<ExportDialog>(window) is not null);
@@ -65,6 +74,29 @@ public sealed class GapsTests
             Assert.Contains("Nothing after “Name”", listed, StringComparison.Ordinal);
             Click(DialogOf<ExportDialog>(window)!, "Keep editing");
             await Pump(() => DialogOf<ExportDialog>(window) is null);
+        }
+        finally
+        {
+            window.CloseWithoutAsking();
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Show_me_on_a_form_field_keeps_the_Select_tool_that_fills_it()
+    {
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+        window.Show();
+        try
+        {
+            await window.OpenPathsAsync([TestFiles.Sample("form-fields.pdf")]);
+            await Pump(() => window.DataContext is MainWindowViewModel { Editor: { IsLoading: false } });
+            EditorViewModel editor = Editor(window);
+            editor.SetField("Name", "Jordan Lee");
+            GapReport report = editor.FindGaps();
+            int emailGap = report.Gaps.ToList().FindIndex(gap => gap.IsField && gap.Label == "Your email address");
+            Assert.True(emailGap >= 0);
+            editor.StartChecking(report, emailGap);
+            Assert.Equal(EditorTool.Select, editor.Tool);
         }
         finally
         {

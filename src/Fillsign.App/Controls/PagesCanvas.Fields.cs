@@ -19,6 +19,7 @@ namespace Fillsign.App.Controls;
 /// </summary>
 public sealed partial class PagesCanvas
 {
+
     private TextBox? _fieldBox;
     private FieldEdit? _fieldBoxEdit;
     private CombCells? _combCells;
@@ -63,30 +64,16 @@ public sealed partial class PagesCanvas
 
         if (_fieldBox is null)
         {
-            _fieldBox = new TextBox
-            {
-                FontFamily = Rendering.ItemPainter.NotoSans,
-                Padding = new Thickness(2, 0),
-                Classes = { "formField" },
-            };
-            _fieldBox.KeyDown += (_, e) =>
-            {
-                // Enter finishes a one-line field; a multi-line field takes Enter as a new line.
-                if (e.Key == Key.Enter && _fieldBoxEdit is { Hit.Field.IsMultiline: false })
-                {
-                    CommitFieldBox();
-                    e.Handled = true;
-                }
-                else if (e.Key == Key.Tab && _fieldBoxEdit is not null && _editor is not null)
-                {
-                    // Tab goes from field to field, as in PDF readers, instead of leaving the page.
-                    _fieldBoxEdit = null;
-                    _editor.CommitFieldEditAndMove(_fieldBox?.Text ?? string.Empty, backwards: e.KeyModifiers.HasFlag(KeyModifiers.Shift));
-                    e.Handled = true;
-                }
-            };
-            _fieldBox.LostFocus += (_, _) => CommitFieldBox();
-            Children.Add(_fieldBox);
+            _fieldBox = CreateFieldBox();
+        }
+        else if (!ReferenceEquals(_fieldBoxEdit, editing))
+        {
+            // Each field gets the other of two boxes, so focus lands on a different element: from one text field to
+            // the next (Tab), macOS saw the same box regain focus and VoiceOver said nothing (UX review).
+            TextBox previous = _fieldBox;
+            _fieldBox = _spareFieldBox ?? CreateFieldBox();
+            _spareFieldBox = previous;
+            previous.IsVisible = false;
         }
 
         _fieldBoxEdit = editing;
@@ -111,6 +98,46 @@ public sealed partial class PagesCanvas
         InvalidateMeasure();
         InvalidateArrange();
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _fieldBox?.Focus());
+    }
+
+    private TextBox? _spareFieldBox;
+
+    /// <summary>A text box for typing into a form field in place; two take turns, so Tab moves focus between them.</summary>
+    private TextBox CreateFieldBox()
+    {
+        var box = new TextBox
+        {
+            FontFamily = Rendering.ItemPainter.NotoSans,
+            Padding = new Thickness(2, 0),
+            Classes = { "formField" },
+        };
+        box.KeyDown += (_, e) =>
+        {
+            // Enter finishes a one-line field; a multi-line field takes Enter as a new line.
+            if (e.Key == Key.Enter && _fieldBoxEdit is { Hit.Field.IsMultiline: false })
+            {
+                CommitFieldBox();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Tab && _fieldBoxEdit is not null && _editor is not null)
+            {
+                // Tab goes from field to field, as in PDF readers, instead of leaving the page.
+                _fieldBoxEdit = null;
+                _editor.CommitFieldEditAndMove(_fieldBox?.Text ?? string.Empty, backwards: e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+
+                e.Handled = true;
+            }
+        };
+        box.LostFocus += (_, _) =>
+        {
+            // Only the box in use: the other one losing focus has already been committed.
+            if (ReferenceEquals(box, _fieldBox))
+            {
+                CommitFieldBox();
+            }
+        };
+        Children.Add(box);
+        return box;
     }
 
     /// <summary>

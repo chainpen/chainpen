@@ -23,7 +23,7 @@
         </Border>
 
         <!-- Toolbar (FS-300): tools keep their labels; narrow windows collapse them (INTERACTION-PATTERNS §3). -->
-        <Border Grid.Row="1" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}"
+        <Border x:Name="ToolbarBar" Grid.Row="1" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="0,0,0,1" Padding="12,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
@@ -43,13 +43,7 @@
                             </Flyout>
                         </Button.Flyout>
                     </Button>
-                    <Border Classes="separator" />
-                    <Button Classes="tool" Click="OnOpen" ToolTip.Tip="{c:Keys 'Open a PDF or image (Mod+O)'}" AutomationProperties.Name="Open">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <c:StrokeIcon Data="{StaticResource IconFolder}" />
-                            <TextBlock x:Name="OpenLabel" Text="Open…" VerticalAlignment="Center" IsVisible="False" />
-                        </StackPanel>
-                    </Button>
+                    <!-- Open is in the File menu (Mod+O); the toolbar keeps its room for the tools (UX review). -->
                     <Border Classes="separator" />
                     <!-- Save keeps the working copy; Export final copy makes the file to send (INTERACTION-PATTERNS §1). -->
                     <Border Classes="splitButton">
@@ -176,23 +170,31 @@
                             ToolTip.Tip="Click boxes to cross them (X)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconCross}" />
-                            <TextBlock Classes="collapsible" Text="Cross" VerticalAlignment="Center" />
+                            <TextBlock Classes="collapsibleLate" Text="Cross" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button Classes="tool" Classes.on="{Binding IsDateTool}" Command="{Binding SelectToolCommand}"
+                    <Button x:Name="DateButton" Classes="tool" Classes.on="{Binding IsDateTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Date}" AutomationProperties.Name="Date"
                             ToolTip.Tip="Click to add today’s date, DD/MM/YYYY (D)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconDate}" />
-                            <TextBlock Classes="collapsible" Text="Date" VerticalAlignment="Center" />
+                            <TextBlock Classes="collapsibleLate" Text="Date" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+                    <!-- Sign and Initials are a click each (UX review 7): the dialog then makes that one kind. -->
                     <Button Classes="tool" Classes.on="{Binding IsSignTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Sign}" AutomationProperties.Name="Sign"
-                            ToolTip.Tip="Add your signature or initials (S)">
+                            ToolTip.Tip="Add your signature (S)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconSign}" />
                             <TextBlock Text="Sign" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Command="{Binding AddInitialsCommand}" AutomationProperties.Name="Initials"
+                            ToolTip.Tip="Add your initials">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconInitials}" />
+                            <TextBlock Text="Initials" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button x:Name="ShapesButton" Classes="tool" Classes.on="{Binding IsShapeTool}" AutomationProperties.Name="Shapes"
@@ -268,6 +270,7 @@
                                 <MenuItem Header="Whiteout" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Whiteout}" />
                                 <Separator />
                                 <MenuItem Header="Draw" Command="{Binding SelectToolCommand}" CommandParameter="{x:Static vm:EditorTool.Draw}" />
+                                <MenuItem x:Name="MoreDateItem" IsVisible="False" Header="Today’s date" Command="{Binding SelectToolCommand}" CommandParameter="{x:Static vm:EditorTool.Date}" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -277,10 +280,31 @@
 
         <!-- The bar under the toolbar (FS-310): always the same height, so the page never jumps. -->
         <Border Grid.Row="2" Height="{StaticResource ContextBarHeight}" Classes="contextBar" Classes.placing="{Binding ShowsPlacing}"
-                Classes.pagesSelected="{Binding ShowsPageActions}" Padding="16,0" AutomationProperties.LiveSetting="Polite">
+                Classes.pagesSelected="{Binding ShowsPageActions}" Classes.checking="{Binding IsCheckingGaps}" Padding="16,0"
+                AutomationProperties.LiveSetting="Polite">
+            <Panel>
+            <!-- Checking before export (E10, UX review 8): the gap and its buttons take this bar's place, so the page
+                 keeps a bar's height. The tool for the gap still works, with the last size and colour used. -->
+            <DockPanel x:Name="CheckingBar" IsVisible="{Binding IsCheckingGaps}" VerticalAlignment="Center">
+                <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent" Margin="8,0,0,0"
+                        Command="{Binding StopCheckingCommand}" AutomationProperties.Name="Stop checking" ToolTip.Tip="Stop checking (Esc)">
+                    <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                </Button>
+                <Button DockPanel.Dock="Right" Classes="small primary" Margin="8,0,0,0" Content="Back to export"
+                        Command="{Binding BackToExportCommand}" />
+                <Button DockPanel.Dock="Right" Classes="small" Margin="8,0,0,0" Content="Next gap"
+                        Command="{Binding NextGapCommand}" IsVisible="{Binding CheckingGap, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Content="Previous gap"
+                        Command="{Binding PreviousGapCommand}" IsVisible="{Binding CheckingGap, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                    <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                    <TextBlock Grid.Column="1" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               Text="{Binding CheckingText}" ToolTip.Tip="{Binding CheckingText}" AutomationProperties.Name="{Binding CheckingText}" />
+                </Grid>
+            </DockPanel>
             <!-- One control's height whatever is shown (the Bold button is 2 points taller than the size stepper), so
                  switching tools or modes never nudges the bar's contents up or down. -->
-            <Panel VerticalAlignment="Center" Height="{StaticResource ControlHeight}">
+            <Panel VerticalAlignment="Center" Height="{StaticResource ControlHeight}" IsVisible="{Binding !IsCheckingGaps}">
             <!-- Organise pages: the selection and its actions (🎨 4, D9), or a hint. -->
             <Panel IsVisible="{Binding IsOrganising}">
                 <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
@@ -431,6 +455,7 @@
 
             </Panel>
             </Panel>
+            </Panel>
         </Border>
 
         <!-- Notices that stay until dismissed: checking before export (E10), restored (🎨 5), changed elsewhere (D8), exported (🎨 8). -->
@@ -444,22 +469,6 @@
                             <Run FontWeight="SemiBold" Text="View only." />
                             <Run Text=" The owner of this file set it so it shouldn’t be changed. Choose Edit anyway if you’re allowed to fill it in." />
                         </TextBlock>
-                    </Grid>
-                </DockPanel>
-            </Border>
-            <Border x:Name="CheckingBar" Classes="notice warning" IsVisible="{Binding IsCheckingGaps}" AutomationProperties.LiveSetting="Polite">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent" Margin="8,0,0,0"
-                            Command="{Binding StopCheckingCommand}" AutomationProperties.Name="Stop checking" ToolTip.Tip="Stop checking">
-                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
-                    </Button>
-                    <Button DockPanel.Dock="Right" Classes="small primary" Margin="8,0,0,0" Content="Back to export"
-                            Command="{Binding BackToExportCommand}" />
-                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Content="Next gap"
-                            Command="{Binding NextGapCommand}" IsVisible="{Binding CheckingGap, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
-                        <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
-                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding CheckingText}" />
                     </Grid>
                 </DockPanel>
             </Border>
@@ -513,7 +522,7 @@
                     </Button>
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
                         <c:StrokeIcon Data="{StaticResource IconTickCircle}" Foreground="{DynamicResource Success}" />
-                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" ToolTip.Tip="{Binding Exported.Where, FallbackValue=''}">
                             <Run FontWeight="SemiBold" Text="Final copy exported:" />
                             <Run Text="{Binding Exported.Text, FallbackValue=''}" />
                         </TextBlock>
@@ -767,6 +776,10 @@
         <Style Selector=":is(UserControl).iconsOnly TextBlock.collapsible">
             <Setter Property="IsVisible" Value="False" />
         </Style>
+        <!-- Cross and Date are main tools for paper forms, so they keep their labels longer than Select. -->
+        <Style Selector=":is(UserControl).iconsOnlyLate TextBlock.collapsibleLate">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
         <Style Selector="ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -931,6 +944,10 @@
         <!-- A mode you're in, like placing a signature, tints the bar blue (INTERACTION-PATTERNS §2). -->
         <Style Selector="Border.contextBar.placing">
             <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <!-- Checking before export: the amber of the other checking notices (INTERACTION-PATTERNS §2). -->
+        <Style Selector="Border.contextBar.checking">
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
         </Style>
         <!-- Pages selected in Organise pages (🎨 4). -->
         <Style Selector="Border.contextBar.pagesSelected">

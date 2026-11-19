@@ -69,6 +69,19 @@ public sealed class SignatureDialogTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Sign_menu_initials_opens_the_dialog_for_initials_with_no_switch_to_signature()
+    {
+        using var s = await Session.OpenSignAsync(initials: true);
+        Assert.Equal("Add your initials", s.Dialog.Title);
+        Assert.DoesNotContain(s.View.GetVisualDescendants().OfType<RadioButton>(), button => Equals(button.Content, "Signature") && button.IsEffectivelyVisible);
+        s.Dialog.IsTypeTab = true;
+        s.Dialog.TypedName = "JL";
+        s.ClickButton("Place initials");
+        await Pump(() => s.Editor.PlacingSignature is not null);
+        Assert.Equal(SignatureKind.Initials, s.Editor.PlacingSignature!.Value.Kind);
+    }
+
+    [AvaloniaFact]
     public async Task Typed_initials_show_whole_in_every_style()
     {
         using var s = await Session.OpenSignAsync();
@@ -313,8 +326,8 @@ public sealed class SignatureDialogTests : IDisposable
 
         public bool IsDialogOpen => Window.FindControl<ContentControl>("DialogHost")!.Content is SignatureDialog;
 
-        /// <summary>Opens the practice form, presses Sign and waits for the dialog.</summary>
-        public static async Task<Session> OpenSignAsync()
+        /// <summary>Opens the practice form, presses Sign (or Sign ▾ → Initials) and waits for the dialog.</summary>
+        public static async Task<Session> OpenSignAsync(bool initials = false)
         {
             var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
             window.Show();
@@ -322,7 +335,15 @@ public sealed class SignatureDialogTests : IDisposable
             EditorViewModel editor = Editor(window);
             await Pump(() => !editor.IsLoading);
             var session = new Session(window, editor);
-            editor.SelectToolCommand.Execute(EditorTool.Sign);
+            if (initials)
+            {
+                editor.AddInitialsCommand.Execute(null);
+            }
+            else
+            {
+                editor.SelectToolCommand.Execute(EditorTool.Sign);
+            }
+
             await Pump(() => session.IsDialogOpen && session.View.Bounds.Width > 0);
             return session;
         }

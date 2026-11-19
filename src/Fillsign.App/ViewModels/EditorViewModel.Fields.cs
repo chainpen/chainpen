@@ -53,8 +53,22 @@ public sealed partial class EditorViewModel
     /// Whether the field at a point can't be filled here: one the form fills in itself (a total), or a button that
     /// runs the form's scripts (FS-965).
     /// </summary>
-    public bool IsOverReadOnlyField(PageId page, PagePoint point) =>
-        Tool is EditorTool.Select or EditorTool.Text && TopFieldAt(page, point) is { Field: { IsReadOnly: true } or { Kind: FormFieldKind.PushButton } };
+    public bool IsOverReadOnlyField(PageId page, PagePoint point) => WhyNotFillable(page, point) is not null;
+
+    /// <summary>
+    /// What a click on a field that can't be filled would say, so the pointer can say it first (UX review 9): a
+    /// button looks clickable but does nothing here.
+    /// </summary>
+    public string? WhyNotFillable(PageId page, PagePoint point) =>
+        Tool is not (EditorTool.Select or EditorTool.Text) ? null : TopFieldAt(page, point)?.Field switch
+        {
+            { Kind: FormFieldKind.PushButton } => FormButtonNote,
+            { IsReadOnly: true } => ReadOnlyFieldNote,
+            _ => null,
+        };
+
+    private const string FormButtonNote = "Fillsign doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.";
+    private const string ReadOnlyFieldNote = "That field can’t be changed: the form fills it in itself.";
 
     /// <summary>The topmost field of any kind at a point.</summary>
     private FieldHit? TopFieldAt(PageId page, PagePoint point)
@@ -113,14 +127,14 @@ public sealed partial class EditorViewModel
         // Say why nothing happens, instead of ignoring the click.
         if (hit.Field.IsReadOnly)
         {
-            Tell("That field can’t be changed: the form fills it in itself.");
+            Tell(ReadOnlyFieldNote);
             Changed();
             return true;
         }
 
         if (hit.Field.Kind == FormFieldKind.PushButton)
         {
-            Tell("Fillsign doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.");
+            Tell(FormButtonNote);
             Changed();
             return true;
         }
@@ -269,7 +283,12 @@ public sealed partial class EditorViewModel
     /// </summary>
     private async Task SignIntoFieldAsync(FieldHit hit)
     {
-        if (await _host.ChooseSignatureAsync().ConfigureAwait(true) is not { } chosen)
+        // A field named for initials ("Initials", "Initial here") asks for initials; any other, a signature.
+        SignatureKind kind = hit.Field.DisplayName.Contains("initial", StringComparison.OrdinalIgnoreCase)
+            || hit.Field.Name.Contains("initial", StringComparison.OrdinalIgnoreCase)
+            ? SignatureKind.Initials
+            : SignatureKind.Signature;
+        if (await _host.ChooseSignatureAsync(kind).ConfigureAwait(true) is not { } chosen)
         {
             return;
         }
@@ -345,22 +364,25 @@ public sealed partial class EditorViewModel
         SetField(editing.Hit.Field.Name, text);
     }
 
-    /// <summary>Tab in a text field: keeps what was typed, then moves on as <see cref="MoveFieldFocus"/> does.</summary>
-    public void CommitFieldEditAndMove(string text, bool backwards)
+    /// <summary>
+    /// Tab in a text field: keeps what was typed, then moves on as <see cref="MoveFieldFocus"/> does. False past the
+    /// last field (or before the first), so the view moves focus on from the page.
+    /// </summary>
+    public bool CommitFieldEditAndMove(string text, bool backwards)
     {
         if (EditingField is not { } editing)
         {
-            return;
+            return false;
         }
 
         CommitFieldEdit(text);
-        MoveFieldFocus(editing.Hit, backwards);
+        return MoveFieldFocus(editing.Hit, backwards);
     }
 
     /// <summary>
     /// Tab on the page, as in a browser: from the field last used to the next one in the PDF's own order (Shift+Tab:
     /// the previous one), of any kind, on to the following pages; or, when no field is in use, into the first field
-    /// (last, going back) of the page in view. Returns false past the last field, so focus moves on from the page.
+    /// (last, going back) of the page in view. Past the last field it goes back to the first (UX review 5); false only when there's no field to go to.
     /// </summary>
     public bool MoveFieldFocus(bool backwards)
     {
@@ -388,13 +410,15 @@ public sealed partial class EditorViewModel
         // A radio group is one stop, whichever of its buttons is focused.
         int at = order.FindIndex(hit => (hit.Page == from.Page && hit.Box == from.Box)
             || (from.Field.Kind == FormFieldKind.Radio && hit.Field.Kind == FormFieldKind.Radio && hit.Field.Name == from.Field.Name));
-        int next = at < 0 ? -1 : at + (backwards ? -1 : 1);
-        if (next < 0 || next >= order.Count)
+        if (at < 0 || order.Count == 0)
         {
             SetFocusedField(null);
             return false;
         }
 
+        // Past the last field, back to the first (Shift+Tab: first to last), so Tab stays on the form; F6 leaves it,
+        // and the last field's hint says so (WCAG 2.1.2).
+        int next = (at + (backwards ? order.Count - 1 : 1)) % order.Count;
         FocusOn(order[next]);
         return true;
     }
@@ -432,6 +456,7 @@ public sealed partial class EditorViewModel
         FocusedField = hit;
         OnPropertyChanged(nameof(FocusedField));
         OnPropertyChanged(nameof(FieldAnnouncement));
+        OnPropertyChanged(nameof(ContextHint));
     }
 
     /// <summary>
@@ -511,7 +536,7 @@ public sealed partial class EditorViewModel
             if (EditingField is { } editing)
             {
                 string enter = editing.Hit.Field.IsMultiline ? "Enter for a new line" : "Enter to finish";
-                return $"Typing in “{editing.Hit.Field.DisplayName}” · {enter} · Tab for the next field · Esc to cancel";
+                return $"Typing in “{editing.Hit.Field.DisplayName}” · {enter} · {TabHint(editing.Hit)} · Esc to cancel";
             }
 
             if (FocusedField is not { Field: var focused })
@@ -529,7 +554,7 @@ public sealed partial class EditorViewModel
                 FormFieldKind.Signature => "Space to sign",
                 _ => "Space to fill",
             };
-            return $"“{focused.DisplayName}” · {keys} · Tab for the next field";
+            return $"“{focused.DisplayName}” · {keys} · {TabHint(FocusedField!)}";
         }
     }
 
@@ -548,7 +573,7 @@ public sealed partial class EditorViewModel
         switch (field.Kind)
         {
             case FormFieldKind.CheckBox:
-                return $"{field.DisplayName}, check box, {(value == PdfiumDocument.FieldOff ? "not ticked" : "ticked")}";
+                return $"{AccessibleName(hit)}, check box, {(value == PdfiumDocument.FieldOff ? "not ticked" : "ticked")}";
             case FormFieldKind.Radio:
                 List<FieldHit> group = FieldsInDocumentOrder().FindAll(other => other.Field.Name == field.Name);
                 int position = group.FindIndex(other => other.Page == hit.Page && other.Box == hit.Box) + 1;
@@ -564,6 +589,54 @@ public sealed partial class EditorViewModel
             default:
                 return $"{field.DisplayName}, text field, {(value.Length > 0 ? value : "empty")}";
         }
+    }
+
+    /// <summary>
+    /// A field's name for screen readers. A check box also says the question its row answers, read from the words in
+    /// front of the row ("Contact me by: Email"), as sighted people see it; a radio button's group name already does.
+    /// </summary>
+    public string AccessibleName(FieldHit hit)
+    {
+        ArgumentNullException.ThrowIfNull(hit);
+        FormField field = hit.Field;
+        if (field.Kind != FormFieldKind.CheckBox)
+        {
+            return field.DisplayName;
+        }
+
+        PageEntry? entry = State.Pages.FirstOrDefault(candidate => candidate.Id == hit.Page);
+        if (entry is null || entry.SourceIndex >= Source.PageCount)
+        {
+            return field.DisplayName;
+        }
+
+        // The row's first box: the words before a later one would be the previous box's own label.
+        var transform = new PageTransform(Source.GetPage(entry.SourceIndex), Rotation.None);
+        PageRect first = Source.FormFields(entry.SourceIndex)
+            .Where(other => other.Kind == FormFieldKind.CheckBox)
+            .Select(other => BoxOf(other, transform))
+            .Where(box => Math.Abs(box.Centre.Y - BoxOf(field, transform).Centre.Y) <= Math.Max(4, box.Height / 2))
+            .MinBy(box => box.X);
+        string key = $"{entry.SourceIndex}:{first.X:0.#}:{first.Y:0.#}";
+        if (!_rowQuestions.TryGetValue(key, out string? question))
+        {
+            question = Pdf.Export.FormSpotReader.WordsBefore(Source.Pdf, entry.SourceIndex, Source.GetPage(entry.SourceIndex), first);
+            _rowQuestions[key] = question;
+        }
+
+        return question.Length == 0 || string.Equals(question, field.DisplayName, StringComparison.OrdinalIgnoreCase)
+            ? field.DisplayName
+            : $"{question}: {field.DisplayName}";
+    }
+
+    private readonly Dictionary<string, string> _rowQuestions = new(StringComparer.Ordinal);
+
+    /// <summary>What Tab does from here: the next field, or, on the last, back to the first, with F6 to leave the form.</summary>
+    private string TabHint(FieldHit hit)
+    {
+        List<FieldHit> order = TabStops();
+        bool isLast = order.Count > 1 && order[^1].Page == hit.Page && order[^1].Box == hit.Box;
+        return isLast ? "Tab to go back to the first field · F6 to leave the form" : "Tab for the next field";
     }
 
     /// <summary>For screen readers: fills a field as a click or Space would (ticks a box, opens signing).</summary>
@@ -607,23 +680,58 @@ public sealed partial class EditorViewModel
     public bool HasFillableFields => HasFormFields();
 
     /// <summary>
-    /// Once the pages have loaded: if the document is a form with fields, a note says so and how to start, since the
-    /// fields' light tint is easy to miss.
+    /// The bar under the toolbar on a form (UX review 2): how many fields there are and how to start, then how many are
+    /// filled. It used to be a note over the page, which covered the next fields and repeated this bar.
     /// </summary>
-    private void AnnounceFillableFields()
+    private string FormHint()
     {
-        int count = TabStops().Count;
-        if (count == 0 || IsViewOnly)
+        List<FieldHit> stops = TabStops();
+        int total = stops.Count;
+        int filled = stops.Count(IsFilled);
+        if (filled == 0)
         {
-            return;
+            return total == 1
+                ? "1 field to fill · click it, or press Tab to go to it · Pick a tool to add your own: Text, Tick, Sign."
+                : $"{total} fields to fill · click one, or press Tab to go through them · Pick a tool to add your own: Text, Tick, Sign.";
         }
 
-        Tell(count == 1
-            ? "This form has a field you can fill. Click it, or press Tab to go to it."
-            : $"This form has {count} fields you can fill. Click one, or press Tab to go through them.");
-        OnPropertyChanged(nameof(ContextHint));
-        Changed();
+        return filled == total
+            ? $"All {total} fields filled · Export when you’re done"
+            : $"{filled} of {total} filled · Tab for the next field · Export when you’re done";
     }
+
+    /// <summary>Whether a field has an answer: text or a choice, a ticked box, a chosen button, or a signature placed on it.</summary>
+    private bool IsFilled(FieldHit hit) => hit.Field.Kind switch
+    {
+        FormFieldKind.CheckBox => FieldValue(hit.Field) is { Length: > 0 } ticked && ticked != PdfiumDocument.FieldOff,
+        FormFieldKind.Radio => FieldValue(hit.Field) is { Length: > 0 } chosen && chosen != PdfiumDocument.FieldOff,
+        FormFieldKind.Signature => IsSigned(hit),
+        _ => FieldValue(hit.Field).Length > 0,
+    };
+
+    /// <summary>
+    /// Signature fields on a page with nothing signed on them yet (UX review 4). Many forms draw no box for them, so
+    /// the page shows them while editing; it's never printed or exported.
+    /// </summary>
+    public IEnumerable<FieldHit> UnsignedSignatureFields(PageId page)
+    {
+        PageEntry? entry = State.Pages.FirstOrDefault(candidate => candidate.Id == page);
+        if (IsViewOnly || entry is null || entry.SourceIndex >= Source.PageCount)
+        {
+            return [];
+        }
+
+        var transform = new PageTransform(Source.GetPage(entry.SourceIndex), entry.Rotation);
+        return Source.FormFields(entry.SourceIndex)
+            .Where(field => field is { Kind: FormFieldKind.Signature, IsReadOnly: false })
+            .Select(field => new FieldHit(field, page, BoxOf(field, transform)))
+            .Where(hit => !IsSigned(hit))
+            .ToList();
+    }
+
+    /// <summary>A signature field counts as signed once a signature or initials sit on it.</summary>
+    private bool IsSigned(FieldHit hit) =>
+        State.ItemsOn(hit.Page).OfType<SignatureItem>().Any(item => new PageRect(item.X, item.Y, item.Width, item.Height).Intersects(hit.Box));
 
     /// <summary>Whether any page in the document has a field to fill (not counting buttons).</summary>
     private bool HasFormFields() =>

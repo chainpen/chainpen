@@ -30,6 +30,53 @@ public static class FormSpotReader
         return GapFinder.Turn(spots, source, from: reading, to: Rotation.None);
     }
 
+    /// <summary>
+    /// The words on the same line just left of <paramref name="area"/>, up to a wide gap (another column): the question
+    /// a row of a form's check boxes answers, such as "Contact me by" (UX review 6). Empty when there are none.
+    /// </summary>
+    /// <param name="area">In the source page's display coordinates (its own /Rotate, no extra turn).</param>
+    public static string WordsBefore(PdfiumDocument pdf, int sourceIndex, SourcePage source, PageRect area)
+    {
+        ArgumentNullException.ThrowIfNull(pdf);
+        var transform = new PageTransform(source, Rotation.None);
+        var line = new List<(int Code, PageRect Box)>();
+        foreach (PdfCharacter character in pdf.GetCharacters(sourceIndex))
+        {
+            PageRect box = PageRect.FromCorners(transform.ToDisplay(character.Left, character.Top), transform.ToDisplay(character.Right, character.Bottom));
+            if (box.Centre.Y >= area.Y && box.Centre.Y <= area.Bottom && box.Right <= area.X + 1 && (box.Width > 0 || character.Code == ' '))
+            {
+                line.Add((character.Code, box));
+            }
+        }
+
+        // Walk left from the boxes; a gap wider than a few letters is another column, so stop there.
+        line.Sort((a, b) => b.Box.X.CompareTo(a.Box.X));
+        var words = new System.Text.StringBuilder();
+        double? left = null;
+        foreach ((int code, PageRect box) in line)
+        {
+            double size = Math.Max(4, box.Height);
+            if (left is { } edge && edge - box.Right > size * 2.5)
+            {
+                break;
+            }
+
+            if (left is { } previous && previous - box.Right > size * 0.2 && code != ' ')
+            {
+                words.Insert(0, ' ');
+            }
+
+            words.Insert(0, char.ConvertFromUtf32(code));
+            if (box.Width > 0)
+            {
+                left = box.X;
+            }
+        }
+
+        string[] parts = words.ToString().Trim().TrimEnd(':').Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(' ', parts.TakeLast(6));
+    }
+
     /// <summary>The extra turn that makes most of the page's text run left to right.</summary>
     private static Rotation ReadingTurn(IReadOnlyList<PdfCharacter> characters, SourcePage source)
     {

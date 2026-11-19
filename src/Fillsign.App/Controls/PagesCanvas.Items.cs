@@ -117,6 +117,9 @@ public sealed partial class PagesCanvas
         context.DrawText(text, new Point(pill.X + 8, pill.Y + 2));
     }
 
+    private static readonly DashStyle s_signHereDash = new([4, 3], 0);
+    private static readonly Typeface s_signHereFace = new("Inter");
+
     /// <summary>Selection and focus on the page use the light-theme blue, even in dark mode (INTERACTION-PATTERNS §4).</summary>
     private void DrawOverlays(DrawingContext context, PageViewModel page, Rect rect)
     {
@@ -128,6 +131,18 @@ public sealed partial class PagesCanvas
         if (editor.CheckingGap is { } gap && gap.Page == page.Id)
         {
             DrawCheckingGap(context, rect, gap.Area, editor.CheckingBadge);
+        }
+
+        // UX review 4: an empty signature field is easy to miss, so it's outlined with "Sign here" while editing.
+        foreach (FieldHit unsigned in editor.UnsignedSignatureFields(page.Id))
+        {
+            var box = new Rect(rect.X + (unsigned.Box.X * Zoom), rect.Y + (unsigned.Box.Y * Zoom), unsigned.Box.Width * Zoom, unsigned.Box.Height * Zoom);
+            context.DrawRectangle(tint, new Pen(blue, 1.5, s_signHereDash), box, 3, 3);
+            var signHere = new FormattedText("Sign here", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), blue);
+            if (signHere.Width + 16 <= box.Width && signHere.Height <= box.Height)
+            {
+                context.DrawText(signHere, new Point(box.X + 8, box.Y + ((box.Height - signHere.Height) / 2)));
+            }
         }
 
         // FS-950: the field in use, ringed like a focused control: the one Tab reached, or the text field being typed in.
@@ -475,12 +490,21 @@ public sealed partial class PagesCanvas
         {
             type = StandardCursorType.Hand;
         }
-        else if (type is StandardCursorType.Arrow or StandardCursorType.Ibeam && position is { } over && PageAt(over) is var readOnlyPage and >= 0
-            && _editor.IsOverReadOnlyField(_editor.Pages[readOnlyPage].Id, ToPage(readOnlyPage, over))
+        string? why = null;
+        if (type is not StandardCursorType.Hand && type is StandardCursorType.Arrow or StandardCursorType.Ibeam && position is { } over && PageAt(over) is var readOnlyPage and >= 0
             && ItemHitTest.TopmostAt(_editor.State, _editor.Pages[readOnlyPage].Id, ToPage(readOnlyPage, over), GrabDistance / Zoom, _editor.Measurer) is null)
         {
-            // A field the form fills in itself (a total): a click explains, but can't change it.
-            type = StandardCursorType.No;
+            // A field the form fills in itself (a total), or a form button: the pointer says why before a click does.
+            why = _editor.WhyNotFillable(_editor.Pages[readOnlyPage].Id, ToPage(readOnlyPage, over));
+            if (why is not null)
+            {
+                type = StandardCursorType.No;
+            }
+        }
+
+        if (!Equals(ToolTip.GetTip(this), why))
+        {
+            ToolTip.SetTip(this, why);
         }
 
         Cursor = new Cursor(type);
