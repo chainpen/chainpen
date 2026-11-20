@@ -40,7 +40,7 @@ With **Select**, click anything you added to move, resize, recolour or delete it
 - **Type** your name and pick a handwriting style; or
 - **Photo or scan**: Fillsign removes the paper so only the ink remains (untick it if parts disappear).
 
-Tick **Keep … on this computer** to reuse it next time. Kept signatures are encrypted with your computer's keychain and never leave it. Remove them in **Settings**.
+Tick **Keep … on this computer** to reuse it next time. Kept signatures are encrypted with your computer's keychain and never leave it. Remove them in **Settings**. If the keychain won't hand over their key, Fillsign keeps them locked rather than losing them; if the key never comes back, **Start again without them…** in Settings lets you keep new ones.
 
 ## Organise pages
 
@@ -55,7 +55,7 @@ Switch to **Organise pages** at the top left. Click pages to select them (Shift-
 - Before exporting, Fillsign lists **possible gaps** on the pages you've added to: boxes with none ticked, and blanks after labels like "Name:" or "Date:" or along a line, with nothing in them. **Show me** takes you to each one with the right tool ready; **Next gap** moves on and **Back to export** returns. They're hints: Fillsign can't tell what's meant to be filled, and it doesn't look at pages you haven't touched or at boxes and blanks drawn only as table cells.
 - Whiteout removes what it covers from the final copy: covered text is deleted and covered parts of a scan are made white, so nothing can be copied or uncovered. If it only partly covers some text or a line, that whole page is saved as a picture, so its text can't be searched or copied. Your working copy keeps everything, so the whiteout can still be moved.
 
-If Fillsign closes unexpectedly, your unsaved changes are offered back the next time you start it. Recovery copies are kept for 7 days (change this in Settings).
+If Fillsign closes unexpectedly, your unsaved changes are offered back the next time you start it. Recovery copies are kept for 30 days (change this in Settings).
 
 ## Settings
 

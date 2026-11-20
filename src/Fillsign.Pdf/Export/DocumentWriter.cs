@@ -32,8 +32,10 @@ public static class DocumentWriter
     public static WrittenDocument FinalCopy(byte[] cleanSource, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
     {
         ArgumentNullException.ThrowIfNull(cleanSource);
+        // Declared first so it's disposed last: copied pages link into it until the result is saved.
+        using var copySource = new CopySource(cleanSource);
         using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
-        bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
+        bool haveFormsMoved = Arrange(pdf, copySource, sourcePages, document);
 
         // Before drawing, so a whiteout's redaction also covers a filled field (FS-950).
         pdf.FillFormFields(document.Fields);
@@ -79,8 +81,10 @@ public static class DocumentWriter
     {
         ArgumentNullException.ThrowIfNull(cleanSource);
         ArgumentNullException.ThrowIfNull(sourcePages);
+        // Declared first so it's disposed last: copied pages link into it until the result is saved.
+        using var copySource = new CopySource(cleanSource);
         using PdfiumDocument pdf = PdfiumDocument.Open(cleanSource);
-        bool haveFormsMoved = Arrange(pdf, cleanSource, sourcePages, document);
+        bool haveFormsMoved = Arrange(pdf, copySource, sourcePages, document);
         pdf.FillFormFields(document.Fields);
 
         // The working copy keeps what's under whiteout, so the whiteout can still be moved or deleted (FR-9.2).
@@ -100,7 +104,7 @@ public static class DocumentWriter
     /// are copied in, and the rest are moved in place so form fields and links keep working (FR-8.9). If PDFium won't
     /// move them, every page is copied in, in order, and the originals deleted. Returns whether that happened.
     /// </summary>
-    private static bool Arrange(PdfiumDocument pdf, byte[] cleanSource, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
+    private static bool Arrange(PdfiumDocument pdf, CopySource copySource, IReadOnlyList<SourcePage> sourcePages, DocumentState document)
     {
         if (pdf.PageCount != sourcePages.Count)
         {
@@ -110,26 +114,17 @@ public static class DocumentWriter
         // Each entry gets a page of its own: the source page the first time it's used, a copy after that.
         var pageOf = new int[document.Pages.Length];
         var used = new HashSet<int>();
-        PdfiumDocument? copies = null;
-        try
+        for (int i = 0; i < document.Pages.Length; i++)
         {
-            for (int i = 0; i < document.Pages.Length; i++)
+            int source = document.Pages[i].SourceIndex;
+            if (used.Add(source))
             {
-                int source = document.Pages[i].SourceIndex;
-                if (used.Add(source))
-                {
-                    pageOf[i] = source;
-                    continue;
-                }
-
-                copies ??= PdfiumDocument.Open(cleanSource);
-                pdf.ImportPages(copies, [source], pdf.PageCount);
-                pageOf[i] = pdf.PageCount - 1;
+                pageOf[i] = source;
+                continue;
             }
-        }
-        finally
-        {
-            copies?.Dispose();
+
+            pdf.ImportPages(copySource.Document, [source], pdf.PageCount);
+            pageOf[i] = pdf.PageCount - 1;
         }
 
         // Delete pages nothing uses, from the end so earlier indices stay put.
@@ -149,7 +144,7 @@ public static class DocumentWriter
             }
             catch (InvalidOperationException)
             {
-                ReplaceWithCopiesInOrder(pdf, cleanSource, document);
+                ReplaceWithCopiesInOrder(pdf, copySource, document);
                 haveFormsMoved = true;
             }
         }
@@ -168,11 +163,10 @@ public static class DocumentWriter
     }
 
     /// <summary>The fallback for pages PDFium won't move: copy every page in, in order, then delete what was there.</summary>
-    private static void ReplaceWithCopiesInOrder(PdfiumDocument pdf, byte[] cleanSource, DocumentState document)
+    private static void ReplaceWithCopiesInOrder(PdfiumDocument pdf, CopySource copySource, DocumentState document)
     {
-        using PdfiumDocument copies = PdfiumDocument.Open(cleanSource);
         int existing = pdf.PageCount;
-        pdf.ImportPages(copies, [.. document.Pages.Select(entry => entry.SourceIndex)], existing);
+        pdf.ImportPages(copySource.Document, [.. document.Pages.Select(entry => entry.SourceIndex)], existing);
         for (int index = existing - 1; index >= 0; index--)
         {
             pdf.DeletePage(index);
@@ -536,5 +530,19 @@ public static class DocumentWriter
         InkColor yellow = ItemPaths.HighlightColor;
         static byte Mix(byte channel) => (byte)Math.Round((channel * ItemPaths.HighlightOpacity) + (255 * (1 - ItemPaths.HighlightOpacity)));
         return (Mix(yellow.R), Mix(yellow.G), Mix(yellow.B), 255);
+    }
+
+    /// <summary>
+    /// A second open copy of the source that pages are copied in from, opened only if a page is copied. A copied page's
+    /// form fields stay linked to it, so filling or saving after it closes reads freed memory and crashes: it must stay
+    /// open until the result is saved.
+    /// </summary>
+    private sealed class CopySource(byte[] cleanSource) : IDisposable
+    {
+        private PdfiumDocument? _document;
+
+        public PdfiumDocument Document => _document ??= PdfiumDocument.Open(cleanSource);
+
+        public void Dispose() => _document?.Dispose();
     }
 }

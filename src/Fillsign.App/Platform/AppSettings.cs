@@ -36,7 +36,7 @@ public sealed record AppSettings(
     double PagesPanelWidth = AppSettings.DefaultPagesPanelWidth,
     WindowPlacement? Window = null)
 {
-    public const int DefaultRecoveryDays = 7;
+    public const int DefaultRecoveryDays = 30;
 
     /// <summary>The pages panel's width in the editor, and how far it can be dragged either way.</summary>
     public const double DefaultPagesPanelWidth = 196;

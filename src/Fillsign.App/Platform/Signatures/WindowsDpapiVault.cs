@@ -20,18 +20,35 @@ internal sealed unsafe partial class WindowsDpapiVault : ISignatureKeyVault
         _keyFile = keyFile;
     }
 
-    public byte[]? GetOrCreateKey()
+    public byte[]? FindKey()
     {
         try
         {
-            if (File.Exists(_keyFile))
+            if (!File.Exists(_keyFile))
             {
-                byte[] key = Unprotect(File.ReadAllBytes(_keyFile));
-                return key.Length == SignatureKeyVaults.KeyLength
-                    ? key
-                    : throw new SignatureKeyUnavailableException("The saved signatures key has the wrong length.");
+                return null;
             }
 
+            byte[] key = Unprotect(File.ReadAllBytes(_keyFile));
+            return key.Length == SignatureKeyVaults.KeyLength
+                ? key
+                : throw new SignatureKeyUnavailableException("The saved signatures key has the wrong length.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
+        {
+            throw new SignatureKeyUnavailableException("The saved signatures key couldn't be read.", ex);
+        }
+    }
+
+    public byte[]? GetOrCreateKey()
+    {
+        if (FindKey() is { } existing)
+        {
+            return existing;
+        }
+
+        try
+        {
             byte[] created = SignatureKeyVaults.NewKey();
             Directory.CreateDirectory(Path.GetDirectoryName(_keyFile)!);
             File.WriteAllBytes(_keyFile, Protect(created));
@@ -39,7 +56,7 @@ internal sealed unsafe partial class WindowsDpapiVault : ISignatureKeyVault
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
         {
-            throw new SignatureKeyUnavailableException("The saved signatures key couldn't be read.", ex);
+            throw new SignatureKeyUnavailableException("The saved signatures key couldn't be stored.", ex);
         }
     }
 

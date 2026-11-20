@@ -46,6 +46,26 @@ public sealed class DocumentWriterTests
         Assert.DoesNotContain(SessionStore.TrailerKey, TestFiles.ReadableText(written.Pdf), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_duplicated_page_with_form_fields_is_filled_like_the_original()
+    {
+        // The copy is imported from a second open document; the form layer follows links into it while filling and
+        // saving, so it has to stay open until then.
+        (byte[] source, SourcePage[] pages) = Source("form-fields.pdf");
+        DocumentState state = DocumentState.ForSourcePages(1).WithField("Name", "Jordan Lee");
+        state = state.WithPages([state.Pages[0], state.Pages[0] with { Id = PageId.New() }]);
+
+        foreach (byte[] written in new[] { DocumentWriter.FinalCopy(source, pages, state).Pdf, DocumentWriter.WorkingCopy(source, pages, state).Pdf })
+        {
+            using PdfiumDocument result = PdfiumDocument.Open(written);
+            Assert.Equal(2, result.PageCount);
+            for (int page = 0; page < 2; page++)
+            {
+                Assert.Equal("Jordan Lee", result.GetFormFields(page).Single(field => field.Name == "Name").Value);
+            }
+        }
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]

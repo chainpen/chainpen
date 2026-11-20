@@ -103,23 +103,50 @@ public static class RecoveryStore
     /// <summary>"Delete all recovery copies" in Settings (FR-10.1).</summary>
     public static void DeleteAll()
     {
-        foreach (RecoveryCopy copy in List())
+        // Every file, not just the copies List() can read: a stray one holds document contents too.
+        foreach (string file in Files())
         {
-            Delete(copy.Id);
+            TryDelete(file);
         }
 
         CopiesDeleted?.Invoke();
     }
 
-    /// <summary>Removes copies older than the kept period (FR-8.12: 7 days by default).</summary>
+    /// <summary>Removes copies older than the kept period (FR-8.12: 30 days by default).</summary>
     public static void DeleteOlderThan(TimeSpan age, DateTimeOffset now)
     {
-        foreach (RecoveryCopy copy in List().Where(copy => now - copy.SavedAt > age))
+        IReadOnlyList<RecoveryCopy> copies = List();
+        foreach (RecoveryCopy copy in copies.Where(copy => now - copy.SavedAt > age))
         {
             Delete(copy.Id);
         }
 
+        // Files no readable description accounts for: a copy whose description was never written or is damaged, or a
+        // half-written file. They have no saved time, so their age is when they were last written.
+        HashSet<string> described = [.. copies.Select(copy => copy.Id.ToString("N"))];
+        foreach (string file in Files())
+        {
+            bool isDescribed = described.Contains(Path.GetFileName(file).Split('.')[0]);
+            if (!isDescribed && now - new DateTimeOffset(File.GetLastWriteTimeUtc(file)) > age)
+            {
+                TryDelete(file);
+            }
+        }
+
         CopiesDeleted?.Invoke();
+    }
+
+    private static IReadOnlyList<string> Files()
+    {
+        try
+        {
+            return Directory.Exists(Folder) ? [.. Directory.EnumerateFiles(Folder)] : [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"The recovery copies folder could not be read. {ex.Message}");
+            return [];
+        }
     }
 
     private static string PdfPath(Guid id) => Path.Combine(Folder, $"{id:N}.pdf");

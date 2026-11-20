@@ -9,6 +9,13 @@ namespace Fillsign.App.Platform.Signatures;
 public interface ISignatureKeyVault
 {
     /// <summary>
+    /// The key if one has been made, without ever making one: reading an encrypted file must not replace a key that's
+    /// only out of reach for now. Null when there's no key, or no secret store.
+    /// </summary>
+    /// <exception cref="SignatureKeyUnavailableException">The secret store exists but refused or failed.</exception>
+    byte[]? FindKey();
+
+    /// <summary>
     /// The 32-byte key, created on first use. Null when this computer has no secret store (for example Linux without
     /// a keyring); saved signatures are then kept unencrypted, readable only by this user.
     /// </summary>
@@ -67,5 +74,7 @@ public static class SignatureKeyVaults
 /// <summary>No secret store: signatures are kept unencrypted. Used in tests and as the fallback.</summary>
 public sealed class NoKeyVault : ISignatureKeyVault
 {
+    public byte[]? FindKey() => null;
+
     public byte[]? GetOrCreateKey() => null;
 }

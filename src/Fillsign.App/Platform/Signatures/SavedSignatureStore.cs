@@ -152,6 +152,27 @@ public sealed class SavedSignatureStore
         }
     }
 
+    /// <summary>
+    /// For saved signatures that stay locked because their key never comes back: sets the file aside (kept, in case it
+    /// does) and starts again with none, so new ones can be kept. Only when the person chooses it in Settings.
+    /// </summary>
+    public void StartAgain()
+    {
+        lock (_lock)
+        {
+            if (File.Exists(_path))
+            {
+                File.Move(_path, _path + ".unreadable", overwrite: true);
+            }
+
+            _items = [];
+            _isLoaded = true;
+            _key = null;
+            _hasKey = false;
+            State = SavedSignaturesState.Ready;
+        }
+    }
+
     private void ThrowIfUnavailable()
     {
         if (State == SavedSignaturesState.Unavailable)
@@ -196,7 +217,7 @@ public sealed class SavedSignatureStore
             byte[]? key;
             try
             {
-                key = Key();
+                key = ExistingKey();
             }
             catch (SignatureKeyUnavailableException ex)
             {
@@ -205,9 +226,19 @@ public sealed class SavedSignatureStore
                 return [];
             }
 
-            if (key is null || body.Length < NonceLength + TagLength)
+            // No key could mean it's gone for good, or that the keyring is only out of reach (a Linux keyring left
+            // locked looks the same as an empty one). Making a new key here would lose the file for certain, so it's
+            // kept and the store stays locked until the key is back or the person chooses Start again in Settings.
+            if (key is null)
             {
-                return SetAsideUnreadable("its key is gone");
+                System.Diagnostics.Trace.TraceWarning("Saved signatures are locked: the secret store has no key for them.");
+                State = SavedSignaturesState.Unavailable;
+                return [];
+            }
+
+            if (body.Length < NonceLength + TagLength)
+            {
+                return SetAsideUnreadable("it's too short");
             }
 
             json = new byte[body.Length - NonceLength - TagLength];
@@ -302,6 +333,18 @@ public sealed class SavedSignatureStore
         }
 
         File.Move(temporary, _path, overwrite: true);
+    }
+
+    /// <summary>The key an encrypted file was made with, never a new one.</summary>
+    private byte[]? ExistingKey()
+    {
+        if (!_hasKey)
+        {
+            _key = _vault.FindKey();
+            _hasKey = _key is not null;
+        }
+
+        return _key;
     }
 
     private byte[]? Key()

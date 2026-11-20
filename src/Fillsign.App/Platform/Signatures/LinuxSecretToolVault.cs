@@ -20,23 +20,14 @@ internal sealed class LinuxSecretToolVault : ISignatureKeyVault
         _label = $"{service} {account.ToLowerInvariant()}";
     }
 
+    public byte[]? FindKey() => Lookup().Key;
+
     public byte[]? GetOrCreateKey()
     {
-        (int exitCode, string output, string error)? lookup = Run(["lookup", .. _attributes], input: null);
-        if (lookup is null)
+        (bool hasStore, byte[]? existing) = Lookup();
+        if (!hasStore || existing is not null)
         {
-            return null;
-        }
-
-        if (lookup.Value.exitCode == 0 && lookup.Value.output.Length > 0)
-        {
-            return Decode(lookup.Value.output);
-        }
-
-        // Not found is exit code 1 with nothing on stderr; anything else is the keyring failing.
-        if (lookup.Value.error.Length > 0)
-        {
-            throw new SignatureKeyUnavailableException($"The keyring didn't hand over the key: {lookup.Value.error.Trim()}");
+            return existing;
         }
 
         byte[] key = SignatureKeyVaults.NewKey();
@@ -47,6 +38,29 @@ internal sealed class LinuxSecretToolVault : ISignatureKeyVault
         }
 
         return key;
+    }
+
+    /// <summary>Whether secret-tool is there at all, and the key if the keyring has one.</summary>
+    private (bool HasStore, byte[]? Key) Lookup()
+    {
+        (int exitCode, string output, string error)? lookup = Run(["lookup", .. _attributes], input: null);
+        if (lookup is null)
+        {
+            return (false, null);
+        }
+
+        if (lookup.Value.exitCode == 0 && lookup.Value.output.Length > 0)
+        {
+            return (true, Decode(lookup.Value.output));
+        }
+
+        // Not found is exit code 1 with nothing on stderr; anything else is the keyring failing.
+        if (lookup.Value.error.Length > 0)
+        {
+            throw new SignatureKeyUnavailableException($"The keyring didn't hand over the key: {lookup.Value.error.Trim()}");
+        }
+
+        return (true, null);
     }
 
     private static byte[] Decode(string text)

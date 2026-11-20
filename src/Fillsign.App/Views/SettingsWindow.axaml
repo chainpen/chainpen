@@ -31,10 +31,15 @@
                         <TextBlock Classes="heading-section" Text="Saved signatures and initials" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
                                    Text="Stored only on this computer. Removing one doesn’t change documents you’ve already saved." />
-                        <TextBlock Classes="muted" FontSize="13" Margin="0,10,0,0" IsVisible="{Binding !HasSaved}"
+                        <TextBlock Classes="muted" FontSize="13" Margin="0,10,0,0" IsVisible="{Binding ShowsNoneSaved}"
                                    Text="None saved. Tick “Keep … on this computer” when you add one to see it here." />
-                        <TextBlock FontSize="13" Margin="0,10,0,0" Foreground="{DynamicResource Warning}" TextWrapping="Wrap" IsVisible="{Binding AreSignaturesLocked}"
-                                   Text="Saved signatures can’t be opened right now: the system’s keychain didn’t allow it." />
+                        <!-- Locked until the key comes back; Start again is the way out if it never does. -->
+                        <StackPanel Spacing="8" Margin="0,10,0,0" IsVisible="{Binding AreSignaturesLocked}">
+                            <TextBlock FontSize="13" Foreground="{DynamicResource Warning}" TextWrapping="Wrap"
+                                       Text="Saved signatures can’t be opened right now: the system’s keychain or keyring didn’t hand over their key. They’re kept, and come back once it does." />
+                            <Button Classes="small dangerText" HorizontalAlignment="Left" Content="Start again without them…"
+                                    Command="{Binding StartSignaturesAgainCommand}" />
+                        </StackPanel>
                         <ItemsControl ItemsSource="{Binding Saved}" Margin="0,6,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:SavedRowViewModel">

@@ -47,10 +47,10 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
         }
 
         JsonNode? id = request["id"]?.DeepClone();
-        string? method = request["method"]?.GetValue<string>();
         bool isNotification = !request.ContainsKey("id");
         try
         {
+            string method = Text(request["method"]) ?? throw new McpError(-32600, "The message has no method name.");
             JsonNode? result = method switch
             {
                 "initialize" => Initialize(),
@@ -66,7 +66,16 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
         {
             return isNotification ? null : Error(id, ex.Code, ex.Message);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The last stop for anything unexpected in one message, so a single bad request can't end the session.
+            await log.WriteLineAsync($"fillsign mcp: a message failed: {ex}".AsMemory(), cancellationToken).ConfigureAwait(false);
+            return isNotification ? null : Error(id, -32603, "Fillsign couldn’t handle that message.");
+        }
     }
+
+    /// <summary>A JSON string's text, or null for anything else: the client's messages are checked, not trusted.</summary>
+    private static string? Text(JsonNode? node) => node is JsonValue value && value.TryGetValue(out string? text) ? text : null;
 
     private static JsonObject Initialize() => new()
     {
@@ -115,8 +124,8 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
 
     private async Task<JsonObject> CallAsync(JsonObject? parameters, CancellationToken cancellationToken)
     {
-        string name = parameters?["name"]?.GetValue<string>() ?? throw new McpError(-32602, "Which tool? Give its name.");
-        JsonObject arguments = parameters["arguments"] as JsonObject ?? [];
+        string name = Text(parameters?["name"]) ?? throw new McpError(-32602, "Which tool? Give its name.");
+        JsonObject arguments = parameters?["arguments"] as JsonObject ?? [];
         try
         {
             string text = name switch
@@ -183,7 +192,7 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
     /// <summary>Assistants run elsewhere than Fillsign, so a relative path could mean anything: only absolute ones are taken.</summary>
     private static string AbsolutePath(JsonObject arguments, string name)
     {
-        string path = arguments[name]?.GetValue<string>() ?? throw new FormException($"{name} is needed.");
+        string path = Text(arguments[name]) ?? throw new FormException($"{name} is needed, as text.");
         return Path.IsPathFullyQualified(path) ? path : throw new FormException($"{name} must be an absolute path, not “{path}”.");
     }
 

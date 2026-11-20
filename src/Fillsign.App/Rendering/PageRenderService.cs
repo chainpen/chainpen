@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Fillsign.App.Platform;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Import;
 using Fillsign.Pdf.Pdfium;
@@ -196,7 +197,18 @@ public sealed class PageRenderService : IDisposable
             _wake.Wait();
             while (!_isStopping && TryTakeNext(out RenderRequest request))
             {
-                RenderOne(request);
+                try
+                {
+                    RenderOne(request);
+                }
+                catch (Exception ex)
+                {
+                    // The top of the render thread: an error escaping here would end the app. The page shows as
+                    // damaged instead, and the error is written down like any other unexpected one.
+                    System.Diagnostics.Trace.TraceError($"A page could not be rendered: {ex}");
+                    CrashReports.Record(ex);
+                    Dispatcher.UIThread.Post(() => PageFailed?.Invoke(request.SourceIndex));
+                }
             }
 
             if (_isStopping)
@@ -254,6 +266,12 @@ public sealed class PageRenderService : IDisposable
             Return(bitmap);
             Dispatcher.UIThread.Post(() => PageFailed?.Invoke(request.SourceIndex));
             return;
+        }
+        catch
+        {
+            // Anything else goes up to the render loop; the bitmap goes back to the pool first.
+            Return(bitmap);
+            throw;
         }
 
         lock (_lock)

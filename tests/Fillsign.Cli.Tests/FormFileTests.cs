@@ -123,6 +123,22 @@ public sealed class FormFileTests : IDisposable
     }
 
     [Fact]
+    public async Task A_malformed_mcp_message_gets_an_error_and_the_server_keeps_going()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        var server = new McpServer(TextReader.Null, TextWriter.Null, TextWriter.Null);
+
+        JsonObject? badMethod = await server.HandleAsync("""{"jsonrpc":"2.0","id":1,"method":5}""", token);
+        Assert.Equal(-32600, badMethod!["error"]!["code"]!.GetValue<int>());
+
+        JsonObject? badName = await server.HandleAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":["fill_form"]}}""", token);
+        Assert.Equal(-32602, badName!["error"]!["code"]!.GetValue<int>());
+
+        JsonObject? ping = await server.HandleAsync("""{"jsonrpc":"2.0","id":3,"method":"ping"}""", token);
+        Assert.NotNull(ping!["result"]);
+    }
+
+    [Fact]
     public async Task The_mcp_server_answers_the_handshake_lists_its_tools_and_fills_forms()
     {
         var server = new McpServer(TextReader.Null, TextWriter.Null, TextWriter.Null);

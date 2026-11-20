@@ -217,6 +217,33 @@ public sealed class SignatureDialogTests : IDisposable
     }
 
     [AvaloniaFact]
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task A_signature_that_couldnt_be_removed_says_so()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Uses Unix file permissions to make removing fail.");
+        _store.Keep(new SavedSignature(TestImage(), SignatureKind.Signature, SignatureMethod.Drawn, DateTimeOffset.UtcNow));
+        using var s = await Session.OpenSignAsync();
+
+        // A folder that can't be written to: removing it fails.
+        UnixFileMode mode = File.GetUnixFileMode(_folder);
+        File.SetUnixFileMode(_folder, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            s.ClickButton("Remove this signature…");
+            await Pump(() => s.Dialog.IsConfirmingRemove);
+            s.ClickButton("Remove signature");
+            await Pump(() => s.Dialog.IsForm);
+        }
+        finally
+        {
+            File.SetUnixFileMode(_folder, mode);
+        }
+
+        Assert.Equal("Fillsign couldn’t remove it. Try again in a moment.", s.Dialog.Error);
+        Assert.Single(_store.Load());
+    }
+
+    [AvaloniaFact]
     public async Task A_photo_is_previewed_with_and_without_its_paper()
     {
         string photo = Path.Combine(_folder, "signature-photo.png");

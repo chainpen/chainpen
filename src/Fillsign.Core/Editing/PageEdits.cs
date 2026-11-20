@@ -28,7 +28,7 @@ public static class PageEdits
         ImmutableList<Item> items = document.Items.ConvertAll(item => sizeBefore.TryGetValue(item.Page, out PageSize size)
             ? ItemGeometry.RotateWithPage(item, clockwise, size, measurer)
             : item);
-        return new DocumentState(entries, items);
+        return document with { Pages = entries, Items = items };
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ public static class PageEdits
             return false;
         }
 
-        result = new DocumentState(remaining, document.Items.RemoveAll(item => pages.Contains(item.Page)));
+        result = document with { Pages = remaining, Items = document.Items.RemoveAll(item => pages.Contains(item.Page)) };
         return true;
     }
 
@@ -106,7 +106,7 @@ public static class PageEdits
         }
 
         copies = [.. entries.Select(entry => entry.Id)];
-        return new DocumentState(document.Pages.InsertRange(at, entries), document.Items.AddRange(items));
+        return document with { Pages = document.Pages.InsertRange(at, entries), Items = document.Items.AddRange(items) };
     }
 
     /// <summary>Adds new source pages (from added files) at a position, with no items.</summary>

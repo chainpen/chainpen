@@ -10,6 +10,20 @@ public sealed class PageEditsTests
 
     private static PageSize SizeOf(PageEntry entry) => TestData.A4.Turned(entry.Rotation);
 
+    [Fact]
+    public void Page_edits_keep_the_values_typed_into_form_fields()
+    {
+        DocumentState start = DocumentState.ForSourcePages(3).WithField("Name", "Jordan Lee").WithField("Agree", "Yes");
+        PageId first = start.Pages[0].Id;
+
+        Assert.Equal(start.Fields, PageEdits.Rotate(start, TestData.Set(first), clockwise: true, SizeOf, s_measurer).Fields);
+        Assert.True(PageEdits.TryDelete(start, TestData.Set(first), out DocumentState deleted));
+        Assert.Equal(start.Fields, deleted.Fields);
+        Assert.Equal(start.Fields, PageEdits.Duplicate(start, TestData.Set(first), out _).Fields);
+        Assert.Equal(start.Fields, PageEdits.Move(start, TestData.Set(first), 3).Fields);
+        Assert.Equal(start.Fields, PageEdits.InsertSourcePages(start, [0], 1).Fields);
+    }
+
     /// <summary>REQUIREMENTS §7 scenario 5: tick A, rotate A, move D to the top, delete C → D, A (rotated), B.</summary>
     [Fact]
     public void Scenario_5_reorder_rotate_delete_and_undo()

@@ -136,8 +136,10 @@ public sealed class DesktopFitTests : IDisposable
         await Pump(() => true);
         Save(window, "phase7-7-settings-dark");
 
+        settings.IsSevenDays = true;
+        Assert.Equal(7, AppSettings.Load().RecoveryDays);
         settings.IsThirtyDays = true;
-        Assert.Equal(30, AppSettings.Load().RecoveryDays);
+        Assert.Equal(AppSettings.DefaultRecoveryDays, AppSettings.Load().RecoveryDays);
 
         settings.IsMatchSystem = true;
         await Pump(() => Application.Current!.RequestedThemeVariant == ThemeVariant.Default);
@@ -270,6 +272,41 @@ public sealed class DesktopFitTests : IDisposable
             Assert.Contains("About Fillsign", Headers("Help"));
             Assert.Contains("Check for updates…", Headers("Help"));
         }
+    }
+
+    [Fact]
+    public void Cleaning_up_recovery_copies_also_removes_files_with_no_readable_description()
+    {
+        // Each holds document contents: a copy whose description was never written, one whose description is damaged,
+        // and a half-written file from a crash mid-write.
+        Directory.CreateDirectory(RecoveryStore.Folder);
+        string[] strays = [.. new[] { $"{Guid.NewGuid():N}.pdf", $"{Guid.NewGuid():N}.json", $"{Guid.NewGuid():N}.pdf.tmp" }
+            .Select(name => Path.Combine(RecoveryStore.Folder, name))];
+        foreach (string stray in strays)
+        {
+            File.WriteAllText(stray, "contents");
+        }
+
+        var kept = new RecoveryCopy(Guid.NewGuid(), "kept.pdf", null, null, DateTimeOffset.Now);
+        Assert.True(RecoveryStore.Write(kept, File.ReadAllBytes(TestFiles.Sample("sample-form.pdf"))));
+
+        // Recent strays might still be being written, so the age limit applies to them as it does to copies.
+        RecoveryStore.DeleteOlderThan(TimeSpan.FromDays(1), DateTimeOffset.Now);
+        Assert.All(strays, stray => Assert.True(File.Exists(stray)));
+
+        foreach (string stray in strays)
+        {
+            File.SetLastWriteTimeUtc(stray, DateTime.UtcNow.AddDays(-2));
+        }
+
+        RecoveryStore.DeleteOlderThan(TimeSpan.FromDays(1), DateTimeOffset.Now);
+        Assert.All(strays, stray => Assert.False(File.Exists(stray)));
+        Assert.Single(RecoveryStore.List());
+
+        // Delete all means everything.
+        File.WriteAllText(strays[0], "contents");
+        RecoveryStore.DeleteAll();
+        Assert.Empty(Directory.EnumerateFiles(RecoveryStore.Folder));
     }
 
     [Fact]

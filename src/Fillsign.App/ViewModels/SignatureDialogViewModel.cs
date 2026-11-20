@@ -431,6 +431,7 @@ public sealed partial class SignatureDialogViewModel : ObservableObject, IDispos
     [RelayCommand]
     private void ConfirmRemove()
     {
+        string? problem = null;
         if (SelectedSaved is { } saved)
         {
             try
@@ -440,12 +441,15 @@ public sealed partial class SignatureDialogViewModel : ObservableObject, IDispos
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SignatureKeyUnavailableException or InvalidOperationException)
             {
                 System.Diagnostics.Trace.TraceWarning($"A saved signature could not be removed. {ex.Message}");
-                Error = "Fillsign couldn’t remove it. Try again in a moment.";
+                problem = "Fillsign couldn’t remove it. Try again in a moment.";
             }
         }
 
         Page = SignatureDialogPage.Form;
         RefreshSaved();
+
+        // After refreshing: choosing an option clears the error, and refreshing chooses one.
+        Error = problem;
     }
 
     /// <summary>

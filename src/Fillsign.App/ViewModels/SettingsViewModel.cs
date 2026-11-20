@@ -173,6 +173,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public bool AreSignaturesLocked => _signatures.State == SavedSignaturesState.Unavailable;
 
+    /// <summary>"None saved" is only true when they could be read.</summary>
+    public bool ShowsNoneSaved => !HasSaved && !AreSignaturesLocked;
+
     [ObservableProperty]
     public partial string? Message { get; private set; }
 
@@ -187,6 +190,35 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         OnPropertyChanged(nameof(HasSaved));
         OnPropertyChanged(nameof(AreSignaturesLocked));
+        OnPropertyChanged(nameof(ShowsNoneSaved));
+    }
+
+    /// <summary>
+    /// "Start again without them…": for saved signatures whose key never comes back. The old file is set aside, not
+    /// deleted, and new ones can be kept from now on.
+    /// </summary>
+    [RelayCommand]
+    private async Task StartSignaturesAgainAsync()
+    {
+        if (!await _confirm(
+                "Start again without your saved signatures?",
+                "Fillsign can’t open the ones saved now, so you won’t be able to use them. New signatures and initials you keep will be saved from now on. Documents you’ve already saved or exported keep theirs.",
+                "Start again").ConfigureAwait(true))
+        {
+            return;
+        }
+
+        try
+        {
+            _signatures.StartAgain();
+            LoadSignatures();
+            Message = "You can keep new signatures and initials again.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Message = "Fillsign couldn’t set the old ones aside. Try again in a moment.";
+            System.Diagnostics.Trace.TraceWarning($"Saved signatures could not be set aside. {ex.Message}");
+        }
     }
 
     /// <summary>"Remove…" (D10): asks, then removes it from this computer. Documents keep it.</summary>
@@ -207,6 +239,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             _signatures.Remove(row.Saved.Id);
             Saved.Remove(row);
             OnPropertyChanged(nameof(HasSaved));
+            OnPropertyChanged(nameof(ShowsNoneSaved));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or SignatureKeyUnavailableException)
         {

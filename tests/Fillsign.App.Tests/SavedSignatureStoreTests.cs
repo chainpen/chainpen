@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using Fillsign.App.Platform.Signatures;
+using Fillsign.App.ViewModels;
 using Fillsign.Core.Model;
 
 namespace Fillsign.App.Tests;
@@ -146,6 +147,68 @@ public sealed class SavedSignatureStoreTests : IDisposable
     }
 
     [Fact]
+    public void An_encrypted_file_whose_key_is_missing_is_kept_and_no_new_key_is_made()
+    {
+        new SavedSignatureStore(_folder, new FixedKeyVault()).Keep(Saved(SignatureKind.Signature, SignatureMethod.Drawn, s_monday));
+        byte[] before = File.ReadAllBytes(FilePath);
+
+        // The secret store says it has no key (or a Linux keyring stayed locked): never make a new one over the file.
+        var missing = new MissingKeyVault();
+        var store = new SavedSignatureStore(_folder, missing);
+        Assert.Empty(store.Load());
+        Assert.Equal(SavedSignaturesState.Unavailable, store.State);
+        Assert.False(missing.HasCreatedKey);
+        Assert.Equal(before, File.ReadAllBytes(FilePath));
+        Assert.False(File.Exists(FilePath + ".unreadable"));
+
+        // A computer with no secret store at all can't read it either, and leaves it alone too.
+        Assert.Equal(SavedSignaturesState.Unavailable, LoadedState(new NoKeyVault()));
+        Assert.Equal(before, File.ReadAllBytes(FilePath));
+        Assert.Single(new SavedSignatureStore(_folder, new FixedKeyVault()).Load());
+
+        // If the key never comes back, the person can choose to start again: the old file is kept to one side.
+        store.StartAgain();
+        Assert.Equal(SavedSignaturesState.Ready, store.State);
+        Assert.Equal(before, File.ReadAllBytes(FilePath + ".unreadable"));
+        store.Keep(Saved(SignatureKind.Initials, SignatureMethod.Typed, s_monday));
+        Assert.Single(new SavedSignatureStore(_folder, missing).Load());
+    }
+
+    [Fact]
+    public async Task Settings_offers_a_way_out_when_saved_signatures_stay_locked()
+    {
+        new SavedSignatureStore(_folder, new FixedKeyVault()).Keep(Saved(SignatureKind.Signature, SignatureMethod.Drawn, s_monday));
+        byte[] before = File.ReadAllBytes(FilePath);
+        var store = new SavedSignatureStore(_folder, new MissingKeyVault());
+        bool willConfirm = false;
+        string? asked = null;
+        var settings = new SettingsViewModel(store, (title, _, _) =>
+        {
+            asked = title;
+            return Task.FromResult(willConfirm);
+        });
+
+        // Locked: it says so, and doesn't claim there are none.
+        settings.LoadSignatures();
+        Assert.True(settings.AreSignaturesLocked);
+        Assert.False(settings.ShowsNoneSaved);
+
+        // Starting again asks first; saying no changes nothing.
+        await settings.StartSignaturesAgainCommand.ExecuteAsync(null);
+        Assert.Equal("Start again without your saved signatures?", asked);
+        Assert.True(settings.AreSignaturesLocked);
+        Assert.Equal(before, File.ReadAllBytes(FilePath));
+
+        // Saying yes sets the old file aside and unlocks, with nothing saved yet.
+        willConfirm = true;
+        await settings.StartSignaturesAgainCommand.ExecuteAsync(null);
+        Assert.False(settings.AreSignaturesLocked);
+        Assert.True(settings.ShowsNoneSaved);
+        Assert.Equal(before, File.ReadAllBytes(FilePath + ".unreadable"));
+        Assert.Equal("You can keep new signatures and initials again.", settings.Message);
+    }
+
+    [Fact]
     public void A_file_no_key_can_open_is_set_aside_and_saving_starts_again()
     {
         new SavedSignatureStore(_folder, new FixedKeyVault(1)).Keep(Saved(SignatureKind.Signature, SignatureMethod.Drawn, s_monday));
@@ -232,13 +295,40 @@ public sealed class SavedSignatureStoreTests : IDisposable
         return new SavedSignature(new SignatureImage(Guid.NewGuid(), [.. png], 40, 12), kind, method, lastUsed);
     }
 
+    private SavedSignaturesState LoadedState(ISignatureKeyVault vault)
+    {
+        var store = new SavedSignatureStore(_folder, vault);
+        store.Load();
+        return store.State;
+    }
+
     private sealed class FixedKeyVault(byte seed = 7) : ISignatureKeyVault
     {
+        public byte[]? FindKey() => GetOrCreateKey();
+
         public byte[]? GetOrCreateKey() => [.. Enumerable.Repeat(seed, SignatureKeyVaults.KeyLength)];
     }
 
     private sealed class LockedVault : ISignatureKeyVault
     {
+        public byte[]? FindKey() => throw new SignatureKeyUnavailableException("denied");
+
         public byte[]? GetOrCreateKey() => throw new SignatureKeyUnavailableException("denied");
+    }
+
+    /// <summary>A secret store with no key in it, which makes one when asked to.</summary>
+    private sealed class MissingKeyVault : ISignatureKeyVault
+    {
+        public bool HasCreatedKey { get; private set; }
+
+        public byte[]? FindKey() => HasCreatedKey ? Key : null;
+
+        public byte[]? GetOrCreateKey()
+        {
+            HasCreatedKey = true;
+            return Key;
+        }
+
+        private static byte[] Key => [.. Enumerable.Repeat((byte)9, SignatureKeyVaults.KeyLength)];
     }
 }
