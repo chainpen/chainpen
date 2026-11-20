@@ -9,11 +9,13 @@
         <Setter Property="FontSize" Value="14" />
     </Style>
 
-    <!-- Focus: a 2px focus-ring with a 2px gap, on every focusable control. -->
+    <!-- Focus: a 2px focus-ring with a 2px gap, on every focusable control. It sits outside the control, so it isn't
+         clipped: the control itself, a list or a scroll area around it would cut part or all of it away. -->
     <Style Selector=":is(Control)">
         <Setter Property="FocusAdorner">
             <FocusAdornerTemplate>
-                <Border BorderBrush="{DynamicResource FocusRing}" BorderThickness="2" CornerRadius="10" Margin="-4" />
+                <Border BorderBrush="{DynamicResource FocusRing}" BorderThickness="2" CornerRadius="10" Margin="-4"
+                        AdornerLayer.IsClipEnabled="False" />
             </FocusAdornerTemplate>
         </Setter>
     </Style>

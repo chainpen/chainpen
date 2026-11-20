@@ -9,29 +9,16 @@
         <Panel>
             <!-- ===== The form ===== -->
             <!-- FS-709: on a short window the middle scrolls; the title and buttons stay put (S5). -->
-            <DockPanel IsVisible="{Binding IsForm}">
-                <DockPanel DockPanel.Dock="Top">
+            <!-- Children in reading order, so Tab follows the screen: title, then the choices, then the buttons. -->
+            <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsForm}">
+                <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="icon" BorderThickness="0" Background="Transparent" VerticalAlignment="Top"
                             Command="{Binding CancelCommand}" AutomationProperties.Name="Close">
                         <c:StrokeIcon Data="{StaticResource IconCross}" Foreground="{DynamicResource TextMuted}" />
                     </Button>
                     <TextBlock Classes="heading-dialog" FontSize="20" VerticalAlignment="Center" Text="{Binding Title}" />
                 </DockPanel>
-                <Border DockPanel.Dock="Bottom" Margin="0,18,0,0" Padding="0,16,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12">
-                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
-                            <Button x:Name="PlaceButton" Classes="primary" Content="{Binding PlaceLabel}" Command="{Binding PlaceCommand}" />
-                        </StackPanel>
-                        <Panel VerticalAlignment="Center">
-                            <Button Classes="link danger" HorizontalAlignment="Left" Content="{Binding RemoveLabel}"
-                                    Command="{Binding AskToRemoveCommand}" IsVisible="{Binding IsSavedSelected}" />
-                            <TextBlock Classes="muted" FontSize="13" Text="The photo stays on this computer."
-                                       IsVisible="{Binding IsPhotoTab}" />
-                        </Panel>
-                    </DockPanel>
-                </Border>
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
                     <StackPanel Margin="4,4">
                         <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding FirstTimeHint}"
                                    IsVisible="{Binding !HasSaved}" />
@@ -91,9 +78,7 @@
                                          MaxLength="60" AutomationProperties.LabeledBy="{Binding #TypeLabel}" KeyDown="OnTypedNameKeyDown" />
                             </StackPanel>
 
-                            <DockPanel Margin="0,14,0,0" IsVisible="{Binding ShowsInk}">
-                                <Button DockPanel.Dock="Right" Classes="small" Content="Clear" Command="{Binding ClearPadCommand}"
-                                        IsVisible="{Binding IsDrawTab}" IsEnabled="{Binding HasInk}" />
+                            <Grid Margin="0,14,0,0" ColumnDefinitions="*,Auto" IsVisible="{Binding ShowsInk}">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <TextBlock x:Name="InkLabel" Classes="muted" FontSize="13" VerticalAlignment="Center" Text="Ink" />
                                     <RadioButton Classes="swatch" GroupName="ink" Background="{DynamicResource InkBlack}" IsChecked="{Binding IsBlackInk}"
@@ -101,7 +86,9 @@
                                     <RadioButton Classes="swatch" GroupName="ink" Background="{DynamicResource InkBlue}" IsChecked="{Binding IsBlueInk}"
                                                  AutomationProperties.Name="Blue ink" />
                                 </StackPanel>
-                            </DockPanel>
+                                <Button Grid.Column="1" Classes="small" Content="Clear" Command="{Binding ClearPadCommand}"
+                                        IsVisible="{Binding IsDrawTab}" IsEnabled="{Binding HasInk}" />
+                            </Grid>
 
                             <!-- What's needed, shown after Place is pressed too early (FR-4.8). Clears once fixed. -->
                             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,10,0,0" IsVisible="{Binding HasError}"
@@ -194,7 +181,21 @@
 
                     </StackPanel>
                 </ScrollViewer>
-            </DockPanel>
+                <Border Grid.Row="2" Margin="0,18,0,0" Padding="0,16,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Panel VerticalAlignment="Center">
+                            <Button Classes="link danger" HorizontalAlignment="Left" Content="{Binding RemoveLabel}"
+                                    Command="{Binding AskToRemoveCommand}" IsVisible="{Binding IsSavedSelected}" />
+                            <TextBlock Classes="muted" FontSize="13" Text="The photo stays on this computer."
+                                       IsVisible="{Binding IsPhotoTab}" />
+                        </Panel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                            <Button x:Name="PlaceButton" Classes="primary" Content="{Binding PlaceLabel}" Command="{Binding PlaceCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
 
             <!-- ===== D10: removing a saved signature can't be undone, so ask. ===== -->
             <StackPanel IsVisible="{Binding IsConfirmingRemove}">

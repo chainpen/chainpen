@@ -1,8 +1,12 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Fillsign.App.Controls;
 using Fillsign.App.Platform.Signatures;
@@ -256,6 +260,73 @@ public sealed class SignatureDialogTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Tab_moves_through_the_dialog_in_the_order_it_reads()
+    {
+        using (var s = await Session.OpenSignAsync())
+        {
+            Assert.Equal(
+                ["Keep", "Cancel", "Place signature", "Close", "Draw", "Type", "Photo or scan", "Black ink", "Blue ink", "Pad"],
+                s.TabThrough(10));
+        }
+
+        _store.Keep(new SavedSignature(TestImage(), SignatureKind.Signature, SignatureMethod.Drawn, DateTimeOffset.UtcNow));
+        using (var s = await Session.OpenSignAsync())
+        {
+            Assert.Equal(["Remove", "Cancel", "Place signature", "Close", "Saved"], s.TabThrough(5));
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Every_tab_stop_shows_its_whole_focus_ring()
+    {
+        // The ring is drawn 4px outside the control, and used to be cut: to a dot by the control itself, and along the
+        // bottom of a saved signature by the list around it.
+        using (var s = await Session.OpenSignAsync())
+        {
+            await AssertRingsShow(s, 10);
+        }
+
+        _store.Keep(new SavedSignature(TestImage(), SignatureKind.Signature, SignatureMethod.Drawn, DateTimeOffset.UtcNow.AddDays(-1)));
+        _store.Keep(new SavedSignature(TestImage(), SignatureKind.Signature, SignatureMethod.Drawn, DateTimeOffset.UtcNow));
+        using (var s = await Session.OpenSignAsync())
+        {
+            await AssertRingsShow(s, 5);
+        }
+
+        static async Task AssertRingsShow(Session s, int stops)
+        {
+            for (int i = 0; i < stops; i++)
+            {
+                string name = s.TabThrough(1).Single();
+                await Pump(() => true);
+                var focused = (Control)s.Window.FocusManager!.GetFocusedElement()!;
+                Point topLeft = focused.TranslatePoint(default, s.Window)!.Value;
+
+                // The middle of each side of the ring, 3px out: the ring's 2px line, with its 2px gap inside.
+                double left = topLeft.X - 3, top = topLeft.Y - 3;
+                double right = topLeft.X + focused.Bounds.Width + 2, bottom = topLeft.Y + focused.Bounds.Height + 2;
+                double middleX = topLeft.X + (focused.Bounds.Width / 2), middleY = topLeft.Y + (focused.Bounds.Height / 2);
+                using WriteableBitmap frame = s.Window.CaptureRenderedFrame()!;
+                foreach ((string side, double x, double y) in new[] { ("top", middleX, top), ("bottom", middleX, bottom), ("left", left, middleY), ("right", right, middleY) })
+                {
+                    Assert.True(IsRing(frame, (int)x, (int)y), $"{name}: no ring along the {side}");
+                }
+            }
+        }
+
+        static bool IsRing(WriteableBitmap frame, int x, int y)
+        {
+            using ILockedFramebuffer pixels = frame.Lock();
+            byte[] pixel = new byte[4];
+            System.Runtime.InteropServices.Marshal.Copy(pixels.Address + (y * pixels.RowBytes) + (x * 4), pixel, 0, 4);
+            (byte red, byte green, byte blue) = pixels.Format == PixelFormat.Bgra8888 ? (pixel[2], pixel[1], pixel[0]) : (pixel[0], pixel[1], pixel[2]);
+
+            // The ring is #173c96: dark blue, nothing like the white, grey and light blue around it.
+            return red < 80 && green < 110 && blue > 110;
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Esc_cancels_and_nothing_is_placed()
     {
         using var s = await Session.OpenSignAsync();
@@ -352,6 +423,29 @@ public sealed class SignatureDialogTests : IDisposable
             where T : Control => View.GetVisualDescendants().OfType<T>().First(control => control.Name == name);
 
         public void ClickButton(string content) => Click(View, content);
+
+        /// <summary>Presses Tab <paramref name="count"/> times and names where focus lands each time.</summary>
+        public List<string> TabThrough(int count)
+        {
+            var landed = new List<string>();
+            for (int i = 0; i < count; i++)
+            {
+                Window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                Dispatcher.UIThread.RunJobs();
+                landed.Add(Window.FocusManager!.GetFocusedElement() switch
+                {
+                    SignaturePad => "Pad",
+                    ListBoxItem => "Saved",
+                    CheckBox box when box.Content is string text && text.StartsWith("Keep", StringComparison.Ordinal) => "Keep",
+                    Button button when button.Content is string text && text.StartsWith("Remove", StringComparison.Ordinal) => "Remove",
+                    Control control when AutomationProperties.GetName(control) is { Length: > 0 } name => name,
+                    ContentControl { Content: string text } => text,
+                    var other => other?.GetType().Name ?? "nothing",
+                });
+            }
+
+            return landed;
+        }
 
         /// <summary>Draws one stroke on the pad with the mouse, through points in pad coordinates.</summary>
         public void DrawOnPad(params (double X, double Y)[] path)
