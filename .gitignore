@@ -491,6 +491,9 @@ $RECYCLE.BIN/
 
 # Fillsign build output
 artifacts/
+
+# Claude Code's local state (agent worktrees and settings)
+.claude/
 samples/corpus/
 
 # The macOS "Icon" rule above is for Finder's hidden Icon\r files; it also matches these folders on case-insensitive disks.
