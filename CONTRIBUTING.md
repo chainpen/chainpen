@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest. **Outside contributions aren't accepted yet** (decision FS-009 in [docs/PLAN.md](docs/PLAN.md)): the project's ownership and licensing are still being set up for a possible paid edition, and accepting code now would complicate that.
+Thank you for your interest. **Outside contributions aren't accepted yet**: the project's ownership and licensing are still being set up for a possible paid edition, and accepting code now would complicate that.
 
 You're welcome to:
 

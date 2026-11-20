@@ -22,7 +22,7 @@ label linux         1d76db "Happens on Linux"
 label accessibility 5319e7 "Screen readers, keyboard use, contrast or zoom"
 
 # What happens next: added during triage.
-label planned      0e8a16 "On the board (docs/KANBAN.md) to be done"
+label planned      0e8a16 "Planned, to be done"
 label needs-info   d4c5f9 "Waiting for more detail from whoever reported it"
 label duplicate    cfd3d7 "Already reported in another issue"
 label not-planned  ffffff "Considered, and not something Fillsign will do"

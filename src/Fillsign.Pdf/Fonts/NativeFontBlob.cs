@@ -6,7 +6,7 @@ namespace Fillsign.Pdf.Fonts;
 /// <summary>
 /// HarfBuzz font data in native memory that Fillsign owns. HarfBuzz reads a font's tables straight from this memory
 /// for as long as the face lives; handing it managed memory risks the garbage collector moving or releasing it under
-/// HarfBuzz, which crashed text shaping (SIGBUS in hb_shape_full, see KANBAN FS-026).
+/// HarfBuzz, which crashed text shaping (SIGBUS in hb_shape_full, FS-026).
 /// </summary>
 internal static class NativeFontBlob
 {

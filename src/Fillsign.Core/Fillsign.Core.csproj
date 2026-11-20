@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Pure logic: no UI and no PDF library dependencies (see docs/PLAN.md §2). -->
+  <!-- Pure logic: no UI and no PDF library dependencies. -->
   <PropertyGroup>
     <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
     <IsAotCompatible>true</IsAotCompatible>

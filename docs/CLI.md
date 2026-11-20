@@ -1,4 +1,4 @@
-# Command line and MCP (FS-969, FS-970)
+# Command line and MCP
 
 Fillsign includes a `fillsign` command for scripts, and an MCP server so AI assistants can read and fill forms on
 this computer. Both use the same code as the app: values are checked against each field, the PDF's own fields are

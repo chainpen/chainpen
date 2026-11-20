@@ -489,9 +489,8 @@ $RECYCLE.BIN/
 # macOS
 .DS_Store
 
-# Fillsign spike output
+# Fillsign build output
 artifacts/
-spikes/**/out/
 samples/corpus/
 
 # The macOS "Icon" rule above is for Finder's hidden Icon\r files; it also matches these folders on case-insensitive disks.

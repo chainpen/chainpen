@@ -1,6 +1,6 @@
 # Fillsign working-copy format (version 1)
 
-A Fillsign **working copy** is an ordinary PDF that other readers display normally. Fillsign also stores an **editable record** inside it, so it can restore every added item when the file is reopened (FR-9). Final copies never contain the record (FR-9.4).
+A Fillsign **working copy** is an ordinary PDF that other readers display normally. Fillsign also stores an **editable record** inside it, so it can restore every added item when the file is reopened. Final copies never contain the record.
 
 Code: `src/Fillsign.Core/Session/` (`SessionStore`, `SessionJson`, `SessionRecord`).
 
@@ -30,10 +30,10 @@ X
 
 - `/FillsignSession` is a private trailer key. Other readers ignore it, and the update adds no visible object, so nothing shows in attachment panels.
 - `/Root`, `/Info`, `/ID` and `/Encrypt` are copied from the previous trailer. `/Prev` points at the previous cross-reference section (classic table or xref stream).
-- Saving again starts from the clean original, not from the last save, so the file doesn't keep growing (FR-9.8).
-- Code that writes it: `src/Fillsign.Pdf/Export/DocumentWriter.cs`. A final copy (Export) is written by the same code as a full, compact file with no record and none of the original's unused pages (FR-9.4).
+- Saving again starts from the clean original, not from the last save, so the file doesn't keep growing.
+- Code that writes it: `src/Fillsign.Pdf/Export/DocumentWriter.cs`. A final copy (Export) is written by the same code as a full, compact file with no record and none of the original's unused pages.
 
-## Detecting changes by other apps (FR-9.6)
+## Detecting changes by other apps
 
 PDFium and some other writers keep unknown trailer keys when they resave a file, so the key surviving proves nothing. On open, Fillsign checks:
 
@@ -41,7 +41,7 @@ PDFium and some other writers keep unknown trailer keys when they resave a file,
 2. Fillsign's update is the only one after those bytes, and
 3. `base.sha256` matches the first `base.length` bytes (the clean original, needed to restore clean pages).
 
-All three → **Intact**: restore. Otherwise → **ChangedElsewhere**: open the file as it is now and offer restoring only as a deliberate choice. If the record can't be read → **Damaged**: open as a normal PDF (FR-9.5).
+All three → **Intact**: restore. Otherwise → **ChangedElsewhere**: open the file as it is now and offer restoring only as a deliberate choice. If the record can't be read → **Damaged**: open as a normal PDF.
 
 ## The JSON record
 
@@ -62,15 +62,15 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
 ```
 
 - `pages` is the page list in display order. `source` is a 0-based page index in the clean original. `rotation` is the extra clockwise rotation added in Fillsign (0, 90, 180 or 270).
-- `fields` (optional, FS-950) holds values typed into the PDF's own form fields, by full field name: the text, the chosen option (a multi-select list's chosen options one per line, separated by `\n`), or for check boxes and radio buttons their on-value or `Off`. Only fields changed in Fillsign are listed; it's left out when there are none. Names are up to 1,000 characters and unique.
+- `fields` (optional) holds values typed into the PDF's own form fields, by full field name: the text, the chosen option (a multi-select list's chosen options one per line, separated by `\n`), or for check boxes and radio buttons their on-value or `Off`. Only fields changed in Fillsign are listed; it's left out when there are none. Names are up to 1,000 characters and unique.
 - Every item has `type`, `id`, `page` (a page `id`), and `x`, `y`. Coordinates are PDF points from the top-left of the page as displayed, with y pointing down.
 
 | `type` | Other properties |
 |---|---|
-| `text` | `text` (lines separated by `\n`), `fontSize` (6–72), `color` (`#rrggbb`); optional `bold` (`true`) and `align` (`centre` or `right`), left out for regular, left-aligned text (FS-952). `x`, `y` is the top-left of the first line; each line is `1.2 × fontSize` tall with its baseline at the line's top plus the Noto Sans ascent, unkerned. Aligned lines start where a shorter line leaves space within the longest line's width. Bold is the same glyphs outlined with a stroke `0.05 × fontSize` wide, so it measures like regular text |
+| `text` | `text` (lines separated by `\n`), `fontSize` (6–72), `color` (`#rrggbb`); optional `bold` (`true`) and `align` (`centre` or `right`), left out for regular, left-aligned text. `x`, `y` is the top-left of the first line; each line is `1.2 × fontSize` tall with its baseline at the line's top plus the Noto Sans ascent, unkerned. Aligned lines start where a shorter line leaves space within the longest line's width. Bold is the same glyphs outlined with a stroke `0.05 × fontSize` wide, so it measures like regular text |
 | `mark` | `kind` (`tick` or `cross`), `size` (6–72), `color` |
 | `signature` | `kind` (`signature` or `initials`), `image` (an `images` id), `width`, `height` |
-| `picture` | `image` (an `images` id), `width`, `height`. A picture pasted from another app (FS-715); readers that predate it reject the record as unknown |
+| `picture` | `image` (an `images` id), `width`, `height`. A picture pasted from another app; readers that predate it reject the record as unknown |
 | `shape` | `shape` (`rectangle`, `ellipse`, `line`, `arrow`, `highlight`, `whiteout`), `width`, `height`, `color`, `strokeWidth` (0.5–20), `flipX`, `flipY` |
 | `ink` | `width`, `height`, `color`, `strokeWidth`, `strokes`: arrays of flat `[x0, y0, x1, y1, …]` fractions (0–1) of `width` and `height` |
 
@@ -82,7 +82,7 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
 
 # Saved signatures file (version 1)
 
-Signatures and initials the person chose to keep (FR-4.5) live in `signatures.dat` in the app data folder (`~/Library/Application Support/Fillsign`, `%APPDATA%\Fillsign`, `$XDG_CONFIG_HOME/Fillsign`). It never leaves the computer, and it isn't part of any PDF.
+Signatures and initials the person chose to keep live in `signatures.dat` in the app data folder (`~/Library/Application Support/Fillsign`, `%APPDATA%\Fillsign`, `$XDG_CONFIG_HOME/Fillsign`). It never leaves the computer, and it isn't part of any PDF.
 
 Code: `src/Fillsign.App/Platform/Signatures/` (`SavedSignatureStore`, the key vaults).
 
@@ -115,5 +115,5 @@ mode 1 only:      nonce (12 bytes), tag (16 bytes), ciphertext
 ```
 
 - `kind` is `signature` or `initials`; `method` is `drawn`, `typed` or `photo`. Records with an unknown value, a bad id or size, or a PNG over 8 MB are skipped.
-- Up to 6 of each kind. Keeping a seventh drops the one with the oldest `lastUsed`, and placing a saved one updates its `lastUsed` (FR-4.6).
-- `id` is also the image id placed items refer to in a working copy, so a placed signature and its saved original share an id. Removing a saved one doesn't touch documents (FR-4.7).
+- Up to 6 of each kind. Keeping a seventh drops the one with the oldest `lastUsed`, and placing a saved one updates its `lastUsed`.
+- `id` is also the image id placed items refer to in a working copy, so a placed signature and its saved original share an id. Removing a saved one doesn't touch documents.

@@ -11,9 +11,6 @@
     <Project Path="tests/Fillsign.App.Tests/Fillsign.App.Tests.csproj" />
     <Project Path="tests/Fillsign.Cli.Tests/Fillsign.Cli.Tests.csproj" />
   </Folder>
-  <Folder Name="/spikes/">
-    <Project Path="spikes/Fillsign.ScrollSpike/Fillsign.ScrollSpike.csproj" />
-  </Folder>
   <Folder Name="/solution items/">
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />

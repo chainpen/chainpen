@@ -4,7 +4,7 @@
 #   build/package.sh <rid> <version>      e.g. build/package.sh osx-arm64 0.1.0
 #
 # Output: artifacts/releases/<rid>/ — the installer (Setup.exe / .pkg), a portable copy, and the files auto-update
-# reads (RELEASES, *.nupkg). macOS builds get only an ad-hoc signature (PLAN §6: no paid signing yet). Run on the OS the
+# reads (RELEASES, *.nupkg). macOS builds get only an ad-hoc signature (no paid signing yet). Run on the OS the
 # rid is for: Velopack packs Windows on Windows, macOS on macOS, Linux on Linux.
 set -euo pipefail
 

@@ -134,8 +134,8 @@ public sealed partial class AppUpdates : ObservableObject
 
     /// <summary>
     /// Names a folder of packed releases to update from instead of GitHub, to try an update from one local build to
-    /// the next before anything is published (docs/RELEASE-CHECKS.md). Only someone who can already start Fillsign
-    /// with their own environment can set it.
+    /// the next before anything is published. Only someone who can already start Fillsign with their own environment
+    /// can set it.
     /// </summary>
     public const string TestFolderVariable = "FILLSIGN_UPDATE_FOLDER";
 
