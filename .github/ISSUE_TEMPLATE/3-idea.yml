@@ -1,0 +1,26 @@
+name: An idea or a missing feature
+description: Something Fillsign could do, or do better.
+labels: [idea, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or the form, rather than the feature. It helps to know what gets in the way today.
+      placeholder: I fill in the same timesheet every week and have to type my name and employee number each time.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: If you have an idea of how Fillsign could do it, describe it here.
+    validations:
+      required: false
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How do you manage today?
+      description: Another app, a workaround, or not at all.
+    validations:
+      required: false

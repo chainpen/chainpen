@@ -1,0 +1,25 @@
+# Outside contributions aren't accepted yet (CONTRIBUTING.md, decision FS-009), so pull requests from anyone without
+# write access are closed with a pointer to issues (FS-901). Delete this workflow when contributions open.
+#
+# pull_request_target runs with this repository's token, so this job must never check out or run the pull
+# request's code: it only reads who opened it and closes it.
+name: Outside pull requests
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close:
+    if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close with a note
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr close "$PR" --comment "Thank you for this. Fillsign doesn't accept outside contributions yet (see CONTRIBUTING.md), so this pull request is closed without its code being read. To report a problem or suggest a change, please open an issue: https://github.com/fillsign/fillsign/issues/new/choose"

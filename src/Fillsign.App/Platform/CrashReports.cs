@@ -17,6 +17,13 @@ internal static class CrashReports
     /// <summary>Where reports go; GitHub opens a new issue form with the title and text filled in.</summary>
     public const string IssueUrl = "https://github.com/fillsign/fillsign/issues/new";
 
+    /// <summary>
+    /// The crash report form in .github/ISSUE_TEMPLATE, and the id of its field the report goes in. The form adds the
+    /// labels; blank issues are turned off, so a link without a template would land on the template chooser.
+    /// </summary>
+    private const string IssueTemplate = "4-crash.yml";
+    private const string ReportField = "report";
+
     /// <summary>Browsers and GitHub cope with links up to about 8,000 characters; the report is cut to fit.</summary>
     private const int MaxReportLength = 6_000;
 
@@ -94,7 +101,7 @@ internal static class CrashReports
     {
         ArgumentNullException.ThrowIfNull(report);
         string body = report.Length > MaxReportLength ? report[..MaxReportLength] + "\n…" : report;
-        return new Uri($"{IssueUrl}?title={Uri.EscapeDataString("Crash report")}&labels=crash&body={Uri.EscapeDataString(body)}");
+        return new Uri($"{IssueUrl}?template={IssueTemplate}&title={Uri.EscapeDataString("Crash report")}&{ReportField}={Uri.EscapeDataString(body)}");
     }
 
     /// <summary>Deletes every waiting report (after it's been opened to send, or the person said no).</summary>

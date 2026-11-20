@@ -1,0 +1,25 @@
+# Fillsign opens this form pre-filled (CrashReports.IssueLink): the "report" field's id is part of that link.
+name: Crash report
+description: Fillsign stopped unexpectedly. Fillsign fills this in when you choose Review and send on its start screen.
+labels: [crash, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The report holds the Fillsign version, your system, and the names of the code that failed. It never holds
+        your documents, signatures or file names. Read it below before you submit.
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: Filled in by Fillsign.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: doing
+    attributes:
+      label: What were you doing when it stopped? (optional)
+      description: For example "exporting a 40-page scan" or "dragging a signature to page 2".
+    validations:
+      required: false

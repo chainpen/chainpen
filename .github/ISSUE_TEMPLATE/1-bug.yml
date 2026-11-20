@@ -1,0 +1,59 @@
+name: Something doesn't work
+description: Fillsign did something wrong, or didn't do what you expected.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Issues are public, so **please don't attach your own documents** or anything with
+        personal details in it. If a particular PDF causes the problem, use "A PDF doesn't open or look right" instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, and what Fillsign did.
+      placeholder: I ticked a box on page 2 and exported a final copy. The tick was missing from the exported file.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen again
+      description: If you can make it happen again, list the steps.
+      placeholder: |
+        1. Open a form
+        2. Choose Tick and click a box on page 2
+        3. Export
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Fillsign version
+      description: In About Fillsign (the Fillsign menu on a Mac, the Help menu on Windows and Linux).
+      placeholder: 0.9.0
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Computer
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: system-version
+    attributes:
+      label: System version
+      description: For example Windows 11 24H2, macOS 15.2 on Apple silicon, or Ubuntu 24.04 on Wayland.
+    validations:
+      required: false

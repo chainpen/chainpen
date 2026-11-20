@@ -44,7 +44,7 @@ public sealed class CrashReportTests
             Assert.Single(CrashReports.Pending());
 
             Uri link = Assert.IsType<Uri>(CrashReports.IssueLinkForNewest());
-            Assert.StartsWith(CrashReports.IssueUrl + "?title=Crash%20report", link.AbsoluteUri, StringComparison.Ordinal);
+            Assert.StartsWith(CrashReports.IssueUrl + "?template=4-crash.yml&title=Crash%20report&report=", link.AbsoluteUri, StringComparison.Ordinal);
             Assert.Contains(Uri.EscapeDataString("System.InvalidOperationException"), link.AbsoluteUri, StringComparison.Ordinal);
             Assert.True(CrashReports.IssueLink(new string('x', 50_000)).AbsoluteUri.Length < 20_000);
 
