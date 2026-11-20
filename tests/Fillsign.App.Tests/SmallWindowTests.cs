@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
 using Fillsign.App.ViewModels;
@@ -89,6 +90,49 @@ public sealed class SmallWindowTests
                 }
             }
 
+            Assert.True(problems.Count == 0, string.Join("; ", problems));
+        }
+        finally
+        {
+            window.CloseWithoutAsking();
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Selection_hint_trims_inside_the_window_instead_of_running_off_it()
+    {
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1024, Height = 720 };
+        window.Show();
+        try
+        {
+            await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
+            await Pump(() => window.DataContext is MainWindowViewModel { Editor: { IsLoading: false } });
+            EditorViewModel editor = Editor(window);
+            editor.SelectToolCommand.Execute(EditorTool.Text);
+            editor.PointerPressed(0, new PagePoint(400, 600), isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+            editor.PointerReleased(new PagePoint(400, 600));
+            await Pump(() => editor.TypingItem is not null);
+            window.KeyTextInput("Jordan Lee");
+            editor.FinishTyping();
+            editor.SelectToolCommand.Execute(EditorTool.Select);
+            editor.SelectAllOnCurrentPage();
+            await Pump(() => editor.ShowsSelectionActions);
+
+            TextBlock hint = window.GetVisualDescendants().OfType<TextBlock>().First(block => block.Name == "OptionsHintText");
+            Assert.StartsWith("Double-click to edit", hint.Text, StringComparison.Ordinal);
+            var problems = new List<string>();
+            for (double width = 1024; width <= 1600; width += 64)
+            {
+                window.Width = width;
+                await Pump(() => true);
+                double right = hint.TranslatePoint(new Point(hint.Bounds.Width, 0), window)!.Value.X;
+                if (right > width + 0.5)
+                {
+                    problems.Add($"{width}px: the hint ends at {right:0}");
+                }
+            }
+
+            Save(window, "selection-hint-1600");
             Assert.True(problems.Count == 0, string.Join("; ", problems));
         }
         finally

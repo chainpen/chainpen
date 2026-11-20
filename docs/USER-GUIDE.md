@@ -30,8 +30,6 @@ With **Select**, click anything you added to move, resize, recolour or delete it
 
 **Paste** (⌘V / Ctrl+V) brings in text or a picture copied from another app. A picture lands in the middle of the page in view; drag a corner to size it.
 
-**Every page**: select your initials (or anything else) and choose **Every page** in the bar above the page to put a copy in the same corner of every other page. Undo removes them all at once.
-
 ## Signatures and initials
 
 **Sign** opens the signature window. Switch between **Signature** and **Initials** at the top, then:

@@ -55,7 +55,7 @@ public sealed partial class EditorViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ContextMode), nameof(SelectionLabel), nameof(SelectionHint), nameof(OptionsHaveColour), nameof(OptionsHaveSize))]
     [NotifyPropertyChangedFor(nameof(SizeLabel), nameof(SizeTip), nameof(CurrentColour), nameof(SelectedIds))]
-    [NotifyCanExecuteChangedFor(nameof(DeleteSelectionCommand), nameof(DuplicateSelectionCommand), nameof(AddToEveryPageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectionCommand), nameof(DuplicateSelectionCommand))]
     public partial Selection Selection { get; private set; } = Selection.None;
 
     /// <summary>Colour for new items, and the last colour chosen (FR-5.5). Blue by default (FR-3.9).</summary>
@@ -185,7 +185,7 @@ public sealed partial class EditorViewModel
             var items = SelectedItems().ToList();
             return items switch
             {
-                [TextItem] => "Double-click to edit · drag to move · drag a corner to change the size · arrow keys nudge",
+                [TextItem] => "Double-click to edit · drag to move · drag a corner to resize · arrow keys nudge",
                 [SignatureItem or InkItem or PictureItem] => "Drag to move · drag a corner to resize (keeps its shape) · arrow keys nudge",
                 [_] => "Drag to move · drag a corner to resize · arrow keys nudge",
                 _ => "Drag to move them together · Shift-click to add or remove · arrow keys nudge",
@@ -730,28 +730,6 @@ public sealed partial class EditorViewModel
         Paste(SelectedItems().First().Page);
     }
 
-    /// <summary>FS-957: puts a copy of the selection on every other page, at the same place from the nearest edges.</summary>
-    [RelayCommand(CanExecute = nameof(CanAddToEveryPage))]
-    private void AddToEveryPage()
-    {
-        var items = SelectedItems().ToList();
-        if (items.Count == 0 || State.Pages.Length < 2)
-        {
-            return;
-        }
-
-        Change(ItemEdits.CopyToEveryPage(State, SelectedIds, PageSizeOf, Measurer, out _));
-        int pages = State.Pages.Length - 1;
-        string what = items.Count == 1 ? ItemName(items[0]) : $"{items.Count} items";
-        Notice = $"{what} added to {pages} more {(pages == 1 ? "page" : "pages")}";
-        Changed();
-    }
-
-    /// <summary>The document has more than one page, so "Every page" means something.</summary>
-    public bool IsSeveralPages => State.Pages.Length > 1;
-
-    private bool CanAddToEveryPage() => !Selection.IsEmpty && State.Pages.Length > 1;
-
     private bool HasSelection() => !Selection.IsEmpty;
 
     public void Copy()
@@ -1133,11 +1111,9 @@ public sealed partial class EditorViewModel
         OnPropertyChanged(nameof(CurrentColour));
         OnPropertyChanged(nameof(OptionsHaveColour));
         OnPropertyChanged(nameof(OptionsHaveSize));
-        OnPropertyChanged(nameof(IsSeveralPages));
         OnPropertyChanged(nameof(FieldAnnouncement));
         OnPropertyChanged(nameof(ContextHint));
         OnTextStyleChanged();
-        AddToEveryPageCommand.NotifyCanExecuteChanged();
         ItemsChanged?.Invoke();
     }
 

@@ -368,6 +368,8 @@
                             <Border Classes="kbd"><TextBlock Text="Esc" /></Border>
                         </StackPanel>
                     </Button>
+                    <!-- The hint takes whatever width the controls leave, so it trims with an ellipsis instead of running off the edge. -->
+                    <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                         <!-- A fixed width for the tool names (Text, Tick, Cross … Highlight), so switching tools doesn't shift the controls. -->
                         <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding OptionsTitle}" MinWidth="72" />
@@ -410,13 +412,6 @@
                                     <TextBlock Text="Duplicate" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <Button Classes="chip" Command="{Binding AddToEveryPageCommand}" IsVisible="{Binding IsSeveralPages}"
-                                    ToolTip.Tip="Put a copy in the same place on every other page, for initials or a date">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <c:StrokeIcon Data="{StaticResource IconPages}" />
-                                    <TextBlock Text="Every page" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
                             <Button Classes="chip" Command="{Binding DeleteSelectionCommand}" ToolTip.Tip="Delete">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <c:StrokeIcon Data="{StaticResource IconDelete}" />
@@ -424,9 +419,10 @@
                                 </StackPanel>
                             </Button>
                         </StackPanel>
-                        <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0" Text="{Binding OptionsHint}"
-                                   TextTrimming="CharacterEllipsis" />
                     </StackPanel>
+                    <TextBlock x:Name="OptionsHintText" Grid.Column="1" Classes="muted" FontSize="13" VerticalAlignment="Center" Margin="20,0,0,0"
+                               Text="{Binding OptionsHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding OptionsHint}" />
+                    </Grid>
                 </DockPanel>
 
                 <!-- Placing a signature (E4): one instruction and a way out. -->
