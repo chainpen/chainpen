@@ -1,14 +1,15 @@
 name: Release
 
-# Builds installers for every platform and publishes them on GitHub Releases (FS-800–803), where installed copies
-# find their updates (FS-804). Start it by pushing a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+# Builds installers for every platform and puts them in a draft release on GitHub Releases (FS-800–803). Nothing is
+# published until someone reviews the draft and chooses Publish release; installed copies then find it as an update
+# (FS-804). Start it by pushing a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`, or run it by hand.
 on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       version:
-        description: Version to build, e.g. 0.1.0 (a draft release is made; nothing is published)
+        description: Version to build, e.g. 0.1.0
         required: true
 
 permissions:
@@ -28,6 +29,8 @@ jobs:
           - { os: ubuntu-latest, rid: linux-x64 }
           - { os: ubuntu-24.04-arm, rid: linux-arm64 }
     runs-on: ${{ matrix.os }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,12 +38,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The typed-in version reaches the shell through the environment, never pasted into the script, and must look
+      # like a version before anything uses it.
       - name: Version
         id: version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          version="${{ github.event.inputs.version }}"
-          if [[ -z "$version" ]]; then version="${GITHUB_REF_NAME#v}"; fi
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "Not a version: $version" >&2
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # Tests run where the package's own architecture can run them; win-arm64 is built on an x64 runner.
@@ -53,7 +63,10 @@ jobs:
 
       - name: Package
         shell: bash
-        run: ./build/package.sh ${{ matrix.rid }} ${{ steps.version.outputs.version }}
+        env:
+          RID: ${{ matrix.rid }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./build/package.sh "$RID" "$VERSION"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -73,13 +86,13 @@ jobs:
           pattern: release-*
           merge-multiple: true
 
-      # Each platform is its own Velopack channel, so their update files never clash. Tag pushes publish; a manual run
-      # makes a draft to look over first.
-      - name: Create the release
+      # Each platform is its own Velopack channel, so their update files never clash. Always a draft: someone reviews
+      # the files and notes on the release page, then publishes it. A hand-run draft points its tag at this commit.
+      - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.event.inputs.version) }}
-          DRAFT: ${{ github.ref_type == 'tag' && '' || '--draft' }}
+          VERSION: ${{ needs.package.outputs.version }}
         run: |
-          gh release create "$TAG" releases/* --repo "$GITHUB_REPOSITORY" --title "Fillsign ${TAG#v}" \
-            --notes-file <(echo "See docs/INSTALL.md for first-run steps on unsigned builds.") $DRAFT
+          gh release create "v$VERSION" releases/* --repo "$GITHUB_REPOSITORY" --title "Fillsign $VERSION" \
+            --target "$GITHUB_SHA" --draft \
+            --notes-file <(echo "See docs/INSTALL.md for first-run steps on unsigned builds.")

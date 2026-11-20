@@ -1,9 +1,13 @@
 name: CI
 
+# Tests all five platforms on pushes to main and pull requests into main; pushes to other branches don't run it. It can
+# also be run by hand (Actions → CI → Run workflow).
 on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read

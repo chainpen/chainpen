@@ -21,7 +21,7 @@ dotnet run --project src/Fillsign.App
 
 ## Release builds
 
-`build/package.sh <rid> <version>` publishes a self-contained build and packs it with Velopack into `artifacts/releases/<rid>/` (installer, portable copy and update feed). Run it on the matching OS. Pushing a `v*.*.*` tag runs `.github/workflows/release.yml`, which builds all six platforms and publishes a GitHub release that installed copies update from. The app icon is drawn by `build/icon/make-icon.py`.
+`build/package.sh <rid> <version>` publishes a self-contained build and packs it with Velopack into `artifacts/releases/<rid>/` (installer, portable copy and update feed). Run it on the matching OS. Pushing a `v*.*.*` tag (or running `.github/workflows/release.yml` by hand) tests and builds all six platforms and makes a **draft** GitHub release. Review it on the Releases page and choose Publish release; installed copies only update from published releases. Pushes to `main` and pull requests into it are tested on all five platforms. The app icon is drawn by `build/icon/make-icon.py`.
 
 ## Layout
 
