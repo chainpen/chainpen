@@ -25,7 +25,7 @@ dotnet publish "$root/src/Fillsign.App/Fillsign.App.csproj" -c Release -r "$rid"
 dotnet publish "$root/src/Fillsign.Cli/Fillsign.Cli.csproj" -c Release -r "$rid" --self-contained \
   -p:Version="$version" -o "$publish"
 
-# Optional release notes (markdown bullet points), shown in the app's "Update ready" panel.
+# Optional release notes: the path to a markdown file of bullet points, shown in the app's "Update ready" panel.
 notes=()
 if [[ -n "${RELEASE_NOTES:-}" ]]; then notes=(--releaseNotes "$RELEASE_NOTES"); fi
 

@@ -123,7 +123,7 @@ public sealed partial class AppUpdates : ObservableObject
 
         try
         {
-            return new UpdateManager(new GithubSource(ReleasesUrl, accessToken: null, prerelease: false, downloader: null));
+            return new UpdateManager(CreateSource(Environment.GetEnvironmentVariable(TestFolderVariable)));
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or NotSupportedException)
         {
@@ -131,6 +131,19 @@ public sealed partial class AppUpdates : ObservableObject
             return null;
         }
     }
+
+    /// <summary>
+    /// Names a folder of packed releases to update from instead of GitHub, to try an update from one local build to
+    /// the next before anything is published (docs/RELEASE-CHECKS.md). Only someone who can already start Fillsign
+    /// with their own environment can set it.
+    /// </summary>
+    public const string TestFolderVariable = "FILLSIGN_UPDATE_FOLDER";
+
+    /// <summary>GitHub Releases, or the folder <see cref="TestFolderVariable"/> names when it's set.</summary>
+    internal static IUpdateSource CreateSource(string? testFolder) =>
+        string.IsNullOrWhiteSpace(testFolder)
+            ? new GithubSource(ReleasesUrl, accessToken: null, prerelease: false, downloader: null)
+            : new SimpleFileSource(new DirectoryInfo(testFolder));
 
     /// <summary>What to tell someone who chose Check for Updates.</summary>
     public static (string Title, string Message) Describe(UpdateCheck result, string currentVersion, UpdateReady? ready) => result switch

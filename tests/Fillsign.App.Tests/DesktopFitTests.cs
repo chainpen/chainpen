@@ -281,6 +281,14 @@ public sealed class DesktopFitTests : IDisposable
         Assert.Equal("Couldn’t check for updates", AppUpdates.Describe(UpdateCheck.Failed, "1.2.0", null).Title);
     }
 
+    [Fact]
+    public void Updates_come_from_GitHub_unless_a_test_folder_is_named()
+    {
+        Assert.IsType<Velopack.Sources.GithubSource>(AppUpdates.CreateSource(null));
+        Assert.IsType<Velopack.Sources.GithubSource>(AppUpdates.CreateSource(" "));
+        Assert.IsType<Velopack.Sources.SimpleFileSource>(AppUpdates.CreateSource(Path.GetTempPath()));
+    }
+
     [AvaloniaFact]
     public async Task Check_for_updates_from_source_explains_this_copy_cant_update()
     {

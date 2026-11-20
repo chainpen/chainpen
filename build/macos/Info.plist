@@ -8,7 +8,8 @@
   <key>CFBundleDisplayName</key><string>Fillsign</string>
   <key>CFBundleIdentifier</key><string>app.fillsign.desktop</string>
   <key>CFBundleExecutable</key><string>Fillsign.App</string>
-  <key>CFBundleIconFile</key><string>Fillsign.icns</string>
+  <!-- The name of the file package.sh passes to vpk --icon, which copies it in as it is; the lookup is case-sensitive. -->
+  <key>CFBundleIconFile</key><string>fillsign.icns</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>@VERSION@</string>
   <key>CFBundleVersion</key><string>@VERSION@</string>
