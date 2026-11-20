@@ -38,7 +38,7 @@ public static class DocumentWriter
         // Before drawing, so a whiteout's redaction also covers a filled field (FS-950).
         pdf.FillFormFields(document.Fields);
         Draw(pdf, sourcePages, document, redactUnderWhiteout: true);
-        return new WrittenDocument(pdf.SaveCopy(removeSecurity: true), haveFormsMoved);
+        return new WrittenDocument(PdfCompactor.Compact(pdf.SaveCopy(removeSecurity: true)), haveFormsMoved);
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ public static class DocumentWriter
     {
         ArgumentNullException.ThrowIfNull(finalCopy);
         using PdfiumDocument pdf = PdfiumDocument.Open(finalCopy);
-        return pdf.LockFormFields() > 0 ? pdf.SaveCopy(removeSecurity: true) : finalCopy;
+        return pdf.LockFormFields() > 0 ? PdfCompactor.Compact(pdf.SaveCopy(removeSecurity: true)) : finalCopy;
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public static class DocumentWriter
 
         // The working copy keeps what's under whiteout, so the whiteout can still be moved or deleted (FR-9.2).
         Draw(pdf, sourcePages, document, redactUnderWhiteout: false);
-        byte[] finished = pdf.SaveIncremental();
+        byte[] finished = PdfCompactor.CompactUpdate(pdf.SaveIncremental(), cleanSource.Length);
         if (!ByteStamp.Of(cleanSource).MatchesPrefixOf(finished))
         {
             throw new InvalidOperationException("PDFium didn't keep the clean original at the start of the working copy.");

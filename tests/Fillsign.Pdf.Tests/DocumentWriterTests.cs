@@ -43,7 +43,7 @@ public sealed class DocumentWriterTests
         }
         Assert.Equal(1, result.GetPageInfo(2).Rotation);
         Assert.Equal(0, result.GetPageInfo(1).Rotation);
-        Assert.DoesNotContain(SessionStore.TrailerKey, Encoding.Latin1.GetString(written.Pdf), StringComparison.Ordinal);
+        Assert.DoesNotContain(SessionStore.TrailerKey, TestFiles.ReadableText(written.Pdf), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -162,7 +162,7 @@ public sealed class DocumentWriterTests
         byte[] final = DocumentWriter.FinalCopy(source, pages, state.WithItems([text])).Pdf;
 
         // ISO 32000 §9.6.4: an embedded subset is named TAG+Name, the tag six capital letters.
-        Assert.Matches(@"/BaseFont\s*/[A-Z]{6}\+NotoSans", Encoding.Latin1.GetString(final));
+        Assert.Matches(@"/BaseFont\s*/[A-Z]{6}\+NotoSans", TestFiles.ReadableText(final));
 
         using SKTypeface? cjk = SKFontManager.Default.MatchCharacter('契');
         Assert.SkipWhen(cjk is null, "No font on this computer has Chinese characters.");
@@ -184,7 +184,7 @@ public sealed class DocumentWriterTests
         var blackUnderSignature = new ShapeItem(ItemId.New(), page, 100, 500, ShapeKind.Rectangle, 100, 50, InkColor.Black, 50, false, false);
         WrittenDocument written = DocumentWriter.FinalCopy(source, pages, state.WithItems([text, highlight, blackUnderSignature, signature]));
 
-        string raw = Encoding.Latin1.GetString(written.Pdf);
+        string raw = TestFiles.ReadableText(written.Pdf);
         Assert.Matches(@"/BM\s*/Multiply", raw);
         Assert.Contains("/SMask", raw, StringComparison.Ordinal);
 
@@ -209,6 +209,10 @@ public sealed class DocumentWriterTests
 
         byte[] working = DocumentWriter.WorkingCopy(source, pages, document).Pdf;
         Assert.True(source.AsSpan().SequenceEqual(working.AsSpan(0, source.Length)), "the clean original comes first, byte for byte");
+
+        // The updates use cross-reference streams like the compact original: a classic table pointing back to a stream
+        // is a mix macOS PDFKit won't open.
+        Assert.DoesNotContain("trailer", Encoding.Latin1.GetString(working, source.Length, working.Length - source.Length), StringComparison.Ordinal);
 
         // Other readers see the finished pages.
         using (PdfiumDocument asOthersSeeIt = PdfiumDocument.Open(working))
@@ -238,7 +242,7 @@ public sealed class DocumentWriterTests
         DocumentState onlyB = state.WithPages([state.Pages[1]]);
         byte[] final = DocumentWriter.FinalCopy(source, pages, onlyB).Pdf;
 
-        string raw = Encoding.Latin1.GetString(final);
+        string raw = TestFiles.ReadableText(final);
         Assert.DoesNotContain("FillsignSession", raw, StringComparison.Ordinal);
         using PdfiumDocument result = PdfiumDocument.Open(final);
         Assert.Equal(1, result.PageCount);
@@ -257,7 +261,7 @@ public sealed class DocumentWriterTests
         WrittenDocument written = DocumentWriter.FinalCopy(source, pages, reversed);
 
         Assert.False(written.HaveFormsMoved);
-        Assert.Contains("/AcroForm", Encoding.Latin1.GetString(written.Pdf), StringComparison.Ordinal);
+        Assert.Contains("/AcroForm", TestFiles.ReadableText(written.Pdf), StringComparison.Ordinal);
         using PdfiumDocument before = PdfiumDocument.Open(source);
         using PdfiumDocument after = PdfiumDocument.Open(written.Pdf);
         Assert.Equal(before.GetAnnotationCount(pages.Length - 1), after.GetAnnotationCount(0));
@@ -266,7 +270,8 @@ public sealed class DocumentWriterTests
     internal static (byte[] Clean, SourcePage[] Pages) Source(string name)
     {
         using PdfiumDocument original = PdfiumDocument.Open(File.ReadAllBytes(TestFiles.Sample(name)));
-        byte[] clean = original.SaveCopy(removeSecurity: true);
+        // As the app and the command hold it (FS-967).
+        byte[] clean = PdfCompactor.Compact(original.SaveCopy(removeSecurity: true));
         using PdfiumDocument reopened = PdfiumDocument.Open(clean);
         return (clean, [.. Enumerable.Range(0, reopened.PageCount).Select(i => reopened.GetPageInfo(i).ToSourcePage())]);
     }

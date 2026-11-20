@@ -274,7 +274,7 @@ public sealed class FormFile : IDisposable
     public void WriteWorkingCopy(string outputPath, bool overwrite) =>
         Write(outputPath, DocumentWriter.WorkingCopy(CleanSource(), _pages, State).Pdf, overwrite);
 
-    private byte[] CleanSource() => _source.Pdf.SaveCopy(removeSecurity: true);
+    private byte[] CleanSource() => PdfCompactor.Compact(_source.Pdf.SaveCopy(removeSecurity: true));
 
     /// <summary>Writes through a temporary file beside the target, so a failed write never leaves half a PDF.</summary>
     private static void Write(string outputPath, byte[] pdf, bool overwrite)

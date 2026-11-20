@@ -49,7 +49,8 @@ public static class SessionStore
     public static byte[] Append(ReadOnlySpan<byte> pdf, ByteStamp original, int sourcePageCount, DocumentState document)
     {
         int startXref = FindStartXref(pdf) ?? throw new SessionFormatException("The PDF has no startxref.");
-        Dictionary<string, string> trailer = ReadSection(pdf, startXref).Trailer;
+        Section previous = ReadSection(pdf, startXref);
+        Dictionary<string, string> trailer = previous.Trailer;
         if (!PdfSyntax.TryParseInteger(trailer.GetValueOrDefault("/Size"), out long size) || size < 1 || size >= int.MaxValue)
         {
             throw new SessionFormatException("The trailer has no usable /Size.");
@@ -74,22 +75,37 @@ public static class SessionStore
         Write("\nendstream\nendobj\n");
 
         long xrefOffset = output.Position;
-        var newTrailer = new StringBuilder();
-        newTrailer.Append(Invariant($"<</Size {size + 1} /Root {root}"));
+        var kept = new StringBuilder();
         foreach (string key in (string[])["/Info", "/ID", "/Encrypt"])
         {
             if (trailer.TryGetValue(key, out string? value))
             {
-                newTrailer.Append(Invariant($" {key} {value}"));
+                kept.Append(Invariant($" {key} {value}"));
             }
         }
 
-        newTrailer.Append(Invariant($" /Prev {startXref} {TrailerKey} {size} 0 R>>"));
+        if (!previous.IsStream)
+        {
+            // Each cross-reference entry is exactly 20 bytes, including its two-byte line end.
+            Write(Invariant($"xref\n{size} 1\n{objectOffset:D10} 00000 n\r\ntrailer\n<</Size {size + 1} /Root {root}{kept} /Prev {startXref} {TrailerKey} {size} 0 R>>\nstartxref\n{xrefOffset}\n%%EOF\n"));
+            return output.ToArray();
+        }
 
-        // Each cross-reference entry is exactly 20 bytes, including its two-byte line end.
-        Write(Invariant($"xref\n{size} 1\n{objectOffset:D10} 00000 n\r\ntrailer\n{newTrailer}\nstartxref\n{xrefOffset}\n%%EOF\n"));
+        // Over a cross-reference stream the update needs one too: a classic table can't point back to a stream, and
+        // stricter readers (macOS PDFKit) reject the file. Rows of type (1), 4-byte offset, 2-byte generation.
+        if (xrefOffset > uint.MaxValue)
+        {
+            throw new SessionFormatException("The file is too large for the record's cross-reference stream.");
+        }
+
+        byte[] rows = [1, .. BigEndian((uint)objectOffset), 0, 0, 1, .. BigEndian((uint)xrefOffset), 0, 0];
+        Write(Invariant($"{size + 1} 0 obj\n<</Type/XRef/Size {size + 2} /W[1 4 2] /Index[{size} 2] /Root {root}{kept} /Prev {startXref} {TrailerKey} {size} 0 R/Length {rows.Length}>>\nstream\n"));
+        output.Write(rows);
+        Write(Invariant($"\nendstream\nendobj\nstartxref\n{xrefOffset}\n%%EOF\n"));
         return output.ToArray();
     }
+
+    private static byte[] BigEndian(uint value) => [(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value];
 
     /// <summary>Looks for a Fillsign record and checks whether the file is still as Fillsign saved it.</summary>
     public static SessionLookup Find(ReadOnlySpan<byte> pdf)
@@ -199,14 +215,14 @@ public static class SessionStore
                 }
             }
 
-            return new Section(PdfSyntax.ReadDictionary(pdf, ref pos), offsets);
+            return new Section(PdfSyntax.ReadDictionary(pdf, ref pos), offsets, IsStream: false);
         }
 
         // An xref stream: "N G obj <<…>> stream". Only its dictionary is needed.
         PdfSyntax.ReadInteger(pdf, ref pos);
         PdfSyntax.ReadInteger(pdf, ref pos);
         PdfSyntax.ExpectKeyword(pdf, ref pos, "obj"u8);
-        return new Section(PdfSyntax.ReadDictionary(pdf, ref pos), offsets);
+        return new Section(PdfSyntax.ReadDictionary(pdf, ref pos), offsets, IsStream: true);
     }
 
     /// <summary>Fallback when the object isn't in the last table: the last "N 0 obj" in the file.</summary>
@@ -322,5 +338,5 @@ public static class SessionStore
 
     private static string Invariant(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);
 
-    private sealed record Section(Dictionary<string, string> Trailer, Dictionary<int, int> Offsets);
+    private sealed record Section(Dictionary<string, string> Trailer, Dictionary<int, int> Offsets, bool IsStream);
 }

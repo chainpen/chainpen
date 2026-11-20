@@ -112,7 +112,7 @@ public sealed class WhiteoutRedactionTests
 
         // The only typed text is covered, so no font is embedded at all: a font would list the digits it was made for.
         byte[] final = DocumentWriter.FinalCopy(source, pages, document).Pdf;
-        Assert.DoesNotContain("/FontFile2", System.Text.Encoding.Latin1.GetString(final), StringComparison.Ordinal);
+        Assert.DoesNotContain("/FontFile2", TestFiles.ReadableText(final), StringComparison.Ordinal);
 
         // Visible text still gets a real, searchable font.
         var visible = new TextItem(ItemId.New(), page, 100, 600, "Visible", 20, InkColor.Black);

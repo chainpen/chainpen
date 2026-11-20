@@ -49,6 +49,35 @@ public sealed class SessionStoreTests
     }
 
     [Fact]
+    public void Over_a_cross_reference_stream_the_record_gets_one_too()
+    {
+        byte[] original = PdfWithCrossReferenceStream();
+        byte[] saved = SessionStore.Append(original, ByteStamp.Of(original), 4, s_document);
+
+        // A classic table after a stream is a mix stricter readers (macOS PDFKit) reject.
+        string tail = Encoding.Latin1.GetString(saved[original.Length..]);
+        Assert.DoesNotContain("trailer", tail, StringComparison.Ordinal);
+        Assert.Contains("/Type/XRef/Size 6 /W[1 4 2] /Index[4 2] /Root 1 0 R", tail, StringComparison.Ordinal);
+        Assert.Contains("/Prev 100 /FillsignSession 4 0 R", tail, StringComparison.Ordinal);
+
+        SessionLookup lookup = SessionStore.Find(saved);
+        Assert.Equal(SessionStatus.Intact, lookup.Status);
+        Assert.Equal(s_document, lookup.Record!.Document);
+        Assert.Equal(original.Length, SessionStore.WithoutRecord(saved).Length);
+    }
+
+    /// <summary>Objects 1–2 and a cross-reference stream (object 3) at offset 100, with uncompressed rows.</summary>
+    private static byte[] PdfWithCrossReferenceStream()
+    {
+        byte[] head = "%PDF-1.5\n1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n2 0 obj\n<</Type/Pages/Kids[]/Count 0>>\nendobj\n"u8.ToArray();
+        Assert.Equal(100, head.Length);
+        byte[] rows = [0, 0, 0, 0, 0, 255, 255, 1, 0, 0, 0, 9, 0, 0, 1, 0, 0, 0, 54, 0, 0, 1, 0, 0, 0, 100, 0, 0];
+        string xref = $"3 0 obj\n<</Type/XRef/Size 4/W[1 4 2]/Root 1 0 R/Length {rows.Length}>>\nstream\n";
+        byte[] end = Encoding.ASCII.GetBytes("\nendstream\nendobj\nstartxref\n100\n%%EOF\n");
+        return [.. head, .. Encoding.ASCII.GetBytes(xref), .. rows, .. end];
+    }
+
+    [Fact]
     public void A_change_by_another_app_is_detected()
     {
         byte[] saved = SavedWorkingCopy(out byte[] original);

@@ -464,7 +464,11 @@ public sealed partial class EditorViewModel
         "This document’s pages couldn’t be reordered in place, so they were copied in their new order. Fillable fields and links may not work in the saved file.";
 
     /// <summary>The clean source: every opened and added page, unencrypted, with nothing drawn in.</summary>
-    private byte[] CleanSource() => Source.Pdf.SaveCopy(removeSecurity: true);
+    /// <summary>
+    /// The document as Fillsign holds it, compacted (FS-967): the working copy is this plus an update, so it starts as
+    /// small as the original rather than as PDFium writes it.
+    /// </summary>
+    private byte[] CleanSource() => PdfCompactor.Compact(Source.Pdf.SaveCopy(removeSecurity: true));
 
     private SourcePage[] SourcePages()
     {
