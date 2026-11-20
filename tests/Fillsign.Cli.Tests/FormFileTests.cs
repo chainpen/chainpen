@@ -120,6 +120,48 @@ public sealed class FormFileTests : IDisposable
         Assert.Equal(1, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--out", output, "--set", "Name=Again"]));
         Assert.Equal(2, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--set", "Name=x"]));
         Assert.Equal(2, await Program.Main(["frobnicate"]));
+
+        // A values "file" that's a folder can't be read: an error and exit code 1, not a crash.
+        Assert.Equal(1, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--out", Path.Combine(_folder, "other.pdf"), "--values", _folder]));
+    }
+
+    [Fact]
+    public async Task The_mcp_server_only_reads_and_writes_local_pdf_files()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        var server = new McpServer(TextReader.Null, TextWriter.Null, TextWriter.Null);
+        async Task<string> Call(string tool, JsonObject arguments)
+        {
+            JsonObject? reply = await server.HandleAsync(new JsonObject
+            {
+                ["jsonrpc"] = "2.0",
+                ["id"] = 1,
+                ["method"] = "tools/call",
+                ["params"] = new JsonObject { ["name"] = tool, ["arguments"] = arguments },
+            }.ToJsonString(), token);
+            Assert.True(reply!["result"]!["isError"]!.GetValue<bool>(), tool);
+            return reply["result"]!["content"]![0]!["text"]!.GetValue<string>();
+        }
+
+        // A network share: opening one hands the person's sign-in to whoever runs it, and writing one sends the form away.
+        string share = OperatingSystem.IsWindows() ? @"\\server\share\form.pdf" : "//server/share/form.pdf";
+        Assert.Contains("on this computer", await Call("document_info", new JsonObject { ["path"] = share }), StringComparison.Ordinal);
+
+        // Only a .pdf is written, so a filled form can't replace some other kind of file.
+        string notPdf = Path.Combine(_folder, "notes.txt");
+        Assert.Contains(".pdf", await Call("export_final_copy", new JsonObject { ["path"] = TestFiles.Sample("form-fields.pdf"), ["output_path"] = notPdf }), StringComparison.Ordinal);
+        Assert.False(File.Exists(notPdf));
+
+        // Something that isn't an ordinary file, which would never stop reading: an answer, not a hang.
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Contains("isn't a PDF", await Call("document_info", new JsonObject { ["path"] = "/dev/zero" }), StringComparison.Ordinal);
+        }
+
+        // Tools that write say so, so assistants ask first.
+        JsonObject? tools = await server.HandleAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""", token);
+        Assert.All(tools!["result"]!["tools"]!.AsArray(), tool =>
+            Assert.Equal(!tool!["annotations"]!["readOnlyHint"]!.GetValue<bool>(), tool["annotations"]!["destructiveHint"]!.GetValue<bool>()));
     }
 
     [Fact]

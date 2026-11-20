@@ -16,8 +16,16 @@ internal static class TestData
     public static ShapeItem Rectangle(PageId page, double x = 10, double y = 20, double w = 80, double h = 40) =>
         new(ItemId.New(), page, x, y, ShapeKind.Rectangle, w, h, InkColor.Red, 2, false, false);
 
-    public static SignatureImage Png() =>
-        new(Guid.NewGuid(), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3], 48, 16);
+    public static SignatureImage Png() => PngOfSize(48, 16);
+
+    /// <summary>The start of a PNG: its signature and a header chunk giving its size. Enough for the record's checks.</summary>
+    public static SignatureImage PngOfSize(int width, int height)
+    {
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R', 0, 0, 0, 0, 0, 0, 0, 0, 8, 6, 0, 0, 0];
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(png.AsSpan(16), width);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(png.AsSpan(20), height);
+        return new SignatureImage(Guid.NewGuid(), [.. png], Math.Min(width, 20_000), Math.Min(height, 20_000));
+    }
 
     public static SignatureItem Signature(PageId page) =>
         new(ItemId.New(), page, 200, 300, SignatureKind.Signature, Png(), 120, 40);

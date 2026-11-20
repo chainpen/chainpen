@@ -415,7 +415,9 @@ public sealed partial class PdfiumDocument
             nint attachment = FPDFDoc_GetAttachment(_document, index);
             unsafe
             {
-                if (!FPDFAttachment_GetFile(attachment, null, new CULong(0), out CULong size))
+                // The size comes from the file: too big for an array is refused rather than cut short, and PDFium is
+                // only ever told the buffer's real length.
+                if (!FPDFAttachment_GetFile(attachment, null, new CULong(0), out CULong size) || size.Value > (ulong)Array.MaxLength)
                 {
                     return null;
                 }
@@ -423,7 +425,7 @@ public sealed partial class PdfiumDocument
                 var bytes = new byte[(int)size.Value];
                 fixed (byte* buffer = bytes)
                 {
-                    return FPDFAttachment_GetFile(attachment, buffer, size, out _) ? bytes : null;
+                    return FPDFAttachment_GetFile(attachment, buffer, new CULong((nuint)bytes.Length), out _) ? bytes : null;
                 }
             }
         });
@@ -463,10 +465,11 @@ public sealed partial class PdfiumDocument
             return "";
         }
 
-        var buffer = new char[(int)(bytes / 2)];
+        var buffer = new char[checked((int)(bytes / 2))];
         fixed (char* chars = buffer)
         {
-            FPDFAttachment_GetName(attachment, chars, new CULong((nuint)bytes));
+            // The buffer's own length in bytes: an odd count from PDFium would otherwise claim one byte too many.
+            FPDFAttachment_GetName(attachment, chars, new CULong((nuint)(buffer.Length * sizeof(char))));
         }
 
         return new string(buffer, 0, buffer.Length - 1);

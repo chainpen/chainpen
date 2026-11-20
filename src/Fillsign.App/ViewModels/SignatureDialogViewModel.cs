@@ -275,9 +275,13 @@ public sealed partial class SignatureDialogViewModel : ObservableObject, IDispos
                 return $"Saved {Noun} can’t be opened right now, so this one can’t be kept.";
             }
 
-            return _store.Of(Kind).Count >= SavedSignatureStore.MaxPerKind
+            string? replaces = _store.Of(Kind).Count >= SavedSignatureStore.MaxPerKind
                 ? $"You have {SavedSignatureStore.MaxPerKind} saved. Keeping this one replaces the one used longest ago."
                 : null;
+            string? unencrypted = _store.IsEncrypted
+                ? null
+                : "This computer has no keyring, so it’s kept unencrypted, readable only by you.";
+            return replaces is null || unencrypted is null ? replaces ?? unencrypted : $"{replaces} {unencrypted}";
         }
     }
 

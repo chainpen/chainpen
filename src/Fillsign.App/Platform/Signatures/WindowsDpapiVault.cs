@@ -20,6 +20,8 @@ internal sealed unsafe partial class WindowsDpapiVault : ISignatureKeyVault
         _keyFile = keyFile;
     }
 
+    public bool HasSecretStore => true;
+
     public byte[]? FindKey()
     {
         try
@@ -47,12 +49,21 @@ internal sealed unsafe partial class WindowsDpapiVault : ISignatureKeyVault
             return existing;
         }
 
+        byte[] created = SignatureKeyVaults.NewKey();
+        string temporary = $"{_keyFile}.{Guid.NewGuid():N}.tmp";
         try
         {
-            byte[] created = SignatureKeyVaults.NewKey();
+            // Written whole and moved in without overwriting: a crash can't leave half a key, and if another window
+            // made one a moment ago, that one is kept and used.
             Directory.CreateDirectory(Path.GetDirectoryName(_keyFile)!);
-            File.WriteAllBytes(_keyFile, Protect(created));
+            File.WriteAllBytes(temporary, Protect(created));
+            File.Move(temporary, _keyFile, overwrite: false);
             return created;
+        }
+        catch (IOException) when (File.Exists(_keyFile))
+        {
+            File.Delete(temporary);
+            return FindKey();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
         {

@@ -310,6 +310,44 @@ public sealed class DesktopFitTests : IDisposable
     }
 
     [Fact]
+    public void Settings_are_only_readable_by_this_user()
+    {
+        // Recent lists document names and folders.
+        AppSettings.Update(settings => settings with { RecentFiles = [] });
+        string path = Path.Combine(AppSettings.Folder, "settings.json");
+        Assert.True(File.Exists(path));
+        Assert.False(File.Exists(path + ".tmp"));
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+        }
+    }
+
+    [Fact]
+    public void A_print_copy_is_only_ever_readable_by_this_user()
+    {
+        string path = Printing.WriteCopy("lease.pdf", DateTime.Now, File.ReadAllBytes(TestFiles.Sample("form-fields.pdf")));
+        try
+        {
+            Assert.StartsWith(Printing.Folder, path, StringComparison.Ordinal);
+            if (!OperatingSystem.IsWindows())
+            {
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+            }
+
+            // Old copies go; recent ones, possibly still printing, stay.
+            Printing.ClearOldCopies(DateTime.UtcNow);
+            Assert.True(File.Exists(path));
+            Printing.ClearOldCopies(DateTime.UtcNow.AddDays(2));
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void Check_for_updates_says_what_it_found()
     {
         Assert.Equal("You’re up to date", AppUpdates.Describe(UpdateCheck.UpToDate, "1.2.0", null).Title);

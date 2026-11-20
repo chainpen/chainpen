@@ -68,6 +68,13 @@ public static class Program
             await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
             return 1;
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // A file that couldn't be read or written, or a document that couldn't be made: say so and exit 1, as the
+            // MCP server does, rather than end with a stack trace.
+            await Console.Error.WriteLineAsync($"Fillsign couldn’t do that: {ex.Message}").ConfigureAwait(false);
+            return 1;
+        }
     }
 
     internal static string Version =>

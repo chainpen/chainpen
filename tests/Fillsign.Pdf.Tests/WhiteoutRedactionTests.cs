@@ -141,6 +141,69 @@ public sealed class WhiteoutRedactionTests
         Assert.True(final.GetAnnotationCount(1) > 0, "page 2 has no whiteout, so its fields stay");
     }
 
+    [Fact]
+    public void Nothing_under_whiteout_is_left_anywhere_in_the_final_copys_bytes()
+    {
+        // Reading the page isn't enough: a filled field's answer or a typed word can survive in drawing data no page
+        // uses any more, which anyone can unpack from the file.
+        (byte[] source, SourcePage[] pages) = Source("form-fields.pdf");
+        var state = DocumentState.ForSourcePages(1).WithField("Name", "HIDDENANSWER");
+        PageId page = state.Pages[0].Id;
+        PageSize size = new PageTransform(pages[0], Rotation.None).DisplaySize;
+        var typed = new TextItem(ItemId.New(), page, 100, 400, "HIDDENWORDS", 20, InkColor.Black);
+        DocumentState document = state.WithItems([typed, Whiteout(page, 0, 0, size.Width, size.Height)]);
+
+        byte[] final = DocumentWriter.FinalCopy(source, pages, document).Pdf;
+        string everything = EveryStreamUnpacked(final);
+        Assert.DoesNotContain("HIDDENANSWER", everything, StringComparison.Ordinal);
+        Assert.DoesNotContain("HIDDENWORDS", everything, StringComparison.Ordinal);
+
+        // The working copy keeps them, as it should.
+        Assert.Contains("HIDDENANSWER", EveryStreamUnpacked(DocumentWriter.WorkingCopy(source, pages, document).Pdf), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_final_copy_drops_page_thumbnails_and_other_apps_private_copies()
+    {
+        // This Illustrator file carries a thumbnail of its page and Illustrator's own full copy of the artwork: both
+        // would still show what whiteout covered, and neither is needed to read the page.
+        Assert.SkipUnless(File.Exists(TestFiles.Sample("corpus/cmykjpeg.pdf")), "Corpus not downloaded; run build/fetch-corpus.sh");
+        (byte[] source, SourcePage[] pages) = Source("corpus/cmykjpeg.pdf");
+        Assert.Contains("/Thumb", EveryStreamUnpacked(source), StringComparison.Ordinal);
+        var state = DocumentState.ForSourcePages(pages.Length);
+        PageSize size = new PageTransform(pages[0], Rotation.None).DisplaySize;
+        DocumentState document = state.WithItems([Whiteout(state.Pages[0].Id, 0, 0, size.Width, size.Height)]);
+
+        string final = EveryStreamUnpacked(DocumentWriter.FinalCopy(source, pages, document).Pdf);
+        Assert.DoesNotContain("/Thumb", final, StringComparison.Ordinal);
+        Assert.DoesNotContain("/PieceInfo", final, StringComparison.Ordinal);
+        Assert.DoesNotContain("AIPrivateData", final, StringComparison.Ordinal);
+    }
+
+    /// <summary>The file's bytes with every compressed stream unpacked after them, as someone digging through it would.</summary>
+    private static string EveryStreamUnpacked(byte[] pdf)
+    {
+        var text = new System.Text.StringBuilder(System.Text.Encoding.Latin1.GetString(pdf));
+        string raw = text.ToString();
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(raw, "stream\r?\n"))
+        {
+            try
+            {
+                int start = match.Index + match.Length;
+                using var zlib = new System.IO.Compression.ZLibStream(new MemoryStream(pdf, start, pdf.Length - start), System.IO.Compression.CompressionMode.Decompress);
+                using var unpacked = new MemoryStream();
+                zlib.CopyTo(unpacked);
+                text.Append('\n').Append(System.Text.Encoding.Latin1.GetString(unpacked.ToArray()));
+            }
+            catch (InvalidDataException)
+            {
+                // Not compressed, or not with zlib: its bytes are already in the text.
+            }
+        }
+
+        return text.ToString();
+    }
+
     private static ShapeItem Whiteout(PageId page, double x, double y, double width, double height) =>
         new(ItemId.New(), page, x, y, ShapeKind.Whiteout, width, height, InkColor.Black, 1, false, false);
 

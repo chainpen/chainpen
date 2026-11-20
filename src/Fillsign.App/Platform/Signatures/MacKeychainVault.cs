@@ -25,6 +25,8 @@ internal sealed unsafe partial class MacKeychainVault : ISignatureKeyVault
         _account = account;
     }
 
+    public bool HasSecretStore => true;
+
     public byte[]? FindKey() => Find();
 
     public byte[]? GetOrCreateKey()

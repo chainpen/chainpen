@@ -78,6 +78,9 @@ public sealed class SavedSignatureStore
 
     public SavedSignaturesState State { get; private set; } = SavedSignaturesState.Ready;
 
+    /// <summary>Whether kept signatures are encrypted: only with a secret store on this computer.</summary>
+    public bool IsEncrypted => _vault.HasSecretStore;
+
     /// <summary>
     /// Reads the file once; later calls return what's in memory. May touch the Keychain or keyring, which can ask
     /// the person, so call it off the UI thread.
@@ -310,31 +313,9 @@ public sealed class SavedSignatureStore
             file = [.. Header(EncryptedMode), .. nonce, .. tag, .. cipher];
         }
 
-        WriteOwnerOnly(file);
+        PrivateFile.WriteReplacing(_path, file);
         _items = items;
     }
-
-    /// <summary>Writes to a temporary file and swaps it in, so a crash never leaves half a file.</summary>
-    private void WriteOwnerOnly(byte[] contents)
-    {
-        string folder = Path.GetDirectoryName(_path)!;
-        Directory.CreateDirectory(folder);
-        string temporary = _path + ".tmp";
-        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
-        if (!OperatingSystem.IsWindows())
-        {
-            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-        }
-
-        using (var stream = new FileStream(temporary, options))
-        {
-            stream.Write(contents);
-            stream.Flush(flushToDisk: true);
-        }
-
-        File.Move(temporary, _path, overwrite: true);
-    }
-
     /// <summary>The key an encrypted file was made with, never a new one.</summary>
     private byte[]? ExistingKey()
     {

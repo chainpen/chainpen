@@ -31,8 +31,8 @@ public static class RecoveryStore
         try
         {
             Directory.CreateDirectory(Folder);
-            WriteReplacing(PdfPath(copy.Id), workingCopy);
-            WriteReplacing(InfoPath(copy.Id), JsonSerializer.SerializeToUtf8Bytes(copy, RecoveryJson.Default.RecoveryCopy));
+            PrivateFile.WriteReplacing(PdfPath(copy.Id), workingCopy);
+            PrivateFile.WriteReplacing(InfoPath(copy.Id), JsonSerializer.SerializeToUtf8Bytes(copy, RecoveryJson.Default.RecoveryCopy));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -79,7 +79,7 @@ public static class RecoveryStore
         {
             try
             {
-                WriteReplacing(InfoPath(id), JsonSerializer.SerializeToUtf8Bytes(copy with { IsDismissed = true }, RecoveryJson.Default.RecoveryCopy));
+                PrivateFile.WriteReplacing(InfoPath(id), JsonSerializer.SerializeToUtf8Bytes(copy with { IsDismissed = true }, RecoveryJson.Default.RecoveryCopy));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -152,25 +152,6 @@ public static class RecoveryStore
     private static string PdfPath(Guid id) => Path.Combine(Folder, $"{id:N}.pdf");
 
     private static string InfoPath(Guid id) => Path.Combine(Folder, $"{id:N}.json");
-
-    /// <summary>Owner-only, written beside and swapped in, so a crash mid-write leaves the previous copy intact.</summary>
-    private static void WriteReplacing(string path, byte[] contents)
-    {
-        string temporary = path + ".tmp";
-        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
-        if (!OperatingSystem.IsWindows())
-        {
-            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-        }
-
-        using (var stream = new FileStream(temporary, options))
-        {
-            stream.Write(contents);
-        }
-
-        File.Move(temporary, path, overwrite: true);
-    }
-
     private static void TryDelete(string path)
     {
         try

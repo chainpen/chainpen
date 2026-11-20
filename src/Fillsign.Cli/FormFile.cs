@@ -7,7 +7,18 @@ using Fillsign.Pdf.Pdfium;
 namespace Fillsign.Cli;
 
 /// <summary>Something the person asked for can't be done; the message says why and what to do.</summary>
-public sealed class FormException(string message) : Exception(message);
+public sealed class FormException : Exception
+{
+    public FormException(string message)
+        : base(message)
+    {
+    }
+
+    public FormException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}
 
 /// <summary>A form field as the command line and MCP show it: one entry per field, with a radio group's answers as its options.</summary>
 /// <param name="Kind">text, checkbox, radio, choice, multichoice or signature.</param>
@@ -60,6 +71,29 @@ public sealed class FormFile : IDisposable
 
     public bool OwnerForbidsChanges { get; }
 
+    // Far larger than any form; a limit so something like /dev/zero or a huge file can't use up all the memory.
+    private const long MaxFileBytes = 1L << 30;
+
+    /// <summary>An ordinary file's bytes, up to <see cref="MaxFileBytes"/>.</summary>
+    private static async Task<byte[]> ReadLimitedAsync(string full, CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(full, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1, useAsync: true);
+        // A pipe or socket has no length to check; a device like /dev/zero reports none, so only that much is read.
+        if (!stream.CanSeek)
+        {
+            throw new FormException($"{full} isn’t a file Fillsign can open.");
+        }
+
+        if (stream.Length > MaxFileBytes)
+        {
+            throw new FormException($"{full} is larger than Fillsign can open.");
+        }
+
+        var bytes = new byte[stream.Length];
+        await stream.ReadExactlyAsync(bytes, cancellationToken).ConfigureAwait(false);
+        return bytes;
+    }
+
     public static async Task<FormFile> OpenAsync(string path, CancellationToken cancellationToken = default)
     {
         string full = System.IO.Path.GetFullPath(path);
@@ -68,7 +102,7 @@ public sealed class FormFile : IDisposable
             throw new FormException($"There's no file at {full}.");
         }
 
-        byte[] bytes = await File.ReadAllBytesAsync(full, cancellationToken).ConfigureAwait(false);
+        byte[] bytes = await ReadLimitedAsync(full, cancellationToken).ConfigureAwait(false);
         OpenResult result;
         try
         {
@@ -295,12 +329,16 @@ public sealed class FormFile : IDisposable
         try
         {
             File.WriteAllBytes(temporary, pdf);
-            File.Move(temporary, full, overwrite: true);
+
+            // Not overwriting is checked again by the move itself: a file made there since the check above is kept.
+            File.Move(temporary, full, overwrite);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             File.Delete(temporary);
-            throw new FormException($"Fillsign couldn’t write {full}: {ex.Message}");
+            throw !overwrite && File.Exists(full)
+                ? new FormException($"{full} already exists. Choose another name, or say to overwrite it.", ex)
+                : new FormException($"Fillsign couldn’t write {full}: {ex.Message}", ex);
         }
     }
 

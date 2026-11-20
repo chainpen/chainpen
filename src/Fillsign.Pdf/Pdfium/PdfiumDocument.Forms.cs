@@ -494,7 +494,7 @@ public sealed partial class PdfiumDocument
     /// <summary>Reads one of PDFium's UTF-16 strings: ask for the length, then fill a buffer of that size.</summary>
     private static string ReadString(Func<nint, CULong, CULong> read)
     {
-        int bytes = (int)read(0, new CULong(0)).Value;
+        int bytes = checked((int)read(0, new CULong(0)).Value);
         if (bytes <= 2)
         {
             return string.Empty;
@@ -505,7 +505,8 @@ public sealed partial class PdfiumDocument
         {
             fixed (char* start = buffer)
             {
-                read((nint)start, new CULong((nuint)bytes));
+                // The buffer's own length in bytes: an odd count from PDFium would otherwise claim one byte too many.
+                read((nint)start, new CULong((nuint)(buffer.Length * sizeof(char))));
             }
         }
 

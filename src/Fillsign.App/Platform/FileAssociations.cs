@@ -79,7 +79,12 @@ public static partial class FileAssociations
         {
             string? dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
             string folder = Path.Combine(string.IsNullOrEmpty(dataHome) ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share") : dataHome, "applications");
-            string entry = DesktopEntry(appImage);
+            if (DesktopEntry(appImage) is not { } entry)
+            {
+                System.Diagnostics.Trace.TraceWarning("The AppImage's path has characters a desktop entry can't hold; no Open with entry.");
+                return;
+            }
+
             string path = Path.Combine(folder, "fillsign.desktop");
             if (File.Exists(path) && File.ReadAllText(path) == entry)
             {
@@ -96,16 +101,41 @@ public static partial class FileAssociations
         }
     }
 
-    /// <summary>The freedesktop.org entry: Fillsign for PDFs and pictures, opening whatever files it's given.</summary>
-    internal static string DesktopEntry(string appImage) =>
-        "[Desktop Entry]\n"
-        + "Type=Application\n"
-        + "Name=Fillsign\n"
-        + "Comment=Fill in and sign PDF forms\n"
-        + $"Exec=\"{appImage.Replace("\"", "\\\"", StringComparison.Ordinal)}\" %F\n"
-        + "Terminal=false\n"
-        + "Categories=Office;Viewer;\n"
-        + "MimeType=application/pdf;image/png;image/jpeg;image/heic;\n";
+    /// <summary>
+    /// The freedesktop.org entry: Fillsign for PDFs and pictures, opening whatever files it's given. Null for a path a
+    /// desktop entry can't hold (a line break would start a new key).
+    /// </summary>
+    internal static string? DesktopEntry(string appImage) =>
+        appImage.Any(char.IsControl)
+            ? null
+            : "[Desktop Entry]\n"
+              + "Type=Application\n"
+              + "Name=Fillsign\n"
+              + "Comment=Fill in and sign PDF forms\n"
+              + $"Exec={ExecArgument(appImage)} %F\n"
+              + "Terminal=false\n"
+              + "Categories=Office;Viewer;\n"
+              + "MimeType=application/pdf;image/png;image/jpeg;image/heic;\n";
+
+    /// <summary>
+    /// A path as one Exec argument, by the Desktop Entry Specification's rules: quoted, with " ` $ and \ escaped
+    /// inside the quotes and % written %%; then, because Exec is a string value, every backslash doubled again.
+    /// </summary>
+    private static string ExecArgument(string path)
+    {
+        var quoted = new System.Text.StringBuilder("\"");
+        foreach (char character in path)
+        {
+            if (character is '"' or '`' or '$' or '\\')
+            {
+                quoted.Append('\\');
+            }
+
+            quoted.Append(character == '%' ? "%%" : character.ToString());
+        }
+
+        return quoted.Append('"').ToString().Replace("\\", "\\\\", StringComparison.Ordinal);
+    }
 
     [SupportedOSPlatform("windows")]
     private static void AssociationsChanged() => SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);

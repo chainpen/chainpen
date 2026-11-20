@@ -49,6 +49,9 @@ public sealed class SignatureDialogTests : IDisposable
         Assert.False(s.Dialog.HasSaved);
         Assert.False(s.Dialog.KeepOnComputer);
 
+        // These tests keep signatures without a secret store, so the dialog says they'd be unencrypted.
+        Assert.Equal("This computer has no keyring, so it’s kept unencrypted, readable only by you.", s.Dialog.KeepDetail);
+
         // FR-4.8: Place stays usable and explains, rather than doing nothing.
         s.ClickButton("Place signature");
         Assert.Equal("Sign in the box first, or use the Type tab.", s.Dialog.Error);
@@ -374,7 +377,7 @@ public sealed class SignatureDialogTests : IDisposable
         Assert.Equal(SavedSignatureStore.MaxPerKind + 1, s.Dialog.Options.Count);
         s.Dialog.SelectedOption = s.Dialog.Options[^1];
         Assert.True(s.Dialog.IsCreating);
-        Assert.Equal("You have 6 saved. Keeping this one replaces the one used longest ago.", s.Dialog.KeepDetail);
+        Assert.Equal("You have 6 saved. Keeping this one replaces the one used longest ago. This computer has no keyring, so it’s kept unencrypted, readable only by you.", s.Dialog.KeepDetail);
     }
 
     private static SignatureImage TestImage()

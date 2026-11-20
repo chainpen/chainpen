@@ -164,7 +164,7 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
 
     private static async Task<string> FillAsync(JsonObject arguments, CancellationToken cancellationToken)
     {
-        string output = AbsolutePath(arguments, "output_path");
+        string output = OutputPath(arguments);
         JsonObject values = arguments["values"] as JsonObject ?? throw new FormException("values should be an object of field names to values.");
         using FormFile form = await FormFile.OpenAsync(AbsolutePath(arguments, "path"), cancellationToken).ConfigureAwait(false);
         form.Fill(Program.FromJson(values));
@@ -182,18 +182,58 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
 
     private static async Task<string> ExportAsync(JsonObject arguments, CancellationToken cancellationToken)
     {
-        string output = AbsolutePath(arguments, "output_path");
+        string output = OutputPath(arguments);
         using FormFile form = await FormFile.OpenAsync(AbsolutePath(arguments, "path"), cancellationToken).ConfigureAwait(false);
         bool locked = Flag(arguments, "lock_fields", true);
         form.WriteFinalCopy(output, locked, Flag(arguments, "overwrite", false));
         return $"Final copy saved to {output}{(locked ? ", with its fields locked" : string.Empty)}.";
     }
 
-    /// <summary>Assistants run elsewhere than Fillsign, so a relative path could mean anything: only absolute ones are taken.</summary>
+    /// <summary>
+    /// Assistants run elsewhere than Fillsign, so a relative path could mean anything: only absolute ones are taken. And
+    /// only on this computer: opening a file on a network share hands the person's sign-in to whoever runs it, and
+    /// writing one sends the form off the computer, which an assistant steered by a document's text might ask for.
+    /// </summary>
     private static string AbsolutePath(JsonObject arguments, string name)
     {
         string path = Text(arguments[name]) ?? throw new FormException($"{name} is needed, as text.");
-        return Path.IsPathFullyQualified(path) ? path : throw new FormException($"{name} must be an absolute path, not “{path}”.");
+        if (!Path.IsPathFullyQualified(path))
+        {
+            throw new FormException($"{name} must be an absolute path, not “{path}”.");
+        }
+
+        return IsOnThisComputer(path) ? path : throw new FormException($"{name} must be a file on this computer, not on a network share.");
+    }
+
+    /// <summary>Where to save: a .pdf, so a filled form can never replace some other kind of file.</summary>
+    private static string OutputPath(JsonObject arguments)
+    {
+        string path = AbsolutePath(arguments, "output_path");
+        return Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+            ? path
+            : throw new FormException($"output_path must end in .pdf, not “{Path.GetFileName(path)}”.");
+    }
+
+    private static bool IsOnThisComputer(string path)
+    {
+        // \\server\share, \\?\ and \\.\ on Windows; //server/share elsewhere.
+        if (path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // A mapped drive or a mounted share looks local; the drive it's on says otherwise.
+        string full = Path.GetFullPath(path);
+        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        try
+        {
+            DriveInfo? drive = DriveInfo.GetDrives().Where(drive => full.StartsWith(drive.Name, comparison)).MaxBy(drive => drive.Name.Length);
+            return drive?.DriveType != DriveType.Network;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private static bool Flag(JsonObject arguments, string name, bool fallback) =>
@@ -215,7 +255,7 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
             ["properties"] = properties,
             ["required"] = new JsonArray([.. required.Select(item => (JsonNode)item)]),
         },
-        ["annotations"] = new JsonObject { ["readOnlyHint"] = readOnly, ["destructiveHint"] = false, ["openWorldHint"] = false },
+        ["annotations"] = new JsonObject { ["readOnlyHint"] = readOnly, ["destructiveHint"] = !readOnly, ["openWorldHint"] = false },
     };
 
     private static JsonObject Properties(params (string Name, string Type, string Description)[] properties)

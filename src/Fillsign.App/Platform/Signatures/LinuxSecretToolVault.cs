@@ -20,6 +20,11 @@ internal sealed class LinuxSecretToolVault : ISignatureKeyVault
         _label = $"{service} {account.ToLowerInvariant()}";
     }
 
+    // secret-tool starting at all is enough: it's how this vault reaches the keyring.
+    private readonly Lazy<bool> _hasSecretTool = new(() => Run(["--version"], input: null) is not null);
+
+    public bool HasSecretStore => _hasSecretTool.Value;
+
     public byte[]? FindKey() => Lookup().Key;
 
     public byte[]? GetOrCreateKey()

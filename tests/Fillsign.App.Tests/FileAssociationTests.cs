@@ -9,9 +9,15 @@ public sealed class FileAssociationTests
     [Fact]
     public void The_Linux_desktop_entry_opens_files_with_the_AppImage_and_lists_PDFs_and_pictures()
     {
-        string entry = FileAssociations.DesktopEntry("/home/someone/Apps/Fillsign.AppImage");
+        string? entry = FileAssociations.DesktopEntry("/home/someone/Apps/Fillsign.AppImage");
         Assert.Contains("Exec=\"/home/someone/Apps/Fillsign.AppImage\" %F", entry, StringComparison.Ordinal);
         Assert.Contains("MimeType=application/pdf;image/png;image/jpeg;image/heic;", entry, StringComparison.Ordinal);
+
+        // Characters the launcher would otherwise read as its own: quoted, escaped, and backslashes doubled for the file.
+        Assert.Contains("Exec=\"/home/a \\\\\"b\\\\$c\\\\`d\\\\\\\\e 100%%.AppImage\" %F", FileAssociations.DesktopEntry("/home/a \"b$c`d\\e 100%.AppImage"), StringComparison.Ordinal);
+
+        // A line break would add keys of its own.
+        Assert.Null(FileAssociations.DesktopEntry("/home/someone/x\nExec=evil"));
     }
 
     [Fact]

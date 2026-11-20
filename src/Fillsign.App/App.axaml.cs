@@ -53,6 +53,7 @@ public partial class App : Application
 
             // Recovery copies are kept for the chosen number of days (FR-8.12).
             RecoveryStore.DeleteOlderThan(TimeSpan.FromDays(settings.RecoveryDays), DateTimeOffset.Now);
+            Printing.ClearOldCopies(DateTime.UtcNow);
 
             // Files passed on the command line open straight away (FS-200).
             string[] paths = [.. (desktop.Args ?? []).Where(File.Exists)];

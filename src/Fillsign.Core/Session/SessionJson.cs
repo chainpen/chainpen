@@ -23,8 +23,34 @@ public static class SessionJson
     public const int MaxInkPoints = 200_000;
     public const int MaxImageBytes = 8 * 1024 * 1024;
 
+    /// <summary>
+    /// The most pixels a picture may decode to, as for opened photos (ImageToPdf.MaxDecodePixels): a few megabytes of
+    /// PNG can otherwise claim billions of pixels and use up all the memory when drawn.
+    /// </summary>
+    public const long MaxImagePixels = 50_000_000;
+
     // Generous bounds for coordinates and sizes; real pages are at most 14,400 pt (PDF's limit).
     private const double MaxCoordinate = 100_000;
+
+    /// <summary>
+    /// Checks the size in the PNG's own header (its first chunk, IHDR), which is what a decoder allocates for, not the
+    /// size the record states.
+    /// </summary>
+    private static void CheckPngSize(byte[] png)
+    {
+        // Signature (8), then the header chunk: length (4), "IHDR" (4), width (4), height (4).
+        if (png.Length < 24 || !png.AsSpan(12, 4).SequenceEqual("IHDR"u8))
+        {
+            throw new SessionFormatException("A picture's PNG has no header.");
+        }
+
+        long width = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(png.AsSpan(16));
+        long height = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(png.AsSpan(20));
+        if (width == 0 || height == 0 || width * height > MaxImagePixels)
+        {
+            throw new SessionFormatException($"A picture is {width} × {height} pixels, more than Fillsign opens.");
+        }
+    }
 
     private static readonly byte[] s_pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
@@ -299,6 +325,8 @@ public static class SessionJson
             {
                 throw new SessionFormatException("A signature image isn't a PNG.");
             }
+
+            CheckPngSize(png);
 
             int width = image.Int("pixelWidth", 1, 20_000);
             int height = image.Int("pixelHeight", 1, 20_000);

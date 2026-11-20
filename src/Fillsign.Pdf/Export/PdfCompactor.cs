@@ -25,6 +25,11 @@ public static class PdfCompactor
     // Streams smaller than this aren't worth a filter.
     private const int MinStreamToCompress = 64;
 
+    // Limits on what a file can make this reader do: a stream it unpacks (a few kilobytes can inflate to gigabytes),
+    // and how deeply arrays and dictionaries nest (each level is a call; too many end the app with no way to catch it).
+    private const int MaxStreamBytes = 64 * 1024 * 1024;
+    private const int MaxNesting = 100;
+
     /// <summary>The same document, smaller; or <paramref name="pdf"/> itself if it can't be made smaller safely.</summary>
     public static byte[] Compact(byte[] pdf)
     {
@@ -46,6 +51,112 @@ public static class PdfCompactor
             return pdf;
         }
     }
+
+    /// <summary>
+    /// For a final copy: <see cref="Compact"/>, keeping only the objects the document still uses. PDFium leaves objects
+    /// nothing refers to any more in the file it saves: a filled field's appearance after whiteout removed it from the
+    /// page, for example, still holding the answer. Readers never show them, but anyone can unpack them from the file.
+    /// Null if that can't be done safely; it never hands back PDFium's file as it was.
+    /// </summary>
+    public static byte[]? CompactKeepingOnlyUsed(byte[] pdf)
+    {
+        ArgumentNullException.ThrowIfNull(pdf);
+        try
+        {
+            if (Read(pdf) is not { } read)
+            {
+                return null;
+            }
+
+            // Blanking keeps every byte offset, so the cross-reference table still holds for the copy.
+            Document document = read with { Bytes = WithoutPrivateCopies(read) };
+            byte[] compact = Write(document with { Objects = UsedObjects(document) });
+            return HasSamePages(pdf, compact) ? compact : null;
+        }
+        catch (Exception ex) when (IsUnreadable(ex))
+        {
+            System.Diagnostics.Trace.TraceWarning($"A final copy couldn't be cleaned of unused objects: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A copy of the file with the entries that hold another picture or copy of a page blanked out of every page and
+    /// the catalogue: /Thumb (a small picture of the page), /PieceInfo (another app's private data, often a whole copy
+    /// of the artwork) and a page's own /Metadata. None is needed to read the page, all are out of date once it's
+    /// changed, and each can still show what whiteout covered. What they pointed to is then unused, and left out.
+    /// </summary>
+    private static byte[] WithoutPrivateCopies(Document document)
+    {
+        byte[] copy = (byte[])document.Bytes.Clone();
+        foreach (PdfObject item in document.Objects.Where(item => item.Stream is null))
+        {
+            Dictionary<string, (int Start, int End)> entries = DictionaryEntries(copy, item.ValueStart, item.ValueEnd);
+            string type = Name(copy, entries, "Type");
+            string[] keys = type switch
+            {
+                "/Page" => ["Thumb", "PieceInfo", "Metadata"],
+                "/Catalog" => ["PieceInfo"],
+                _ => [],
+            };
+            foreach (string key in keys)
+            {
+                if (entries.TryGetValue(key, out (int Start, int End) value))
+                {
+                    // The key is the name just before its value: "/Thumb 12 0 R".
+                    int keyStart = copy.AsSpan(item.ValueStart, value.Start - item.ValueStart).LastIndexOf((byte)'/') + item.ValueStart;
+                    copy.AsSpan(keyStart, value.End - keyStart).Fill((byte)' ');
+                }
+            }
+        }
+
+        return copy;
+    }
+
+    /// <summary>
+    /// The objects reachable from the trailer's /Root and /Info, following every "n g R" reference. Only dictionaries
+    /// and other values are searched, never stream data. A reference-like sequence inside a string keeps an object it
+    /// needn't: the safe way to be wrong.
+    /// </summary>
+    private static IReadOnlyList<PdfObject> UsedObjects(Document document)
+    {
+        byte[] pdf = document.Bytes;
+        Dictionary<int, PdfObject> byNumber = document.Objects.ToDictionary(item => item.Number);
+        var used = new HashSet<int>();
+        var waiting = new Stack<int>();
+        foreach (string key in (string[])["Root", "Info"])
+        {
+            if (document.Trailer.TryGetValue(key, out (int Start, int End) value))
+            {
+                PushReferences(pdf, value.Start, value.End, waiting);
+            }
+        }
+
+        while (waiting.TryPop(out int number))
+        {
+            if (used.Add(number) && byNumber.TryGetValue(number, out PdfObject? item))
+            {
+                PushReferences(pdf, item.ValueStart, item.ValueEnd, waiting);
+            }
+        }
+
+        return [.. document.Objects.Where(item => used.Contains(item.Number))];
+    }
+
+    private static void PushReferences(byte[] pdf, int start, int end, Stack<int> waiting)
+    {
+        string value = Encoding.Latin1.GetString(pdf, start, end - start);
+        foreach (System.Text.RegularExpressions.Match reference in s_reference.Matches(value))
+        {
+            if (int.TryParse(reference.Groups[1].ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out int number))
+            {
+                waiting.Push(number);
+            }
+        }
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex s_reference =
+        new(@"(?<![0-9.+-])([0-9]+)\s+[0-9]+\s+R(?![A-Za-z0-9])", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     /// <summary>
     /// Cuts the update section PDFium appended after the first <paramref name="baseLength"/> bytes down to the objects
@@ -213,9 +324,23 @@ public static class PdfCompactor
         int[] widths = Integers(pdf, trailer["W"]);
         int size = Integer(pdf, trailer["Size"]);
         int[] index = trailer.TryGetValue("Index", out (int Start, int End) indexValue) ? Integers(pdf, indexValue) : [0, size];
-        if (widths.Length != 3 || index.Length % 2 != 0)
+        if (widths.Length != 3 || index.Length % 2 != 0 || widths.Any(width => width is < 0 or > 8))
         {
             throw new FormatException("The cross-reference stream's /W or /Index is malformed.");
+        }
+
+        // Every entry is a row of the stream, so there can't be more than it has rows: otherwise a /W of zeros and a
+        // huge /Index would loop billions of times over nothing.
+        int rowWidth = widths.Sum();
+        long entryCount = 0;
+        for (int run = 1; run < index.Length; run += 2)
+        {
+            entryCount += index[run] >= 0 ? index[run] : throw new FormatException("The cross-reference stream's /Index is malformed.");
+        }
+
+        if (rowWidth == 0 || entryCount * rowWidth > rows.Length)
+        {
+            throw new FormatException("The cross-reference stream lists more entries than it holds.");
         }
 
         var entries = new SortedDictionary<int, XrefEntry>();
@@ -263,7 +388,18 @@ public static class PdfCompactor
         using var input = new MemoryStream(data.ToArray());
         using var zlib = new ZLibStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
-        zlib.CopyTo(output);
+        var buffer = new byte[81920];
+        int read;
+        while ((read = zlib.Read(buffer)) > 0)
+        {
+            if (output.Length + read > MaxStreamBytes)
+            {
+                throw new FormatException("A stream unpacks to more than this reader takes.");
+            }
+
+            output.Write(buffer, 0, read);
+        }
+
         return output.ToArray();
     }
 
@@ -733,9 +869,11 @@ public static class PdfCompactor
     }
 
     /// <summary>The end of the value starting at <paramref name="position"/>, an indirect reference ("12 0 R") counting as one.</summary>
-    private static int SkipValue(byte[] pdf, int position)
+    private static int SkipValue(byte[] pdf, int position) => SkipValue(pdf, position, nesting: 0);
+
+    private static int SkipValue(byte[] pdf, int position, int nesting)
     {
-        int end = SkipToken(pdf, position);
+        int end = SkipToken(pdf, position, nesting);
         if (IsInteger(pdf, position, end))
         {
             // "12 0 R" is one value.
@@ -756,11 +894,18 @@ public static class PdfCompactor
         return end;
     }
 
-    private static int SkipToken(byte[] pdf, int position)
+    private static int SkipToken(byte[] pdf, int position) => SkipToken(pdf, position, nesting: 0);
+
+    private static int SkipToken(byte[] pdf, int position, int nesting)
     {
         if (position >= pdf.Length)
         {
             throw new FormatException("The file ends in the middle of a value.");
+        }
+
+        if (nesting > MaxNesting)
+        {
+            throw new FormatException("Arrays or dictionaries are nested deeper than this reader follows.");
         }
 
         switch (pdf[position])
@@ -769,17 +914,18 @@ public static class PdfCompactor
                 position = SkipSpace(pdf, position + 2);
                 while (!(pdf[position] == '>' && pdf[position + 1] == '>'))
                 {
-                    position = SkipSpace(pdf, SkipValue(pdf, position));
+                    position = SkipSpace(pdf, SkipValue(pdf, position, nesting + 1));
                 }
 
                 return position + 2;
             case (byte)'<':
-                return Array.IndexOf(pdf, (byte)'>', position) + 1;
+                int close = Array.IndexOf(pdf, (byte)'>', position);
+                return close >= 0 ? close + 1 : throw new FormatException("A hex string has no end.");
             case (byte)'[':
                 position = SkipSpace(pdf, position + 1);
                 while (pdf[position] != ']')
                 {
-                    position = SkipSpace(pdf, SkipValue(pdf, position));
+                    position = SkipSpace(pdf, SkipValue(pdf, position, nesting + 1));
                 }
 
                 return position + 1;

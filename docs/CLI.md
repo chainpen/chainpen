@@ -54,7 +54,7 @@ for example Claude Desktop's `claude_desktop_config.json`:
 }
 ```
 
-Tools (paths must be absolute):
+Tools (paths must be absolute and on this computer, not on a network share; `output_path` must end in `.pdf`):
 
 | Tool | Does |
 |---|---|

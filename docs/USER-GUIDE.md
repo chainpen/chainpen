@@ -40,7 +40,7 @@ With **Select**, click anything you added to move, resize, recolour or delete it
 - **Type** your name and pick a handwriting style; or
 - **Photo or scan**: Fillsign removes the paper so only the ink remains (untick it if parts disappear).
 
-Tick **Keep … on this computer** to reuse it next time. Kept signatures are encrypted with your computer's keychain and never leave it. Remove them in **Settings**. If the keychain won't hand over their key, Fillsign keeps them locked rather than losing them; if the key never comes back, **Start again without them…** in Settings lets you keep new ones.
+Tick **Keep … on this computer** to reuse it next time. Kept signatures are encrypted with your computer's keychain and never leave it. On Linux without a keyring they're kept unencrypted, readable only by you, and Fillsign says so before you keep one. Remove them in **Settings**. If the keychain won't hand over their key, Fillsign keeps them locked rather than losing them; if the key never comes back, **Start again without them…** in Settings lets you keep new ones.
 
 ## Organise pages
 

@@ -9,6 +9,12 @@ namespace Fillsign.App.Platform.Signatures;
 public interface ISignatureKeyVault
 {
     /// <summary>
+    /// Whether this computer has a secret store to keep the key in. Without one (Linux with no keyring), saved
+    /// signatures are kept unencrypted, readable only by this user, and the person is told so before keeping one.
+    /// </summary>
+    bool HasSecretStore { get; }
+
+    /// <summary>
     /// The key if one has been made, without ever making one: reading an encrypted file must not replace a key that's
     /// only out of reach for now. Null when there's no key, or no secret store.
     /// </summary>
@@ -74,6 +80,8 @@ public static class SignatureKeyVaults
 /// <summary>No secret store: signatures are kept unencrypted. Used in tests and as the fallback.</summary>
 public sealed class NoKeyVault : ISignatureKeyVault
 {
+    public bool HasSecretStore => false;
+
     public byte[]? FindKey() => null;
 
     public byte[]? GetOrCreateKey() => null;

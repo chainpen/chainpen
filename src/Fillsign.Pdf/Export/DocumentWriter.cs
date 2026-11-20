@@ -40,7 +40,24 @@ public static class DocumentWriter
         // Before drawing, so a whiteout's redaction also covers a filled field (FS-950).
         pdf.FillFormFields(document.Fields);
         Draw(pdf, sourcePages, document, redactUnderWhiteout: true);
-        return new WrittenDocument(PdfCompactor.Compact(pdf.SaveCopy(removeSecurity: true)), haveFormsMoved);
+        return new WrittenDocument(Finished(pdf.SaveCopy(removeSecurity: true), document), haveFormsMoved);
+    }
+
+    /// <summary>
+    /// The saved final copy without objects nothing uses any more, which can still hold what whiteout removed from the
+    /// page. If that can't be done and there's whiteout, the export fails rather than send the covered content along.
+    /// </summary>
+    private static byte[] Finished(byte[] saved, DocumentState document)
+    {
+        if (PdfCompactor.CompactKeepingOnlyUsed(saved) is { } cleaned)
+        {
+            return cleaned;
+        }
+
+        bool hasWhiteout = document.Items.Exists(item => item is ShapeItem { Kind: ShapeKind.Whiteout });
+        return hasWhiteout
+            ? throw new InvalidOperationException("The final copy couldn't be cleaned of what whiteout covers, so it wasn't made.")
+            : PdfCompactor.Compact(saved);
     }
 
     /// <summary>

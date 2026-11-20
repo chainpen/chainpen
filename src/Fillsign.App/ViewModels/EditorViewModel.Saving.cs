@@ -190,13 +190,8 @@ public sealed partial class EditorViewModel
         try
         {
             Printing.ClearOldCopies(DateTime.UtcNow);
-            Directory.CreateDirectory(Printing.Folder);
-            path = Path.Combine(Printing.Folder, $"{Path.GetFileNameWithoutExtension(Title)} ({DateTime.Now:HH.mm.ss}).pdf");
-            await File.WriteAllBytesAsync(path, DocumentWriter.ForPrinting(final.Pdf)).ConfigureAwait(true);
-            if (!OperatingSystem.IsWindows())
-            {
-                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-            }
+            byte[] toPrint = DocumentWriter.ForPrinting(final.Pdf);
+            path = await Task.Run(() => Printing.WriteCopy(Title, DateTime.Now, toPrint)).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

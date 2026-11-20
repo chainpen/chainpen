@@ -20,6 +20,23 @@ public sealed class SessionJsonTests
     }
 
     [Fact]
+    public void A_picture_whose_own_header_is_huge_is_refused()
+    {
+        // A small, highly compressible PNG can claim billions of pixels; decoding it would use up all the memory. Its
+        // own header is what a decoder believes, not the size the record gives.
+        DocumentState document = DocumentState.ForSourcePages(1);
+        SignatureImage bomb = TestData.PngOfSize(30_000, 30_000) with { PixelWidth = 48, PixelHeight = 16 };
+        document = ItemEdits.Add(document, new PictureItem(ItemId.New(), document.Pages[0].Id, 10, 10, bomb, 100, 30));
+        byte[] json = SessionJson.Write(new SessionRecord(ByteStamp.Of("a"u8), ByteStamp.Of("b"u8), 1, document));
+        Assert.Throws<SessionFormatException>(() => SessionJson.Read(json));
+
+        // Large but reasonable is fine.
+        DocumentState fine = DocumentState.ForSourcePages(1);
+        fine = ItemEdits.Add(fine, new PictureItem(ItemId.New(), fine.Pages[0].Id, 10, 10, TestData.PngOfSize(6000, 4000), 100, 30));
+        Assert.Single(SessionJson.Read(SessionJson.Write(new SessionRecord(ByteStamp.Of("a"u8), ByteStamp.Of("b"u8), 1, fine))).Document.Items);
+    }
+
+    [Fact]
     public void Round_trips_every_item_type()
     {
         SessionRecord record = Sample();

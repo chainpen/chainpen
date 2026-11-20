@@ -103,8 +103,8 @@ public sealed record AppSettings(
     {
         try
         {
-            Directory.CreateDirectory(Folder);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, AppSettingsJson.Default.AppSettings));
+            // Recent holds document names and folders, so only this user can read it.
+            PrivateFile.WriteReplacing(FilePath, JsonSerializer.SerializeToUtf8Bytes(this, AppSettingsJson.Default.AppSettings));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

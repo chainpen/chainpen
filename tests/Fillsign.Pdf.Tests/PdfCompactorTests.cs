@@ -168,6 +168,39 @@ public sealed class PdfCompactorTests
     }
 
     [Fact]
+    public void A_file_nested_too_deeply_is_left_as_it_is_rather_than_ending_the_app()
+    {
+        // Each level of nesting is a call; a few hundred kilobytes of brackets would otherwise overflow the stack,
+        // which ends the app with no chance to catch it.
+        byte[] deep = ClassicPdf(new string('[', 200_000) + new string(']', 200_000));
+        Assert.Same(deep, PdfCompactor.Compact(deep));
+        Assert.Null(PdfCompactor.CompactKeepingOnlyUsed(deep));
+    }
+
+    /// <summary>A minimal PDF with a plain cross-reference table, as PDFium writes, holding one extra object.</summary>
+    private static byte[] ClassicPdf(string extraObject)
+    {
+        var text = new System.Text.StringBuilder("%PDF-1.4\n");
+        string[] objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>", extraObject];
+        var offsets = new List<int>();
+        for (int i = 0; i < objects.Length; i++)
+        {
+            offsets.Add(text.Length);
+            text.Append(System.Globalization.CultureInfo.InvariantCulture, $"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
+        }
+
+        int xref = text.Length;
+        text.Append(System.Globalization.CultureInfo.InvariantCulture, $"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
+        foreach (int offset in offsets)
+        {
+            text.Append(System.Globalization.CultureInfo.InvariantCulture, $"{offset:D10} 00000 n \n");
+        }
+
+        text.Append(System.Globalization.CultureInfo.InvariantCulture, $"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        return System.Text.Encoding.Latin1.GetBytes(text.ToString());
+    }
+
+    [Fact]
     public void A_file_with_no_update_after_the_original_is_left_as_it_is()
     {
         byte[] saved;

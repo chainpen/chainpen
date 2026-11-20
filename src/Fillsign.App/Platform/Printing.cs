@@ -72,7 +72,33 @@ public static partial class Printing
         Process.Start(start)?.Dispose();
     }
 
-    /// <summary>Removes print copies older than a day: by then the print has long finished.</summary>
+    /// <summary>
+    /// Writes the copy to print, readable only by this user from the moment it exists: it's a whole filled-in document,
+    /// often signed. Returns its path.
+    /// </summary>
+    public static string WriteCopy(string documentName, DateTime now, byte[] pdf)
+    {
+        ArgumentNullException.ThrowIfNull(pdf);
+        Directory.CreateDirectory(Folder);
+        string path = Path.Combine(Folder, $"{Path.GetFileNameWithoutExtension(documentName)} ({now:HH.mm.ss}).pdf");
+        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        using (var stream = new FileStream(path, options))
+        {
+            stream.Write(pdf);
+        }
+
+        return path;
+    }
+
+    /// <summary>
+    /// Removes print copies older than a day: by then the print has long finished. Run at start-up and before each
+    /// print, so a copy isn't left behind until the next time someone prints.
+    /// </summary>
     public static void ClearOldCopies(DateTime now)
     {
         if (!Directory.Exists(Folder))

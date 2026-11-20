@@ -304,6 +304,8 @@ public sealed class SavedSignatureStoreTests : IDisposable
 
     private sealed class FixedKeyVault(byte seed = 7) : ISignatureKeyVault
     {
+        public bool HasSecretStore => true;
+
         public byte[]? FindKey() => GetOrCreateKey();
 
         public byte[]? GetOrCreateKey() => [.. Enumerable.Repeat(seed, SignatureKeyVaults.KeyLength)];
@@ -311,6 +313,8 @@ public sealed class SavedSignatureStoreTests : IDisposable
 
     private sealed class LockedVault : ISignatureKeyVault
     {
+        public bool HasSecretStore => true;
+
         public byte[]? FindKey() => throw new SignatureKeyUnavailableException("denied");
 
         public byte[]? GetOrCreateKey() => throw new SignatureKeyUnavailableException("denied");
@@ -319,6 +323,8 @@ public sealed class SavedSignatureStoreTests : IDisposable
     /// <summary>A secret store with no key in it, which makes one when asked to.</summary>
     private sealed class MissingKeyVault : ISignatureKeyVault
     {
+        public bool HasSecretStore => true;
+
         public bool HasCreatedKey { get; private set; }
 
         public byte[]? FindKey() => HasCreatedKey ? Key : null;
