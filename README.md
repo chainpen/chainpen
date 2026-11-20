@@ -2,7 +2,7 @@
 
 Fill in and sign documents, especially scanned paper forms with no fillable fields. A native desktop app for Windows, macOS and Linux, built with .NET 11 and Avalonia.
 
-> Status: pre-beta. The repository is private until the public beta. Outside contributions aren't accepted yet ([CONTRIBUTING](CONTRIBUTING.md)).
+> Status: beta. Bug reports and ideas are welcome in Issues; outside code contributions aren't accepted yet ([CONTRIBUTING](CONTRIBUTING.md)).
 
 ## Docs
 
