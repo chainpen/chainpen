@@ -11,5 +11,8 @@ Fillsign is licensed under the Business Source License 1.1 (see LICENSE). In sho
 Fillsign includes third-party software under its own licences; see THIRD-PARTY-NOTICES.md and the app's Licenses
 folder.
 
-Portions of this software are copyright © The FreeType Project (www.freetype.org). All rights reserved.
+Required acknowledgements for libraries bundled in PDFium, which Fillsign uses to read and write PDFs (their
+licences ask for these exact words):
+
+Portions of this software are copyright © 2026 The FreeType Project (www.freetype.org). All rights reserved.
 This software is based in part on the work of the Independent JPEG Group.

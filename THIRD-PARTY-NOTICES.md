@@ -24,7 +24,7 @@ Every component above allows use in a commercial, paid product. None is under th
 that their copyright and licence notices travel with the app, which the `Licenses` folder does. The FreeType and IJG
 licences also ask for a credit in the documentation:
 
-- Portions of this software are copyright © The FreeType Project (www.freetype.org). All rights reserved.
+- Portions of this software are copyright © 2026 The FreeType Project (www.freetype.org). All rights reserved.
 - This software is based in part on the work of the Independent JPEG Group.
 
 When exported text uses a font installed on the computer (characters Noto Sans doesn't have), only a subset of it is
