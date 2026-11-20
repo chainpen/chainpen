@@ -1,0 +1,73 @@
+using Fillsign.Core.Model;
+using Fillsign.Pdf.Import;
+
+namespace Fillsign.App.ViewModels;
+
+/// <summary>What the person chose when opening a file while a document is open (D5, E9).</summary>
+public enum OpenChoice
+{
+    Cancel,
+    NewWindow,
+    AddPages,
+}
+
+/// <summary>Window services the view models need: pickers, dialogs and new windows.</summary>
+public interface IEditorHost
+{
+    /// <summary>Shows the file picker for PDFs and images. Empty when cancelled.</summary>
+    Task<IReadOnlyList<string>> ChooseFilesAsync();
+
+    /// <summary>D12: asks for a file's password. Null skips the file.</summary>
+    Task<string?> AskPasswordAsync(string fileName, bool wasWrong);
+
+    /// <summary>D5: open in a new window, or add the pages to this document.</summary>
+    Task<OpenChoice> AskOpenOrAddAsync(string title, string documentName, int pageCount);
+
+    /// <summary>D6: explains files that couldn't be opened.</summary>
+    Task ShowProblemsAsync(IReadOnlyList<OpenProblem> problems, int openedCount);
+
+    /// <summary>Explains why something isn't allowed (D9).</summary>
+    Task ShowMessageAsync(string title, string message);
+
+    /// <summary>A message that's just information: no warning icon.</summary>
+    Task ShowInformationAsync(string title, string message);
+
+    /// <summary>
+    /// FR-3.4: picks or makes a signature, or initials, to place. The dialog makes the one kind it was asked for
+    /// (UX review 7). Null when cancelled.
+    /// </summary>
+    Task<(SignatureImage Image, SignatureKind Kind)?> ChooseSignatureAsync(SignatureKind kind = SignatureKind.Signature);
+
+    /// <summary>
+    /// "Move to…" (FR-6.4): asks where <paramref name="count"/> pages should go. Returns the gap (0 is before page 1,
+    /// <paramref name="pageCount"/> is the end), or null when cancelled.
+    /// </summary>
+    Task<int?> AskMovePositionAsync(int count, int pageCount);
+
+    /// <summary>Asks where to save the working copy (FR-8.1). Null when cancelled.</summary>
+    Task<string?> AskWorkingCopyPathAsync(string suggestedName, string folder);
+
+    /// <summary>The Export final copy dialog (FS-608, 🎨 6): export, or look at a possible gap. Null when the person keeps editing.</summary>
+    Task<ExportDecision?> AskExportAsync(ExportRequest request);
+
+    /// <summary>D8: restoring Fillsign edits removes another app's changes, so ask first.</summary>
+    Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt);
+
+    /// <summary>FS-214: files being added forbid changes; true to add their pages anyway.</summary>
+    Task<bool> ConfirmAddRestrictedAsync(IReadOnlyList<string> fileNames);
+
+    /// <summary>Shows a file in Finder, Explorer or the file manager (FR-8.5).</summary>
+    void ShowInFolder(string path);
+
+    /// <summary>Prints a PDF through the system (FS-808).</summary>
+    Platform.PrintOutcome PrintFile(string path);
+
+    /// <summary>"Open final copy instead" (🎨 5): reopens the working copy as other readers show it, without restoring.</summary>
+    Task OpenAsFinalCopyAsync(string path);
+
+    /// <summary>Reopens the clean original from a working copy with its Fillsign edits (FR-9.6).</summary>
+    Task RestoreEditsAsync(Fillsign.Pdf.Import.WorkingCopyRestore restore);
+
+    /// <summary>Opens files in a separate window, leaving this document unchanged (FR-1.5).</summary>
+    void OpenInNewWindow(IReadOnlyList<string> paths);
+}

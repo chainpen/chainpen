@@ -1,0 +1,968 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fillsign.App.ViewModels"
+             xmlns:c="using:Fillsign.App.Controls"
+             xmlns:m="using:Fillsign.Core.Model"
+             xmlns:v="using:Fillsign.App.Views"
+             x:Class="Fillsign.App.Views.EditorView"
+             x:DataType="vm:EditorViewModel">
+    <!-- 🎨 1: document status strip, toolbar, bar under the toolbar, pages + canvas, status bar. -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+        <!-- Document status strip (FS-211, FR-2.6). -->
+        <Border x:Name="TitleStrip" Grid.Row="0" Height="{StaticResource TitleStripHeight}" Background="{DynamicResource Surface}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                        AutomationProperties.LiveSetting="Polite">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding Title}" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource Unsaved}" VerticalAlignment="Center"
+                             IsVisible="{Binding HasUnsavedChanges}" />
+                    <TextBlock Classes="muted" FontSize="13" Text="{Binding DocumentStatus}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Toolbar (FS-300): tools keep their labels; narrow windows collapse them (INTERACTION-PATTERNS §3). -->
+        <Border x:Name="ToolbarBar" Grid.Row="1" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}"
+                BorderThickness="0,0,0,1" Padding="12,8">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <Button Classes="tool icon" Command="{Binding UndoCommand}" AutomationProperties.Name="Undo"
+                            ToolTip.Tip="{c:Keys 'Undo (Mod+Z)'}" ToolTip.ShowOnDisabled="True">
+                        <c:StrokeIcon Data="{StaticResource IconUndo}" />
+                    </Button>
+                    <Button Classes="tool icon" Command="{Binding RedoCommand}" AutomationProperties.Name="Redo"
+                            ToolTip.Tip="{c:Keys 'Redo (Mod+Shift+Z)'}" ToolTip.ShowOnDisabled="True">
+                        <c:StrokeIcon Data="{StaticResource IconRedo}" />
+                    </Button>
+                    <Button x:Name="ShortcutsButton" Classes="tool icon" AutomationProperties.Name="Keyboard shortcuts" ToolTip.Tip="Keyboard shortcuts">
+                        <c:StrokeIcon Data="{StaticResource IconKeyboard}" />
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <v:ShortcutsPanel />
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <!-- Open is in the File menu (Mod+O); the toolbar keeps its room for the tools (UX review). -->
+                    <Border Classes="separator" />
+                    <!-- Save keeps the working copy; Export final copy makes the file to send (INTERACTION-PATTERNS §1). -->
+                    <Border Classes="splitButton">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="SaveButton" Classes="split" Command="{Binding SaveCommand}"
+                                    ToolTip.Tip="{c:Keys 'Save your working copy (Mod+S)'}" AutomationProperties.Name="Save">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <c:StrokeIcon Data="{StaticResource IconSave}" />
+                                    <TextBlock Text="Save" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Border Width="1" Background="{DynamicResource BorderControl}" />
+                            <Button x:Name="SaveMenuButton" Classes="split icon" Width="30" AutomationProperties.Name="More save options"
+                                    ToolTip.Tip="More save options">
+                                <c:StrokeIcon Data="{StaticResource IconChevronDown}" Size="14" />
+                                <Button.Flyout>
+                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Width="380" Spacing="2">
+                                            <Button Classes="menuRow" Command="{Binding SaveCommand}" Click="OnCloseSaveMenu">
+                                                <Grid ColumnDefinitions="26,*,Auto">
+                                                    <c:StrokeIcon Data="{StaticResource IconSave}" VerticalAlignment="Top" />
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock FontWeight="SemiBold" Text="Save" />
+                                                        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                                                   Text="Keeps your edits changeable next time you open it in Fillsign." />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="{c:Keys 'Mod S'}" /></Border>
+                                                </Grid>
+                                            </Button>
+                                            <Button Classes="menuRow" Command="{Binding SaveAsCommand}" Click="OnCloseSaveMenu">
+                                                <Grid ColumnDefinitions="26,*,Auto">
+                                                    <c:StrokeIcon Data="{StaticResource IconFilePlus}" VerticalAlignment="Top" />
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock FontWeight="SemiBold" Text="Save as…" />
+                                                        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                                                   Text="Save a copy with a new name or in another folder." />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="{c:Keys 'Mod Shift S'}" /></Border>
+                                                </Grid>
+                                            </Button>
+                                            <!-- FS-610: a working copy with a signature isn't the file to send. -->
+                                            <Border Classes="signatureNote" IsVisible="{Binding ShowsSignatureReminder}">
+                                                <Grid ColumnDefinitions="26,*">
+                                                    <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" VerticalAlignment="Top" />
+                                                    <TextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap" LineHeight="18">
+                                                        <Run FontWeight="SemiBold" Text="This document contains your signature." />
+                                                        <Run Text=" Your working copy can be edited by anyone with Fillsign. To send it, use Export final copy: it makes a copy that can’t be changed." />
+                                                    </TextBlock>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <Button x:Name="ExportButton" Classes="primary" MinHeight="36" Height="36" Padding="14,0" Command="{Binding ExportCommand}"
+                            ToolTip.Tip="{c:Keys 'Make the copy to send (Mod+E)'}" AutomationProperties.Name="Export final copy">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconTick}" StrokeThickness="2" />
+                            <TextBlock x:Name="ExportLabel" Text="Export final copy…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <!-- Edit content or Organise pages (FR-6.2, 🎨 4). -->
+                <Border DockPanel.Dock="Left" Classes="segments" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.Name="View">
+                        <RadioButton x:Name="EditContentSwitch" Classes="segment" GroupName="view" IsChecked="{Binding IsEditingContent}"
+                                     AutomationProperties.Name="Edit content" ToolTip.Tip="Edit content: add text, ticks and signatures">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconEditContent}" Size="16" />
+                                <TextBlock x:Name="EditContentLabel" Text="Edit content" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="OrganiseSwitch" Classes="segment" GroupName="view" IsChecked="{Binding IsOrganising}"
+                                     AutomationProperties.Name="Organise pages" ToolTip.Tip="Organise pages: reorder, rotate, duplicate and delete">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconOrganise}" Size="16" />
+                                <TextBlock x:Name="OrganiseLabel" Text="Organise pages" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+                <Button DockPanel.Dock="Left" Classes="chip" IsVisible="{Binding IsOrganising}" Click="OnAddPages" VerticalAlignment="Center"
+                        ToolTip.Tip="Add pages from PDFs or images at the end">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:StrokeIcon Data="{StaticResource IconFilePlus}" />
+                        <TextBlock Text="Add pages…" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <StackPanel x:Name="Tools" Orientation="Horizontal" Spacing="4" AutomationProperties.Name="Tools" IsEnabled="{Binding CanEdit}"
+                            IsVisible="{Binding IsEditingContent}">
+                    <ToggleButton Classes="tool icon" IsChecked="{Binding IsPagesPanelVisible}"
+                                  AutomationProperties.Name="Show or hide pages" ToolTip.Tip="Pages panel">
+                        <c:StrokeIcon Data="{StaticResource IconPages}" />
+                    </ToggleButton>
+                    <Border Classes="separator" />
+                    <Button Classes="tool" Classes.on="{Binding IsSelectTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Select}" AutomationProperties.Name="Select"
+                            ToolTip.Tip="Select, move and resize what you’ve added (V)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconSelect}" />
+                            <TextBlock Classes="collapsible" Text="Select" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Classes.on="{Binding IsTextTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Text}" AutomationProperties.Name="Text"
+                            ToolTip.Tip="Click on the page and type (T)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconText}" />
+                            <TextBlock Text="Text" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Classes.on="{Binding IsTickTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Tick}" AutomationProperties.Name="Tick"
+                            ToolTip.Tip="Click boxes to tick them (C)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconTick}" />
+                            <TextBlock Text="Tick" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Classes.on="{Binding IsCrossTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Cross}" AutomationProperties.Name="Cross"
+                            ToolTip.Tip="Click boxes to cross them (X)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconCross}" />
+                            <TextBlock Classes="collapsibleLate" Text="Cross" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="DateButton" Classes="tool" Classes.on="{Binding IsDateTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Date}" AutomationProperties.Name="Date"
+                            ToolTip.Tip="Click to add today’s date, DD/MM/YYYY (D)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconDate}" />
+                            <TextBlock Classes="collapsibleLate" Text="Date" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Sign and Initials are a click each (UX review 7): the dialog then makes that one kind. -->
+                    <Button Classes="tool" Classes.on="{Binding IsSignTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Sign}" AutomationProperties.Name="Sign"
+                            ToolTip.Tip="Add your signature (S)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconSign}" />
+                            <TextBlock Text="Sign" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Command="{Binding AddInitialsCommand}" AutomationProperties.Name="Initials"
+                            ToolTip.Tip="Add your initials">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconInitials}" />
+                            <TextBlock Text="Initials" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ShapesButton" Classes="tool" Classes.on="{Binding IsShapeTool}" AutomationProperties.Name="Shapes"
+                            ToolTip.Tip="Rectangle, ellipse, line, arrow, highlight or whiteout (R)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconShapes}" />
+                            <TextBlock Text="Shapes" VerticalAlignment="Center" />
+                            <c:StrokeIcon Data="{StaticResource IconChevronDown}" Size="12" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Rectangle}">
+                                    <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconRectangle}" /></MenuItem.Icon>
+                                    <MenuItem.Header>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Rectangle" /><TextBlock Classes="muted" FontSize="12" Text="Draw a box around something" /></StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Ellipse}">
+                                    <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconEllipse}" /></MenuItem.Icon>
+                                    <MenuItem.Header>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Ellipse" /><TextBlock Classes="muted" FontSize="12" Text="Circle a word or answer" /></StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Line}">
+                                    <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconLine}" /></MenuItem.Icon>
+                                    <MenuItem.Header>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Line" /><TextBlock Classes="muted" FontSize="12" Text="Strike through or underline" /></StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Arrow}">
+                                    <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconArrow}" /></MenuItem.Icon>
+                                    <MenuItem.Header>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Arrow" /><TextBlock Classes="muted" FontSize="12" Text="Point to something" /></StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Highlight}">
+                                    <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconHighlight}" /></MenuItem.Icon>
+                                    <MenuItem.Header>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Highlight" /><TextBlock Classes="muted" FontSize="12" Text="See-through yellow over text" /></StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Classes="described" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Whiteout}">
+                                    <MenuItem.Icon><c:StrokeIcon Data="{StaticResource IconWhiteout}" /></MenuItem.Icon>
+                                    <MenuItem.Header>
+                                        <StackPanel><TextBlock FontWeight="SemiBold" Text="Whiteout" /><TextBlock Classes="muted" FontSize="12" Text="Cover and remove: gone from the final copy" /></StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button x:Name="DrawButton" Classes="tool" Classes.on="{Binding IsDrawTool}" Command="{Binding SelectToolCommand}"
+                            CommandParameter="{x:Static vm:EditorTool.Draw}" AutomationProperties.Name="Draw"
+                            ToolTip.Tip="Draw freely with a pen (P)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconDraw}" />
+                            <TextBlock Text="Draw" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Narrow windows: Shapes and Draw move in here (S2). -->
+                    <Button x:Name="MoreButton" Classes="tool" IsVisible="False" AutomationProperties.Name="More tools" ToolTip.Tip="More tools">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconMore}" />
+                            <TextBlock Text="More" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Header="Rectangle" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Rectangle}" />
+                                <MenuItem Header="Ellipse" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Ellipse}" />
+                                <MenuItem Header="Line" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Line}" />
+                                <MenuItem Header="Arrow" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Arrow}" />
+                                <MenuItem Header="Highlight" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Highlight}" />
+                                <MenuItem Header="Whiteout" Command="{Binding ChooseShapeCommand}" CommandParameter="{x:Static m:ShapeKind.Whiteout}" />
+                                <Separator />
+                                <MenuItem Header="Draw" Command="{Binding SelectToolCommand}" CommandParameter="{x:Static vm:EditorTool.Draw}" />
+                                <MenuItem x:Name="MoreDateItem" IsVisible="False" Header="Today’s date" Command="{Binding SelectToolCommand}" CommandParameter="{x:Static vm:EditorTool.Date}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- The bar under the toolbar (FS-310): always the same height, so the page never jumps. -->
+        <Border Grid.Row="2" Height="{StaticResource ContextBarHeight}" Classes="contextBar" Classes.placing="{Binding ShowsPlacing}"
+                Classes.pagesSelected="{Binding ShowsPageActions}" Classes.checking="{Binding IsCheckingGaps}" Padding="16,0"
+                AutomationProperties.LiveSetting="Polite">
+            <Panel>
+            <!-- Checking before export (E10, UX review 8): the gap and its buttons take this bar's place, so the page
+                 keeps a bar's height. The tool for the gap still works, with the last size and colour used. -->
+            <DockPanel x:Name="CheckingBar" IsVisible="{Binding IsCheckingGaps}" VerticalAlignment="Center">
+                <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent" Margin="8,0,0,0"
+                        Command="{Binding StopCheckingCommand}" AutomationProperties.Name="Stop checking" ToolTip.Tip="Stop checking (Esc)">
+                    <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                </Button>
+                <Button DockPanel.Dock="Right" Classes="small primary" Margin="8,0,0,0" Content="Back to export"
+                        Command="{Binding BackToExportCommand}" />
+                <Button DockPanel.Dock="Right" Classes="small" Margin="8,0,0,0" Content="Next gap"
+                        Command="{Binding NextGapCommand}" IsVisible="{Binding CheckingGap, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Content="Previous gap"
+                        Command="{Binding PreviousGapCommand}" IsVisible="{Binding CheckingGap, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                    <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                    <TextBlock Grid.Column="1" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               Text="{Binding CheckingText}" ToolTip.Tip="{Binding CheckingText}" AutomationProperties.Name="{Binding CheckingText}" />
+                </Grid>
+            </DockPanel>
+            <!-- One control's height whatever is shown (the Bold button is 2 points taller than the size stepper), so
+                 switching tools or modes never nudges the bar's contents up or down. -->
+            <Panel VerticalAlignment="Center" Height="{StaticResource ControlHeight}" IsVisible="{Binding !IsCheckingGaps}">
+            <!-- Organise pages: the selection and its actions (🎨 4, D9), or a hint. -->
+            <Panel IsVisible="{Binding IsOrganising}">
+                <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding ShowsOrganiseHint}"
+                           Text="{c:Keys 'Click a page to select it. Shift-click selects a range, Mod-click adds a page.'}" />
+                <DockPanel IsVisible="{Binding ShowsPageActions}">
+                    <Button DockPanel.Dock="Right" Classes="chip" BorderBrush="Transparent" Background="Transparent"
+                            Command="{Binding ClearPageSelectionCommand}" Content="Clear selection" ToolTip.Tip="Clear selection (Esc)" />
+                    <StackPanel x:Name="PageActions" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" Text="{Binding PageSelectionLabel}" />
+                        <Button Classes="chip" Command="{Binding RotatePagesLeftCommand}" AutomationProperties.Name="Rotate left" ToolTip.Tip="Rotate left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconRotateLeft}" />
+                                <TextBlock Classes="collapsible" Text="Rotate left" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip" Command="{Binding RotatePagesRightCommand}" AutomationProperties.Name="Rotate right" ToolTip.Tip="Rotate right">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconRotateRight}" />
+                                <TextBlock Classes="collapsible" Text="Rotate right" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip" Command="{Binding DuplicatePagesCommand}" ToolTip.Tip="{c:Keys 'Duplicate (Mod+D)'}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconDuplicate}" />
+                                <TextBlock Text="Duplicate" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip" Command="{Binding MovePagesToCommand}" ToolTip.Tip="Choose where these pages go">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconArrowUp}" />
+                                <TextBlock Text="Move to…" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="chip danger" Command="{Binding DeletePagesCommand}" ToolTip.Tip="Delete (Delete key)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <c:StrokeIcon Data="{StaticResource IconDelete}" />
+                                <TextBlock Text="Delete" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <!-- D9: explains instead of failing silently. -->
+                        <Border Classes="pageMessage" IsVisible="{Binding HasPageMessage}" Margin="6,0,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                                <TextBlock FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="460" Text="{Binding PageMessage}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </DockPanel>
+            </Panel>
+            <Panel IsVisible="{Binding IsEditingContent}">
+                <TextBlock Classes="muted" FontSize="13" Text="{Binding ContextHint}" IsVisible="{Binding ShowsHint}" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+
+                <!-- Options for typing, the pen, a placing tool or the selection (E2, E3, E6). -->
+                <DockPanel IsVisible="{Binding ShowsOptions}">
+                    <Button DockPanel.Dock="Right" Classes="chip" Command="{Binding FinishDrawingCommand}" IsVisible="{Binding ShowsDone}"
+                            ToolTip.Tip="Finish the drawing (Esc)">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Done" VerticalAlignment="Center" />
+                            <Border Classes="kbd"><TextBlock Text="Esc" /></Border>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <!-- A fixed width for the tool names (Text, Tick, Cross … Highlight), so switching tools doesn't shift the controls. -->
+                        <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding OptionsTitle}" MinWidth="72" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding OptionsHaveSize}" Margin="6,0,0,0">
+                            <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding SizeCaption}" />
+                            <Border Classes="stepper">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Command="{Binding SmallerCommand}" Content="−" AutomationProperties.Name="Smaller" ToolTip.Tip="Smaller" />
+                                    <TextBlock MinWidth="64" TextAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="Medium"
+                                               Text="{Binding SizeLabel}" ToolTip.Tip="{Binding SizeTip}" />
+                                    <Button Command="{Binding LargerCommand}" Content="+" AutomationProperties.Name="Larger" ToolTip.Tip="Larger" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding OptionsHaveColour}" Margin="6,0,0,0">
+                            <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="Colour" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" AutomationProperties.Name="Ink colour">
+                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkBlack}" AutomationProperties.Name="Black"
+                                             ToolTip.Tip="Black" IsChecked="{Binding IsBlackChosen, Mode=OneWay}"
+                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Black}" />
+                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkBlue}" AutomationProperties.Name="Blue"
+                                             ToolTip.Tip="Blue" IsChecked="{Binding IsBlueChosen, Mode=OneWay}"
+                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Blue}" />
+                                <RadioButton Classes="swatch" GroupName="InkColour" Background="{DynamicResource InkRed}" AutomationProperties.Name="Red"
+                                             ToolTip.Tip="Red" IsChecked="{Binding IsRedChosen, Mode=OneWay}"
+                                             Command="{Binding SetColourCommand}" CommandParameter="{x:Static m:InkColor.Red}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- FS-952: bold text. (Alignment was tried and dropped: text has no box to line up in.) -->
+                        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding OptionsHaveTextStyle}" Margin="6,0,0,0">
+                            <ToggleButton x:Name="BoldButton" Classes="tool icon" IsChecked="{Binding IsBoldChosen, Mode=OneWay}" Command="{Binding ToggleBoldCommand}"
+                                          AutomationProperties.Name="Bold" ToolTip.Tip="{c:Keys 'Bold (Mod+B)'}">
+                                <TextBlock Text="B" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </ToggleButton>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsSelectionActions}" Margin="6,0,0,0">
+                            <Button Classes="chip" Command="{Binding DuplicateSelectionCommand}" ToolTip.Tip="{c:Keys 'Duplicate (Mod+D)'}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <c:StrokeIcon Data="{StaticResource IconDuplicate}" />
+                                    <TextBlock Text="Duplicate" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="chip" Command="{Binding AddToEveryPageCommand}" IsVisible="{Binding IsSeveralPages}"
+                                    ToolTip.Tip="Put a copy in the same place on every other page, for initials or a date">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <c:StrokeIcon Data="{StaticResource IconPages}" />
+                                    <TextBlock Text="Every page" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="chip" Command="{Binding DeleteSelectionCommand}" ToolTip.Tip="Delete">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <c:StrokeIcon Data="{StaticResource IconDelete}" />
+                                    <TextBlock Text="Delete" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0" Text="{Binding OptionsHint}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Placing a signature (E4): one instruction and a way out. -->
+                <DockPanel IsVisible="{Binding ShowsPlacing}">
+                    <Button DockPanel.Dock="Right" Classes="chip" Command="{Binding CancelPlacingCommand}" ToolTip.Tip="Stop placing (Esc)">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Cancel" VerticalAlignment="Center" />
+                            <Border Classes="kbd"><TextBlock Text="Esc" /></Border>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconSign}" Foreground="{DynamicResource InkBlue}" />
+                        <TextBlock FontSize="13" VerticalAlignment="Center">
+                            <Run FontWeight="SemiBold" Text="{Binding PlacingText}" />
+                            <Run Text=" You can move or resize it afterwards. Arrow keys and Enter work too." />
+                        </TextBlock>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Dragging a selection box (E5). -->
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsBoxSelecting}" VerticalAlignment="Center">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding BoxSelectingText}" />
+                    <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center"
+                               Text="Let go to select them · hold Shift to add to the current selection · Esc to cancel" />
+                </StackPanel>
+
+            </Panel>
+            </Panel>
+            </Panel>
+        </Border>
+
+        <!-- Notices that stay until dismissed: checking before export (E10), restored (🎨 5), changed elsewhere (D8), exported (🎨 8). -->
+        <StackPanel Grid.Row="3">
+            <Border x:Name="ViewOnlyBar" Classes="notice info" IsVisible="{Binding IsViewOnly}" AutomationProperties.LiveSetting="Polite">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Content="Edit anyway" Command="{Binding EditAnywayCommand}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource Accent}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                            <Run FontWeight="SemiBold" Text="View only." />
+                            <Run Text=" The owner of this file set it so it shouldn’t be changed. Choose Edit anyway if you’re allowed to fill it in." />
+                        </TextBlock>
+                    </Grid>
+                </DockPanel>
+            </Border>
+            <Border Classes="notice info" IsVisible="{Binding HasRestoredNotice}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent"
+                            Command="{Binding DismissRestoredCommand}" AutomationProperties.Name="Dismiss">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0" Content="Open final copy instead"
+                            Command="{Binding OpenAsFinalCopyCommand}" IsVisible="{Binding CanOpenAsFinalCopy}"
+                            ToolTip.Tip="Shows the pages as recipients see them. Your editable copy stays in the file." />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource Accent}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding RestoredNotice}" />
+                    </Grid>
+                </DockPanel>
+            </Border>
+            <Border Classes="notice warning" IsVisible="{Binding IsChangedElsewhere}" AutomationProperties.LiveSetting="Assertive">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                    <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                        <Run FontWeight="SemiBold" Text="This file was changed in another app after you saved it in Fillsign." />
+                        <Run Text=" We’ve opened it as it is now, so nothing from the other app is lost." />
+                    </TextBlock>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                        <Button Classes="small" Content="Restore my Fillsign edits…" Command="{Binding RestoreChangedEditsCommand}" />
+                        <Button Classes="small primary" Content="Keep as it is" Command="{Binding KeepAsItIsCommand}" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{Binding ChangedElsewhereDetail}" />
+                </Grid>
+            </Border>
+            <Border Classes="notice success" IsVisible="{Binding HasExportedNotice}" AutomationProperties.LiveSetting="Polite">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon small" BorderThickness="0" Background="Transparent"
+                            Command="{Binding DismissExportedCommand}" AutomationProperties.Name="Dismiss">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                    <Button x:Name="ShareButton" DockPanel.Dock="Right" Classes="small" Margin="12,0,0,0" Click="OnShare"
+                            ToolTip.Tip="Send the final copy with Mail, Messages, AirDrop and more">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconShare}" Size="16" />
+                            <TextBlock Text="Share…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button DockPanel.Dock="Right" Classes="small" Margin="12,0" Command="{Binding ShowExportedInFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconFolder}" Size="16" />
+                            <TextBlock Text="Show in folder" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                        <c:StrokeIcon Data="{StaticResource IconTickCircle}" Foreground="{DynamicResource Success}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" ToolTip.Tip="{Binding Exported.Where, FallbackValue=''}">
+                            <Run FontWeight="SemiBold" Text="Final copy exported:" />
+                            <Run Text="{Binding Exported.Text, FallbackValue=''}" />
+                        </TextBlock>
+                    </Grid>
+                </DockPanel>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="4" ColumnDefinitions="Auto,*">
+            <!-- Pages panel (FS-206). -->
+            <Border x:Name="PagesPanel" Width="{StaticResource PagesPanelWidth}" IsVisible="{Binding ShowsPagesPanel}"
+                    Background="{DynamicResource SurfaceSubtle}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,1,0"
+                    DragDrop.AllowDrop="True" ZIndex="1">
+                <Panel>
+                <!-- Its right edge resizes it: drag, or focus it and use the arrow keys; a double-click resets it. -->
+                <Border x:Name="PagesPanelResizer" HorizontalAlignment="Right" Width="8" Margin="0,0,-5,0" Background="Transparent"
+                        Cursor="SizeWestEast" Focusable="True" ZIndex="1"
+                        AutomationProperties.Name="Pages panel width" ToolTip.Tip="Drag to resize · double-click to reset" />
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="16,12,12,8">
+                        <Button DockPanel.Dock="Right" Classes="link" MinHeight="28" Height="28" FontSize="12" Click="OnAddPages"
+                                ToolTip.Tip="Add pages from PDFs or images at the end">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <c:StrokeIcon Data="{StaticResource IconPlus}" Size="14" />
+                                <TextBlock Text="Add" />
+                            </StackPanel>
+                        </Button>
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock FontSize="13" FontWeight="SemiBold" Text="Pages" />
+                            <TextBlock Classes="muted" FontSize="13" FontWeight="Medium" Text="{Binding Pages.Count}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <Grid>
+                        <ListBox x:Name="PageList" Classes="pageList" ItemsSource="{Binding Pages}" Background="Transparent"
+                                 SelectionMode="Multiple" AutomationProperties.Name="Pages"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel Margin="0,4,0,16" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PageViewModel">
+                                    <StackPanel Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,14"
+                                                AutomationProperties.Name="{Binding AccessibleName}">
+                                        <Panel>
+                                            <Border Classes="thumb" Classes.current="{Binding IsCurrent}" Classes.selected="{Binding IsSelected}"
+                                                    Width="{DynamicResource PagesThumbWidth}" Height="{DynamicResource PagesThumbHeight}">
+                                                <Panel>
+                                                    <c:PageThumbnail Requests="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).Thumbnails, FallbackValue={x:Null}}" />
+                                                    <c:StrokeIcon Data="{StaticResource IconWarning}" Size="22" Foreground="{DynamicResource DamagedText}"
+                                                                  IsVisible="{Binding IsDamaged}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Panel>
+                                            </Border>
+                                            <Border Classes="selectedBadge" IsVisible="{Binding IsSelected}" />
+                                            <!-- The page's own menu (FR-6.9); also on right-click. -->
+                                            <Button Classes="pageMenu" Click="OnPageMenu" AutomationProperties.Name="{Binding Number, StringFormat='Page {0} actions'}"
+                                                    ToolTip.Tip="Page actions">
+                                                <c:StrokeIcon Data="{StaticResource IconMore}" Size="16" />
+                                            </Button>
+                                        </Panel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
+                                            <TextBlock Classes="caption" Classes.current="{Binding IsCurrent}" Text="{Binding NumberLabel}" />
+                                            <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center"
+                                                     IsVisible="{Binding HasEdits}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <!-- Where dropped files will go (E9). -->
+                        <Canvas IsHitTestVisible="False">
+                            <Border x:Name="InsertMarker" Width="132" Height="4" CornerRadius="2"
+                                    Background="{DynamicResource Accent}" IsVisible="False" />
+                        </Canvas>
+                    </Grid>
+                </DockPanel>
+                </Panel>
+            </Border>
+
+            <ScrollViewer x:Name="Scroller" Grid.Column="1" Background="{DynamicResource Canvas}" IsVisible="{Binding IsEditingContent}"
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                          Focusable="True" AutomationProperties.Name="Document">
+                <c:PagesCanvas x:Name="Canvas" />
+            </ScrollViewer>
+
+            <!-- Organise pages (FR-6.2, 🎨 4): large thumbnails, any selection, drag to reorder. -->
+            <Grid x:Name="OrganisePanel" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding IsOrganising}" Background="{DynamicResource Canvas}">
+                <ListBox x:Name="OrganiseList" Classes="pageList organise" ItemsSource="{Binding Pages}" Background="Transparent"
+                         SelectionMode="Multiple" AutomationProperties.Name="Pages" Padding="30,18"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemSpacing="16" LineSpacing="8" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PageViewModel">
+                            <StackPanel Spacing="8" AutomationProperties.Name="{Binding AccessibleName}">
+                                <Panel>
+                                    <Border Classes="thumb large" Classes.selected="{Binding IsSelected}" Width="168" Height="218">
+                                        <Panel>
+                                            <c:PageThumbnail Requests="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).Thumbnails, FallbackValue={x:Null}}" />
+                                            <c:StrokeIcon Data="{StaticResource IconWarning}" Size="26" Foreground="{DynamicResource DamagedText}"
+                                                          IsVisible="{Binding IsDamaged}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Panel>
+                                    </Border>
+                                    <Border Classes="selectedBadge" IsVisible="{Binding IsSelected}" />
+                                    <Button Classes="pageMenu" Click="OnPageMenu" AutomationProperties.Name="{Binding Number, StringFormat='Page {0} actions'}"
+                                            ToolTip.Tip="Page actions">
+                                        <c:StrokeIcon Data="{StaticResource IconMore}" Size="16" />
+                                    </Button>
+                                </Panel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+                                    <TextBlock Classes="caption" Classes.selected="{Binding IsSelected}" FontSize="13" Text="{Binding NumberLabel}" />
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center" IsVisible="{Binding HasEdits}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <!-- Where dragged pages or dropped files will go. -->
+                <Canvas IsHitTestVisible="False">
+                    <Border x:Name="GridInsertMarker" Width="4" Height="218" CornerRadius="2"
+                            Background="{DynamicResource Accent}" IsVisible="False" />
+                </Canvas>
+            </Grid>
+
+            <!-- Two drop targets while files are dragged over the document (E9). -->
+            <Grid x:Name="DropOverlay" Grid.Column="1" IsVisible="False" Margin="16" ColumnDefinitions="*,*"
+                  RowDefinitions="*,Auto" ColumnSpacing="16" RowSpacing="12">
+                <Border x:Name="AddTarget" Classes="dropTarget" CornerRadius="16">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="320">
+                        <c:StrokeIcon Data="{StaticResource IconFilePlus}" Size="36" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" />
+                        <TextBlock FontSize="19" FontWeight="Bold" HorizontalAlignment="Center" Text="Add to this document" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                   Text="The pages go at the end. Drop on the page list to choose where." />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="NewWindowTarget" Grid.Column="1" Classes="dropTarget" CornerRadius="16">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="320">
+                        <c:StrokeIcon Data="{StaticResource IconNewWindow}" Size="36" HorizontalAlignment="Center" />
+                        <TextBlock FontSize="19" FontWeight="Bold" HorizontalAlignment="Center" Text="Open in a new window" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" Text="Work on them as a separate document." />
+                    </StackPanel>
+                </Border>
+                <TextBlock x:Name="DropCaption" Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" FontSize="13"
+                           HorizontalAlignment="Center" TextWrapping="Wrap" />
+            </Grid>
+
+            <!-- FS-950, NFR-5: the form field Tab reached, read out as it changes ("Membership, radio button Family,
+                 2 of 3, chosen"). Not drawn: the ring on the page shows it. -->
+            <TextBlock x:Name="FieldAnnouncement" Grid.Column="0" Width="1" Height="1" Opacity="0" IsHitTestVisible="False"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Text="{Binding FieldAnnouncement}"
+                       AutomationProperties.Name="{Binding FieldAnnouncement}" AutomationProperties.LiveSetting="Polite" />
+
+            <!-- Just deleted: Undo straight away (FR-7.11, FS-707). A toast over the pages, so it's seen wherever the
+                 person was looking; it stays at least 10 seconds, and while the pointer or focus is on it. -->
+            <Border x:Name="Toast" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasToast}"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="16,0,16,24" Padding="16,8,8,8"
+                    Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderControl}" BorderThickness="1"
+                    CornerRadius="{StaticResource RadiusLarge}" BoxShadow="{StaticResource ShadowDialog}"
+                    AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{Binding Notice}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Notice}" />
+                    <Button Classes="small" Command="{Binding UndoCommand}" Content="Undo" ToolTip.Tip="{c:Keys 'Undo (Mod+Z)'}"
+                            IsVisible="{Binding NoticeOffersUndo}" />
+                    <Button Classes="icon small" BorderThickness="0" Background="Transparent" Command="{Binding DismissNoticeCommand}"
+                            AutomationProperties.Name="Dismiss">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" Size="16" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Status bar. -->
+        <Border Grid.Row="5" Height="{StaticResource StatusBarHeight}" Background="{DynamicResource Surface}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="16,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding IsOrganising}" Text="{Binding OrganiseHint}" />
+                <!-- 🎨 10: updates never interrupt; a quiet pill, details on click (FS-804). -->
+                <Button DockPanel.Dock="Right" Classes="updatePill" Margin="12,0,0,0" IsVisible="{Binding Updates.IsReady}"
+                        AutomationProperties.Name="Update ready">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:StrokeIcon Data="{StaticResource IconDownload}" Size="14" />
+                        <TextBlock Text="Update ready" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="TopEdgeAlignedRight">
+                            <StackPanel Width="360" Spacing="10">
+                                <TextBlock Classes="heading-section" TextWrapping="Wrap" Text="{Binding Updates.Title}" />
+                                <ItemsControl ItemsSource="{Binding Updates.Ready.Notes, FallbackValue={x:Null}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock FontSize="13" TextWrapping="Wrap" Text="{Binding StringFormat='•  {0}'}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock FontSize="13" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="Your unsaved changes come back after the restart." />
+                                    <Run Foreground="{DynamicResource TextMuted}" Text=" Restarting takes a few seconds." />
+                                </TextBlock>
+                                <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource Danger}"
+                                           Text="{Binding Updates.RestartProblem}" IsVisible="{Binding Updates.HasRestartProblem}"
+                                           AutomationProperties.LiveSetting="Assertive" />
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Classes="primary" Content="Restart and update" Command="{Binding Updates.RestartAndUpdateCommand}" />
+                                    <Button Content="When I close Fillsign" Command="{Binding Updates.UpdateWhenClosedCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
+                    <Button Classes="tool icon small" Click="OnZoomOut" AutomationProperties.Name="Zoom out" ToolTip.Tip="{c:Keys 'Zoom out (Mod+−)'}">
+                        <c:StrokeIcon Data="{StaticResource IconZoomOut}" />
+                    </Button>
+                    <TextBlock MinWidth="40" TextAlignment="Center" VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource TextMuted}" Text="{Binding ZoomText}" />
+                    <Button Classes="tool icon small" Click="OnZoomIn" AutomationProperties.Name="Zoom in" ToolTip.Tip="{c:Keys 'Zoom in (Mod+=)'}">
+                        <c:StrokeIcon Data="{StaticResource IconZoomIn}" />
+                    </Button>
+                    <Button Classes="tool small" Click="OnFitWidth" Content="Fit width" ToolTip.Tip="{c:Keys 'Fit the page width (Mod+0)'}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding IsEditingContent}">
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="Page" />
+                    <TextBox x:Name="PageBox" Width="44" MinWidth="44" MinHeight="26" Height="26" Padding="4,0" FontSize="12"
+                             HorizontalContentAlignment="Center" AutomationProperties.Name="Go to page"
+                             Text="{Binding CurrentPageNumber, Mode=OneWay}" KeyDown="OnPageBoxKeyDown" LostFocus="OnPageBoxLostFocus" />
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding Pages.Count, StringFormat='of {0}'}" />
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="·" IsVisible="{Binding HasRecoveryStatus}" />
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding RecoveryStatus}" IsVisible="{Binding HasRecoveryStatus}"
+                               ToolTip.Tip="Unsaved changes are kept here in case Fillsign closes unexpectedly. It isn’t the file." />
+                    <TextBlock Classes="caption" VerticalAlignment="Center" Text="·" IsVisible="{Binding HasDamagedPages}" />
+                    <TextBlock FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource DamagedText}"
+                               IsVisible="{Binding HasDamagedPages}" Text="{Binding DamagedStatus}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}" Margin="8,0,0,0">
+                        <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding LoadingText}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                        <ProgressBar Width="200" Height="6" MinHeight="6" CornerRadius="3" Minimum="0" Maximum="1"
+                                     Value="{Binding LoadingFraction}" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource Accent}" Background="{DynamicResource BorderSubtle}" />
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+
+    <UserControl.Styles>
+        <Style Selector=":is(UserControl).iconsOnly TextBlock.collapsible">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <!-- Cross and Date are main tools for paper forms, so they keep their labels longer than Select. -->
+        <Style Selector=":is(UserControl).iconsOnlyLate TextBlock.collapsibleLate">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.thumb">
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControlOnSunken}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceSunken}" />
+        </Style>
+        <Style Selector="Border.thumb.current">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <Style Selector="Border.thumb.large">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="Border.thumb.selected">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <Style Selector="Border.thumb.large.selected">
+            <Setter Property="Padding" Value="7" />
+        </Style>
+        <!-- A tick in a blue circle on a selected page's corner (🎨 4). -->
+        <Style Selector="Border.selectedBadge">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Background" Value="{DynamicResource Accent}" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,-9,-9,0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Child">
+                <Template>
+                    <c:StrokeIcon Data="{StaticResource IconTick}" Size="13" StrokeThickness="3" Foreground="{DynamicResource OnPrimary}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Template>
+            </Setter>
+        </Style>
+        <!-- The page's "⋯" menu button: shown on hover, focus and for the current or selected page. -->
+        <Style Selector="Button.pageMenu">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,6,6,0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="ListBoxItem:pointerover Button.pageMenu, ListBoxItem:selected Button.pageMenu, Button.pageMenu:focus-visible, Button.pageMenu:pressed">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ListBox.organise Button.pageMenu">
+            <Setter Property="Margin" Value="0,8,8,0" />
+        </Style>
+        <Style Selector="TextBlock.caption.selected">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+        </Style>
+        <Style Selector="Border.pageMessage">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+        </Style>
+        <Style Selector="Button.chip.danger">
+            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+        </Style>
+        <!-- Room for the selected badge, which sits over the thumbnail's corner. -->
+        <Style Selector="ListBox.organise ListBoxItem">
+            <Setter Property="Padding" Value="10" />
+        </Style>
+        <Style Selector="ListBox.pageList ListBoxItem">
+            <Setter Property="ClipToBounds" Value="False" />
+        </Style>
+        <Style Selector="TextBlock.caption.current">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+        </Style>
+        <Style Selector="Button.updatePill">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.notice">
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+        <Style Selector="Border.notice.info">
+            <Setter Property="Background" Value="{DynamicResource InfoTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+        </Style>
+        <Style Selector="Border.notice.warning">
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBorder}" />
+        </Style>
+        <Style Selector="Border.notice.success">
+            <Setter Property="Background" Value="{DynamicResource SuccessTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+        </Style>
+        <!-- Save with its menu, as one bordered control (🎨 5). -->
+        <Style Selector="Border.splitButton">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControl}" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+        <!-- The two halves are transparent and rounded on their outer side, so the outline's corners show (and hover fills
+             follow them). 7 is the outline's radius less its 1 px border. -->
+        <Style Selector="Button.split">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="7,0,0,7" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.split.icon">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="0,7,7,0" />
+        </Style>
+        <Style Selector="Button.menuRow">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <Style Selector="Border.signatureNote">
+            <Setter Property="Margin" Value="2,6,2,2" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+        </Style>
+        <Style Selector="Border.contextBar">
+            <Setter Property="Background" Value="{DynamicResource SurfaceSubtle}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+        <!-- A mode you're in, like placing a signature, tints the bar blue (INTERACTION-PATTERNS §2). -->
+        <Style Selector="Border.contextBar.placing">
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <!-- Checking before export: the amber of the other checking notices (INTERACTION-PATTERNS §2). -->
+        <Style Selector="Border.contextBar.checking">
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+        </Style>
+        <!-- Pages selected in Organise pages (🎨 4). -->
+        <Style Selector="Border.contextBar.pagesSelected">
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+        <Style Selector="Border.dropTarget">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderControlOnSunken}" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="Opacity" Value="0.94" />
+        </Style>
+        <Style Selector="Border.dropTarget.active">
+            <Setter Property="BorderThickness" Value="3" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentTint}" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

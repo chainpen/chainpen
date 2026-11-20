@@ -1,0 +1,54 @@
+name: A PDF doesn't open or look right
+description: A particular PDF won't open, shows wrongly, or its form fields don't work.
+labels: [pdf, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        PDFs vary a lot, so the file itself is usually what's needed to fix this. **Only attach a PDF if it's safe to
+        make public**: a blank form downloaded from a website is fine; a form you've filled in, or anything with your
+        name, address, signature or ID numbers, is not. If you can't share it, describe it instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What's wrong?
+      placeholder: The form opens, but the date fields on page 3 can't be clicked.
+    validations:
+      required: true
+  - type: dropdown
+    id: other-viewers
+    attributes:
+      label: Does it work in another PDF viewer?
+      description: For example Preview, Adobe Acrobat Reader, or your web browser.
+      options:
+        - "Yes, it works elsewhere"
+        - "No, it's wrong elsewhere too"
+        - I haven't tried
+    validations:
+      required: true
+  - type: textarea
+    id: document
+    attributes:
+      label: The PDF
+      description: |
+        Attach it if it's safe to share (drag it here), or link to where the blank form can be downloaded. Otherwise
+        say where it came from and what kind of document it is (a government form, a scan, made in Word…).
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Fillsign version
+      description: In About Fillsign (the Fillsign menu on a Mac, the Help menu on Windows and Linux).
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Computer
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true

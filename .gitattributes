@@ -1,0 +1,15 @@
+# Text files are stored with LF and checked out as the platform likes.
+* text=auto
+
+# Never touch line endings in these: a PDF's byte offsets break if one changes, and git can mistake a PDF with no
+# zero bytes for text.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary
+
+# Shell scripts run on macOS and Linux runners, and fail with CRLF.
+*.sh text eol=lf

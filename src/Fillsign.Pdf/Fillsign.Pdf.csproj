@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>Fillsign.Pdf</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Fillsign.Core\Fillsign.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="bblanchon.PDFium.Win32" />
+    <PackageReference Include="bblanchon.PDFium.macOS" />
+    <PackageReference Include="bblanchon.PDFium.Linux" />
+    <PackageReference Include="HarfBuzzSharp" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\*.ttf" LogicalName="Fillsign.Pdf.Fonts.%(Filename)%(Extension)" />
+    <None Include="Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" Link="Licenses\Noto-OFL.txt" />
+    <!-- Typed signatures (FR-4.2): three handwriting styles, unmodified upstream files. -->
+    <EmbeddedResource Include="Fonts\Handwriting\*.ttf" LogicalName="Fillsign.Pdf.Fonts.Handwriting.%(Filename)%(Extension)" />
+    <None Include="Fonts\Handwriting\*-OFL.txt" CopyToOutputDirectory="PreserveNewest" Link="Licenses\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

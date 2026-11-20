@@ -1,0 +1,102 @@
+name: Release
+
+# Builds installers for every platform and puts them in a draft release on GitHub Releases (FS-800–803). Nothing is
+# published until someone reviews the draft and chooses Publish release; installed copies then find it as an update
+# (FS-804). Start it by pushing a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`, or run it by hand.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build, e.g. 0.1.0
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: package (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: windows-latest, rid: win-arm64 }
+          - { os: macos-latest, rid: osx-arm64 }
+          - { os: macos-15-intel, rid: osx-x64 }
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: ubuntu-24.04-arm, rid: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # The typed-in version reaches the shell through the environment, never pasted into the script, and must look
+      # like a version before anything uses it.
+      - name: Version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "Not a version: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Tests run where the package's own architecture can run them; win-arm64 is built on an x64 runner.
+      - name: Test
+        if: matrix.rid != 'win-arm64'
+        shell: bash
+        run: |
+          ./build/fetch-corpus.sh
+          dotnet test -c Release
+
+      - name: Package
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./build/package.sh "$RID" "$VERSION"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.rid }}
+          path: artifacts/releases/${{ matrix.rid }}/
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: releases
+          pattern: release-*
+          merge-multiple: true
+
+      # A checksum for every file, so anyone can check a download is the one built here.
+      - name: Checksums
+        run: cd releases && sha256sum -- * > SHA256SUMS.txt
+
+      # Each platform is its own Velopack channel, so their update files never clash. Always a draft: someone reviews
+      # the files and notes on the release page, then publishes it. A hand-run draft points its tag at this commit.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.package.outputs.version }}
+        run: |
+          gh release create "v$VERSION" releases/* --repo "$GITHUB_REPOSITORY" --title "Fillsign $VERSION" \
+            --target "$GITHUB_SHA" --draft \
+            --notes-file <(echo "See docs/INSTALL.md for first-run steps on unsigned builds.")
