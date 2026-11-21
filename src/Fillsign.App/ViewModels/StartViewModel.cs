@@ -141,7 +141,7 @@ public sealed partial class StartViewModel : ObservableObject
         DateTime local = when.ToLocalTime().DateTime;
         return local.Date == DateTime.Today
             ? "today, " + local.ToString("HH:mm", CultureInfo.InvariantCulture)
-            : local.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+            : DateFormats.Format(local);
     }
 }
 

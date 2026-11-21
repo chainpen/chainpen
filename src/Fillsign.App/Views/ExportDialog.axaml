@@ -37,7 +37,7 @@
                                  rectangle, so a square background would paint over the card's rounded border. -->
                             <Border Background="{DynamicResource SurfaceSubtle}" CornerRadius="11,11,0,0">
                                 <StackPanel Spacing="2">
-                                    <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps we spotted" />
+                                    <TextBlock x:Name="GapsHeading" Margin="14,12,14,0" FontSize="14" FontWeight="SemiBold" Text="Possible gaps" />
                                     <TextBlock x:Name="GapsNote" Classes="muted" Margin="14,0,14,12" FontSize="13" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
@@ -76,7 +76,7 @@
 
                     <CheckBox x:Name="AlsoSave" Margin="0,16,0,0" IsChecked="True">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Also save my working copy" />
+                            <TextBlock Text="Also save the working copy" />
                             <TextBlock x:Name="AlsoSaveDetail" Classes="muted" FontSize="13" TextWrapping="Wrap" MaxWidth="540" />
                         </StackPanel>
                     </CheckBox>

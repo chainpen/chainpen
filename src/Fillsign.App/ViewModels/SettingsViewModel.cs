@@ -27,6 +27,54 @@ public sealed partial class SettingsViewModel : ObservableObject
         _recoveryDays = settings.RecoveryDays;
         _sendCrashReports = settings.SendCrashReports == true;
         _singleKeyToolShortcuts = settings.UseSingleKeyTools;
+        _dateFormat = DateFormats.Current;
+    }
+
+    // ----- Date format -----
+
+    private DateFormatChoice _dateFormat;
+
+    public bool IsDayMonthYear
+    {
+        get => _dateFormat == DateFormatChoice.DayMonthYear;
+        set => SetDateFormat(value, DateFormatChoice.DayMonthYear);
+    }
+
+    public bool IsMonthDayYear
+    {
+        get => _dateFormat == DateFormatChoice.MonthDayYear;
+        set => SetDateFormat(value, DateFormatChoice.MonthDayYear);
+    }
+
+    public bool IsYearMonthDay
+    {
+        get => _dateFormat == DateFormatChoice.YearMonthDay;
+        set => SetDateFormat(value, DateFormatChoice.YearMonthDay);
+    }
+
+    public bool IsDayMonthYearDots
+    {
+        get => _dateFormat == DateFormatChoice.DayMonthYearDots;
+        set => SetDateFormat(value, DateFormatChoice.DayMonthYearDots);
+    }
+
+    /// <summary>"Today is 21/11/2026 in this format."</summary>
+    public string DateExample => $"Today is {DateFormats.Format(DateTime.Today, _dateFormat)} in this format.";
+
+    private void SetDateFormat(bool isChosen, DateFormatChoice format)
+    {
+        if (!isChosen || _dateFormat == format)
+        {
+            return;
+        }
+
+        _dateFormat = format;
+        AppSettings.Update(settings => settings with { DateFormat = format });
+        OnPropertyChanged(nameof(IsDayMonthYear));
+        OnPropertyChanged(nameof(IsMonthDayYear));
+        OnPropertyChanged(nameof(IsYearMonthDay));
+        OnPropertyChanged(nameof(IsDayMonthYearDots));
+        OnPropertyChanged(nameof(DateExample));
     }
 
     // ----- Keyboard (FS-951) -----
@@ -257,5 +305,5 @@ public sealed class SavedRowViewModel(SavedSignature saved)
     public Bitmap Thumbnail { get; } = SignatureDialogViewModel.ToBitmap(saved.Image.Png.AsSpan());
 
     public string Description =>
-        $"{(Saved.Kind == SignatureKind.Initials ? "Initials" : "Signature")}{(Saved.Method == SignatureMethod.Drawn ? string.Empty : $" ({Saved.Method.ToString().ToLowerInvariant()})")} · last used {Saved.LastUsed.ToLocalTime():dd/MM/yyyy}";
+        $"{(Saved.Kind == SignatureKind.Initials ? "Initials" : "Signature")}{(Saved.Method == SignatureMethod.Drawn ? string.Empty : $" ({Saved.Method.ToString().ToLowerInvariant()})")} · last used {DateFormats.Format(Saved.LastUsed.ToLocalTime().DateTime)}";
 }

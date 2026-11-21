@@ -265,6 +265,7 @@ public sealed partial class EditorViewModel
             return;
         }
 
+        NoteGuideExport();
         StopChecking();
         WrittenDocument final;
         Fillsign.Core.Gaps.GapReport gaps;
@@ -485,5 +486,5 @@ public sealed partial class EditorViewModel
     private static string PdfName(string name) =>
         string.Equals(Path.GetExtension(name), ".pdf", StringComparison.OrdinalIgnoreCase) ? name : Path.GetFileNameWithoutExtension(name) + ".pdf";
 
-    private static string FormatWhen(DateTimeOffset when) => when.ToLocalTime().ToString("dd/MM/yyyy, HH:mm", CultureInfo.InvariantCulture);
+    private static string FormatWhen(DateTimeOffset when) => Platform.DateFormats.FormatWithTime(when);
 }

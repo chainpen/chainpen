@@ -46,8 +46,52 @@ public partial class EditorView : UserControl
         AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
         AddHandler(DragDrop.DropEvent, OnDrop);
         DragDrop.SetAllowDrop(this, true);
-        SizeChanged += (_, args) => CollapseToolbar(args.NewSize.Width);
+        SizeChanged += (_, args) =>
+        {
+            CollapseToolbar(args.NewSize.Width);
+            PlaceGuideArrow();
+        };
     }
+
+    private Button? _guideArrowTarget;
+
+    /// <summary>Restarts the arrow's bounce (a style animation on the <c>bouncing</c> class) as it arrives at a button.</summary>
+    private void BounceGuideArrow()
+    {
+        GuideArrow.Classes.Remove("bouncing");
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => GuideArrow.Classes.Add("bouncing"), Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Points the practice guide's arrow up at the button it wants next, once that button's been laid out. Hidden when
+    /// there's no guide, or several buttons are lit (the nudge).
+    /// </summary>
+    private void PlaceGuideArrow() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                Button[] lit = _editor is { IsGuiding: true }
+                    ? [.. ToolbarBar.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("guided") && button.IsEffectivelyVisible)]
+                    : [];
+                if (lit is [Button target] && target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height), GuideArrowLayer) is { } tip)
+                {
+                    Avalonia.Controls.Canvas.SetLeft(GuideArrow, tip.X - 11);
+                    Avalonia.Controls.Canvas.SetTop(GuideArrow, tip.Y + 3);
+                    GuideArrow.IsVisible = true;
+                    if (!ReferenceEquals(target, _guideArrowTarget))
+                    {
+                        _guideArrowTarget = target;
+                        BounceGuideArrow();
+                    }
+                }
+                else
+                {
+                    GuideArrow.IsVisible = false;
+                    _guideArrowTarget = null;
+                    GuideArrow.Classes.Remove("bouncing");
+                }
+            },
+            Avalonia.Threading.DispatcherPriority.Background);
 
     /// <summary>Widths below which the toolbar collapses (INTERACTION-PATTERNS §3); the smallest window (S2, 1024) has both.</summary>
     private const double CompactSwitchBelowWidth = 1640;
@@ -187,6 +231,13 @@ public partial class EditorView : UserControl
             if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex) && editor.CurrentPageIndex < editor.Pages.Count)
             {
                 PageList.ScrollIntoView(editor.CurrentPageIndex);
+            }
+
+            // Switching to Organise pages hides the tools, so the arrow moves or goes with them.
+            if (args.PropertyName is nameof(EditorViewModel.IsGuiding) or nameof(EditorViewModel.IsOrganising) or nameof(EditorViewModel.GuideLightsTick)
+                or nameof(EditorViewModel.GuideLightsText) or nameof(EditorViewModel.GuideLightsSign) or nameof(EditorViewModel.GuideLightsExport))
+            {
+                PlaceGuideArrow();
             }
 
             if (args.PropertyName == nameof(EditorViewModel.Notice))

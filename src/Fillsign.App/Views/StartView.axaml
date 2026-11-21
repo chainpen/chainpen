@@ -160,7 +160,7 @@
                 <DockPanel>
                     <Button DockPanel.Dock="Right" MinHeight="36" FontSize="13" Click="OnPracticeForm"
                             Content="Try it with a practice form"
-                            ToolTip.Tip="Opens “Practice form”. Nothing is saved unless you choose to." />
+                            ToolTip.Tip="Opens a practice form with a guide that takes you through it step by step. Nothing is saved unless you choose to." />
                     <TextBlock Classes="heading-section" VerticalAlignment="Center" Text="How it works" />
                 </DockPanel>
                 <UniformGrid Columns="3" ColumnSpacing="12">
@@ -169,7 +169,7 @@
                         <StackPanel Spacing="6">
                             <Border Classes="badge"><TextBlock Text="1" /></Border>
                             <TextBlock FontWeight="SemiBold" Text="Open your form" />
-                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A PDF, or a photo of a paper form." />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A PDF, or a photo or scan of a paper form." />
                         </StackPanel>
                     </Border>
                     <Border Padding="16" CornerRadius="12" BorderThickness="1"
@@ -177,7 +177,7 @@
                         <StackPanel Spacing="6">
                             <Border Classes="badge"><TextBlock Text="2" /></Border>
                             <TextBlock FontWeight="SemiBold" Text="Tick, type and sign" />
-                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Click on the page where each answer goes." />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Choose a tool, then click where each answer goes." />
                         </StackPanel>
                     </Border>
                     <Border Padding="16" CornerRadius="12" BorderThickness="1"

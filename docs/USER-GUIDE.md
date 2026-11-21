@@ -2,6 +2,10 @@
 
 Fillsign fills in and signs documents, especially scans and photos of paper forms that have no fillable fields. Everything stays on your computer: there's no account and nothing is uploaded.
 
+## Try it first
+
+The first time you open Fillsign, the start screen offers **Try it with a practice form**. The practice form is an example of a scanned paper form, and a note at the top says so. Like most forms you'll fill in, its boxes and lines are only part of the picture, so you choose a tool and then click where each answer goes. A guide in the corner takes you through it one step at a time: tick a box, write your name, sign and export. It lights up the button to choose in orange with an arrow pointing at it, then outlines the place to click, and moves on as you do each step. **Skip guide** closes it. **Help → Try the practice form** opens the practice form and its guide again whenever you like (in a new window if a document is open).
+
 ## Open a document
 
 - **Open…** (⌘O / Ctrl+O), drop files on the window, or pick one from **Recent** on the start screen.
@@ -11,13 +15,13 @@ Fillsign fills in and signs documents, especially scans and photos of paper form
 
 ## Fill it in
 
-Pick a tool on the toolbar, then click on the page:
+Choose a tool on the toolbar, then click on the page:
 
 | Tool | What it does |
 |---|---|
 | **Text** | Click and type. Enter starts a new line; Esc or a click elsewhere finishes. **B** (⌘B / Ctrl+B) makes it bold. |
-| **Tick** / **Cross** | Click each box. The tool stays on until you pick another or press Esc. |
-| **Date** | Adds today's date (DD/MM/YYYY), then goes back to Select with the date selected so you can nudge it into place. |
+| **Tick** / **Cross** | Click each box. The tool stays on until you choose another or press Esc. |
+| **Date** | Adds today's date in the format chosen in **Settings → Date format**, then goes back to Select with the date selected so you can nudge it into place. |
 | **Sign** | Choose or make a signature, then click where it goes. |
 | **Shapes** | Rectangle, ellipse, line, arrow, highlight or whiteout: drag, or click for a standard size. Drag either end of a selected line or arrow to point it any way. |
 | **Draw** | Freehand. Strokes join into one drawing until you press Done or Esc. |
@@ -25,6 +29,8 @@ Pick a tool on the toolbar, then click on the page:
 Each tool also has a letter: **V** Select, **T** Text, **C** Tick, **X** Cross, **D** Date, **S** Sign, **R** Shapes, **P** Draw. They're off unless you turn them on in **Settings → Keyboard**.
 
 **Forms with fillable fields**: fields are tinted blue, and a note says how many there are when the form opens. With Select or Text, click one to fill it (Tick and Cross tick the form's own boxes too): type into a text field (Enter finishes), click a check box or radio button, or pick from a list (in a list that allows several answers, each click adds or removes one). The keyboard works as in a web browser. Tab moves from field to field in the order the form sets (a group of radio buttons is one stop), and selects a text field's contents so typing replaces them. Space or Enter ticks a box, chooses a radio button or opens a list. The arrow keys move round a question's radio buttons and change a list's or drop-down's choice. In a list that allows several answers, the arrows move the dotted outline, Space ticks or unticks that row, and Shift+arrows choose a run of rows. Filled fields are kept in the working copy and the final copy, where they still work in other PDF apps. Read-only fields, such as totals a form works out, can't be changed, and form buttons such as Reset or Submit don't run in Fillsign. Click a signature field to sign straight into it. Some drop-downs also take an answer of your own: choose **Type an answer…**. Empty fields show up in the gap hints before you export. When you export, **Lock the form's fields** (ticked unless you untick it) makes the answers read-only in the final copy, so the person you send it to can't change them. With a screen reader, each field is read out as you reach it, with its answer, and the fields near the page in view can be explored and filled with the screen reader's own commands. The bar above the page shows the field in use and the keys that work in it.
+
+On a scan or a PDF without fillable fields, clicking an empty part of the page with **Select** does nothing to the page itself, so Fillsign says to choose a tool first and lights up **Tick**, **Text** and **Sign**.
 
 With **Select**, click anything you added to move, resize, recolour or delete it. Shift- or ⌘/Ctrl-click adds to the selection; drag on empty paper to select several. On the page, Tab steps through what you've added; arrow keys nudge (Shift for bigger steps). Every change can be undone (⌘Z / Ctrl+Z), and right after deleting, a note at the bottom offers **Undo** too.
 
@@ -57,7 +63,7 @@ If Fillsign closes unexpectedly, your unsaved changes are offered back the next 
 
 ## Settings
 
-**Settings** (⌘, / Ctrl+,, or the button on the start screen): appearance (match your computer, light or dark), saved signatures and initials, how long recovery copies are kept, single-letter tool keys, and crash reports. Crash reports are off unless you turn them on (Fillsign also asks once, on its second start). When on, a short report is kept on this computer if something goes wrong. It holds the app version, your system and the code that failed, never your documents, signatures or file names. Next start, **Review and send…** opens it as a GitHub issue you can read before sending.
+**Settings** (⌘, / Ctrl+,, or the button on the start screen): appearance (match your computer, light or dark), saved signatures and initials, how long recovery copies are kept, the date format, single-letter tool keys, and crash reports. The date format (DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD or DD.MM.YYYY) starts as the one closest to your computer's region, and applies to dates you add with the Date tool and dates Fillsign shows; dates already on a document don't change. Crash reports are off unless you turn them on (Fillsign also asks once, on its second start). When on, a short report is kept on this computer if something goes wrong. It holds the app version, your system and the code that failed, never your documents, signatures or file names. Next start, **Review and send…** opens it as a GitHub issue you can read before sending.
 
 ## Keyboard
 

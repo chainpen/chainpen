@@ -68,7 +68,7 @@
                                                     <StackPanel Grid.Column="1" Spacing="2">
                                                         <TextBlock FontWeight="SemiBold" Text="Save" />
                                                         <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                                                                   Text="Keeps your edits changeable next time you open it in Fillsign." />
+                                                                   Text="Keeps your edits so you can change them next time you open it in Fillsign." />
                                                     </StackPanel>
                                                     <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top"><TextBlock Text="{c:Keys 'Mod S'}" /></Border>
                                                 </Grid>
@@ -100,7 +100,7 @@
                             </Button>
                         </StackPanel>
                     </Border>
-                    <Button x:Name="ExportButton" Classes="primary" MinHeight="36" Height="36" Padding="14,0" Command="{Binding ExportCommand}"
+                    <Button x:Name="ExportButton" Classes="primary" Classes.guided="{Binding GuideLightsExport}" MinHeight="36" Height="36" Padding="14,0" Command="{Binding ExportCommand}"
                             ToolTip.Tip="{c:Keys 'Make the copy to send (Mod+E)'}" AutomationProperties.Name="Export final copy">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconTick}" StrokeThickness="2" />
@@ -151,6 +151,7 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsTextTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Text}" AutomationProperties.Name="Text"
+                            Classes.guided="{Binding GuideLightsText}"
                             ToolTip.Tip="Click on the page and type (T)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconText}" />
@@ -159,6 +160,7 @@
                     </Button>
                     <Button Classes="tool" Classes.on="{Binding IsTickTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Tick}" AutomationProperties.Name="Tick"
+                            Classes.guided="{Binding GuideLightsTick}"
                             ToolTip.Tip="Click boxes to tick them (C)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconTick}" />
@@ -175,7 +177,7 @@
                     </Button>
                     <Button x:Name="DateButton" Classes="tool" Classes.on="{Binding IsDateTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Date}" AutomationProperties.Name="Date"
-                            ToolTip.Tip="Click to add today’s date, DD/MM/YYYY (D)">
+                            ToolTip.Tip="Click to add today’s date (D)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconDate}" />
                             <TextBlock Classes="collapsibleLate" Text="Date" VerticalAlignment="Center" />
@@ -184,6 +186,7 @@
                     <!-- Sign and Initials are a click each (UX review 7): the dialog then makes that one kind. -->
                     <Button Classes="tool" Classes.on="{Binding IsSignTool}" Command="{Binding SelectToolCommand}"
                             CommandParameter="{x:Static vm:EditorTool.Sign}" AutomationProperties.Name="Sign"
+                            Classes.guided="{Binding GuideLightsSign}"
                             ToolTip.Tip="Add your signature (S)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:StrokeIcon Data="{StaticResource IconSign}" />
@@ -437,7 +440,7 @@
                         <c:StrokeIcon Data="{StaticResource IconSign}" Foreground="{DynamicResource InkBlue}" />
                         <TextBlock FontSize="13" VerticalAlignment="Center">
                             <Run FontWeight="SemiBold" Text="{Binding PlacingText}" />
-                            <Run Text=" You can move or resize it afterwards. Arrow keys and Enter work too." />
+                            <Run Text=" You can move or resize it afterwards, or use the arrow keys to move it and Enter to place it." />
                         </TextBlock>
                     </StackPanel>
                 </DockPanel>
@@ -488,10 +491,10 @@
                     <c:StrokeIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource Warning}" />
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
                         <Run FontWeight="SemiBold" Text="This file was changed in another app after you saved it in Fillsign." />
-                        <Run Text=" We’ve opened it as it is now, so nothing from the other app is lost." />
+                        <Run Text=" Fillsign opened it as it is now, so nothing from the other app is lost." />
                     </TextBlock>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
-                        <Button Classes="small" Content="Restore my Fillsign edits…" Command="{Binding RestoreChangedEditsCommand}" />
+                        <Button Classes="small" Content="Restore Fillsign edits…" Command="{Binding RestoreChangedEditsCommand}" />
                         <Button Classes="small primary" Content="Keep as it is" Command="{Binding KeepAsItIsCommand}" />
                     </StackPanel>
                     <TextBlock Grid.Row="1" Grid.Column="1" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{Binding ChangedElsewhereDetail}" />
@@ -692,6 +695,30 @@
                     </Button>
                 </StackPanel>
             </Border>
+
+            <!-- The guide's step read out as it changes; the card shows it. -->
+            <TextBlock x:Name="GuideAnnouncement" Grid.Column="0" Width="1" Height="1" Opacity="0" IsHitTestVisible="False"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Text="{Binding GuideAnnouncement}"
+                       AutomationProperties.Name="{Binding GuideAnnouncement}" AutomationProperties.LiveSetting="Polite" />
+
+            <!-- The practice guide (FR-1.8): one step at a time, over the blank lower part of the practice page. The
+                 toolbar button and the place on the page it means are lit up as well. -->
+            <Border x:Name="GuideCard" Grid.Column="1" IsVisible="{Binding IsGuiding}" Width="310"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,24,24" Padding="20,16,20,16"
+                    Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Guide}" BorderThickness="2"
+                    CornerRadius="{StaticResource RadiusLarge}" BoxShadow="{StaticResource ShadowDialog}">
+                <StackPanel Spacing="8">
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Margin="0,0,0,-4" Foreground="{DynamicResource Guide}" Text="{Binding GuideProgress}" />
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding GuideTitle}" />
+                    <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding GuideText}" />
+                    <DockPanel Margin="0,4,0,0">
+                        <Button x:Name="CloseGuideButton" DockPanel.Dock="Right" Classes="small" Command="{Binding CloseGuideCommand}"
+                                Content="{Binding GuideCloseLabel}" />
+                        <TextBlock Classes="caption" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"
+                                   Text="Practice only: nothing is saved unless you choose to." />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Status bar. -->
@@ -752,7 +779,7 @@
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding Pages.Count, StringFormat='of {0}'}" />
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="·" IsVisible="{Binding HasRecoveryStatus}" />
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="{Binding RecoveryStatus}" IsVisible="{Binding HasRecoveryStatus}"
-                               ToolTip.Tip="Unsaved changes are kept here in case Fillsign closes unexpectedly. It isn’t the file." />
+                               ToolTip.Tip="A copy of your unsaved changes, kept on this computer in case Fillsign closes unexpectedly. It isn’t saved to your file." />
                     <TextBlock Classes="caption" VerticalAlignment="Center" Text="·" IsVisible="{Binding HasDamagedPages}" />
                     <TextBlock FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource DamagedText}"
                                IsVisible="{Binding HasDamagedPages}" Text="{Binding DamagedStatus}" />
@@ -766,9 +793,40 @@
                 </StackPanel>
             </DockPanel>
         </Border>
+
+        <!-- The practice guide's arrow, under the button it wants next; placed by the view. Drawn over everything and
+             never in the way of a click. -->
+        <Canvas x:Name="GuideArrowLayer" Grid.RowSpan="6" IsHitTestVisible="False">
+            <Path x:Name="GuideArrow" IsVisible="False" Fill="{DynamicResource Guide}" Stroke="{DynamicResource Surface}" StrokeThickness="1.5"
+                  Data="M 11,0 L 22,12 L 15,12 L 15,26 L 7,26 L 7,12 L 0,12 Z">
+                <Path.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform />
+                        <TranslateTransform />
+                    </TransformGroup>
+                </Path.RenderTransform>
+            </Path>
+        </Canvas>
     </Grid>
 
     <UserControl.Styles>
+        <!-- The guide's arrow bounces and grows three times as it arrives at a button, then holds still: motion that
+             ran past five seconds would need a way to stop it (WCAG 2.2.2). -->
+        <Style Selector="Path#GuideArrow.bouncing">
+            <Style.Animations>
+                <Animation Duration="0:0:1" IterationCount="3" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="ScaleTransform.ScaleX" Value="1" /><Setter Property="ScaleTransform.ScaleY" Value="1" />
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="TranslateTransform.Y" Value="-6" /><Setter Property="ScaleTransform.ScaleX" Value="1.25" /><Setter Property="ScaleTransform.ScaleY" Value="1.25" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="ScaleTransform.ScaleX" Value="1" /><Setter Property="ScaleTransform.ScaleY" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
         <Style Selector=":is(UserControl).iconsOnly TextBlock.collapsible">
             <Setter Property="IsVisible" Value="False" />
         </Style>

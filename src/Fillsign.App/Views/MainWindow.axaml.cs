@@ -176,7 +176,7 @@ public partial class MainWindow : Window, IEditorHost
 
             if (isPracticeForm)
             {
-                ShowFirstRunTipsOnce();
+                editor.StartPracticeGuide();
             }
 
             return editor;
@@ -210,7 +210,7 @@ public partial class MainWindow : Window, IEditorHost
         await OpenPathsAsync(paths).ConfigureAwait(true);
     }
 
-    private async Task OpenPracticeFormAsync()
+    internal async Task OpenPracticeFormAsync()
     {
         await using Stream stream = AssetLoader.Open(new Uri("avares://Fillsign.App/Assets/practice-form.pdf"));
         using var copy = new MemoryStream();
@@ -432,27 +432,6 @@ public partial class MainWindow : Window, IEditorHost
         _startView = null;
     }
 
-    private void ShowFirstRunTipsOnce()
-    {
-        AppSettings settings = AppSettings.Load();
-        if (settings.HasSeenFirstRunTips)
-        {
-            return;
-        }
-
-        (settings with { HasSeenFirstRunTips = true }).Save();
-        FirstRunSteps.ItemsSource = new[]
-        {
-            "1   Tick the boxes that apply",
-            "2   Text or Date on the lines",
-            "3   Sign on the signature line",
-            "4   Export final copy to get a file to send",
-        };
-        FirstRunTips.IsVisible = true;
-    }
-
-    private void OnDismissTips(object? sender, RoutedEventArgs e) => FirstRunTips.IsVisible = false;
-
     // ----- Dropping on the start screen -----
 
     private void OnWindowDragOver(object? sender, DragEventArgs e)
@@ -559,9 +538,6 @@ public partial class MainWindow : Window, IEditorHost
                 break;
             case Key.PageUp when editor is not null && !isTyping:
                 editor.PreviousPageCommand.Execute(null);
-                break;
-            case Key.Escape when FirstRunTips.IsVisible:
-                FirstRunTips.IsVisible = false;
                 break;
             case Key.Escape when editor is not null:
                 // Back out one level, including finishing typing (FR-7.7).
@@ -916,7 +892,7 @@ public partial class MainWindow : Window, IEditorHost
 
     public async Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt)
     {
-        string when = savedAt is { } saved ? $" from {saved.ToLocalTime():dd/MM/yyyy, HH:mm}" : string.Empty;
+        string when = savedAt is { } saved ? $" from {DateFormats.FormatWithTime(saved)}" : string.Empty;
         Choice choice = await ShowDialogAsync(
             new ChoiceDialog(
                 "Restore your Fillsign edits?",

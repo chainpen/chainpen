@@ -81,9 +81,27 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
+                        <TextBlock x:Name="DateFormatHeading" Classes="heading-section" Text="Date format" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="For dates you add with the Date tool, and dates Fillsign shows. Dates already on a document don’t change." />
+                        <Border Classes="segments" HorizontalAlignment="Left" Margin="0,10,0,0">
+                            <StackPanel x:Name="DateFormatChoices" Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #DateFormatHeading}">
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="DD/MM/YYYY" IsChecked="{Binding IsDayMonthYear}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="MM/DD/YYYY" IsChecked="{Binding IsMonthDayYear}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="YYYY-MM-DD" IsChecked="{Binding IsYearMonthDay}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="DD.MM.YYYY" IsChecked="{Binding IsDayMonthYearDots}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="DateExample" Classes="muted" FontSize="13" Margin="0,4,0,0" Text="{Binding DateExample}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
                         <TextBlock Classes="heading-section" Text="Keyboard" />
                         <CheckBox x:Name="SingleKeyTools" Margin="0,6,0,0" IsChecked="{Binding UseSingleKeyTools}"
-                                  Content="Pick tools with single letters (V, T, C, X, D, S, R, P)" />
+                                  Content="Choose tools with single letters (V, T, C, X, D, S, R, P)" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
                                    Text="Off unless you turn it on. Leave it off if you use speech input, or would press letters by accident." />
                     </StackPanel>
@@ -94,8 +112,8 @@
                         <TextBlock Classes="heading-section" Text="Crash reports" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
                                    Text="If something goes wrong, a short report is kept on this computer: the app version, your system and the code that failed. It never includes your documents, signatures or file names. Next time you start Fillsign, you can review it and send it as a GitHub issue." />
-                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="Keep reports for me to send" IsChecked="{Binding SendCrashReports}" />
-                        <RadioButton GroupName="crash" Content="Don’t send" IsChecked="{Binding DontSendCrashReports}" />
+                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="Keep reports for me to review" IsChecked="{Binding SendCrashReports}" />
+                        <RadioButton GroupName="crash" Content="Don’t keep reports" IsChecked="{Binding DontSendCrashReports}" />
                     </StackPanel>
                 </Border>
 

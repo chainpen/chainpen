@@ -82,7 +82,7 @@ public partial class MainWindow
 
         var help = Menu("Help",
             Item("Keyboard shortcuts", () => _ = ShowShortcutsAsync()),
-            Item("How Fillsign works", ShowHowItWorks));
+            Item("Try the practice form", OpenPracticeGuide));
         if (!OperatingSystem.IsMacOS())
         {
             help.Menu!.Items.Add(new NativeMenuItemSeparator());
@@ -269,13 +269,22 @@ public partial class MainWindow
     public void ShowAbout() =>
         _ = ShowInformationAsync(
             "About Fillsign",
-            $"Version {App.DisplayVersion}. Fill in and sign PDF forms on this computer. Your documents never leave it.\n\n"
-            + "Free for personal use. Free for businesses and other organisations during the beta; after it, they’ll need a "
-            + "business licence. The full terms "
-            + "and the licences of the libraries and fonts Fillsign uses are in the Licenses folder that comes with the app.");
+            $"Version {App.DisplayVersion}\n\n"
+            + "Fill in and sign PDFs and scanned forms. Your documents stay on this computer.\n\n"
+            + "Free for personal use, and for businesses during the beta. After the beta, businesses need a licence.\n\n"
+            + "The full terms, and the licences for the fonts and libraries Fillsign uses, are in the Licenses folder that comes with the app.");
 
-    private void ShowHowItWorks() =>
-        _ = ShowInformationAsync(
-            "How Fillsign works",
-            "Open your form, then tick, type and sign on the page with the tools at the top. Save keeps a working copy you can change later. Export final copy makes the file to send: it looks the same for everyone and can’t be changed. Nothing leaves this computer.");
+    /// <summary>Opens the practice form with its guide: here if nothing's open, otherwise in a new window.</summary>
+    private void OpenPracticeGuide()
+    {
+        if (Editor is null)
+        {
+            _ = OpenPracticeFormAsync();
+            return;
+        }
+
+        var window = new MainWindow(isFirstLaunch: false, []);
+        window.Show();
+        _ = window.OpenPracticeFormAsync();
+    }
 }

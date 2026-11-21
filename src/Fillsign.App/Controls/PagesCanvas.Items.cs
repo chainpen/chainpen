@@ -51,6 +51,11 @@ public sealed partial class PagesCanvas
             {
                 UpdatePointerCursor(null);
             }
+
+            if (args.PropertyName == nameof(EditorViewModel.GuideTarget))
+            {
+                InvalidateLayers();
+            }
         };
         AttachFields(editor);
         PointerPressed += OnPointerPressed;
@@ -103,17 +108,20 @@ public sealed partial class PagesCanvas
     }
 
     /// <summary>The possible gap being checked (E10): an amber outline with a label beside it.</summary>
-    private void DrawCheckingGap(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge)
+    private void DrawCheckingGap(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge) =>
+        DrawCallout(context, pageRect, area, badge, Color.FromRgb(0xc2, 0x41, 0x0c), Color.FromRgb(0x92, 0x40, 0x0e));
+
+    /// <summary>An outline around part of the page with a label above it: a gap being checked, or where the guide points.</summary>
+    private void DrawCallout(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge, Color outlineColour, Color badgeColour)
     {
-        var amber = Color.FromRgb(0xc2, 0x41, 0x0c);
         var outline = new Rect(pageRect.X + (area.X * Zoom), pageRect.Y + (area.Y * Zoom), area.Width * Zoom, area.Height * Zoom).Inflate(6);
-        context.DrawRectangle(new SolidColorBrush(amber, 0.06), new Pen(new SolidColorBrush(amber), 2), outline, 6, 6);
+        context.DrawRectangle(new SolidColorBrush(outlineColour, 0.08), new Pen(new SolidColorBrush(outlineColour), 2), outline, 6, 6);
 
         var text = new FormattedText(badge, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold), 12, Brushes.White);
         // Above the outline: beside it would cover the words that go with a box.
         double width = text.Width + 16, height = text.Height + 4;
         var pill = new Rect(Math.Min(outline.X, pageRect.Right - width - 4), outline.Y - height - 4, width, height);
-        context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x92, 0x40, 0x0e)), null, pill, height / 2, height / 2);
+        context.DrawRectangle(new SolidColorBrush(badgeColour), null, pill, height / 2, height / 2);
         context.DrawText(text, new Point(pill.X + 8, pill.Y + 2));
     }
 
@@ -131,6 +139,12 @@ public sealed partial class PagesCanvas
         if (editor.CheckingGap is { } gap && gap.Page == page.Id)
         {
             DrawCheckingGap(context, rect, gap.Area, editor.CheckingBadge);
+        }
+
+        if (editor.GuideTarget is { } target && target.Page == page.Id)
+        {
+            Color guide = this.TryFindResource("GuideOnPageColor", ActualThemeVariant, out object? found) && found is Color colour ? colour : Color.FromRgb(0xc2, 0x41, 0x0c);
+            DrawCallout(context, rect, target.Area, target.Label, guide, guide);
         }
 
         // UX review 4: an empty signature field is easy to miss, so it's outlined with "Sign here" while editing.

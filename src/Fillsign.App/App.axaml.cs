@@ -48,7 +48,12 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
-            AppSettings settings = AppSettings.Update(current => current with { LaunchCount = current.LaunchCount + 1 });
+            // The date format starts as the system's, chosen once so it doesn't change under the person later.
+            AppSettings settings = AppSettings.Update(current => current with
+            {
+                LaunchCount = current.LaunchCount + 1,
+                DateFormat = current.DateFormat ?? DateFormats.FromCulture(System.Globalization.CultureInfo.CurrentCulture),
+            });
             bool isFirstLaunch = settings.LaunchCount == 1;
 
             // Recovery copies are kept for the chosen number of days (FR-8.12).
@@ -173,7 +178,7 @@ public partial class App : Application
             Command = new CommunityToolkit.Mvvm.Input.RelayCommand(MainWindow.ShowSettings),
             Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.OemComma, Avalonia.Input.KeyModifiers.Meta),
         });
-        menu.Items.Add(new NativeMenuItem("Check for Updates…")
+        menu.Items.Add(new NativeMenuItem("Check for updates…")
         {
             Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => _ = frontWindow()?.CheckForUpdatesAsync()),
         });

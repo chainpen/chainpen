@@ -35,8 +35,8 @@ public partial class ExportDialog : UserControl
             UpdateLede();
         }
         AlsoSaveDetail.Text = request.ContainsSignature
-            ? "Keeps your edits changeable. It contains your signature, so keep it private and send only the final copy."
-            : "Keeps your edits changeable. Save it somewhere private, and send only the final copy.";
+            ? "Keeps your edits so you can change them. It contains your signature, so keep it private and send only the final copy."
+            : "Keeps your edits so you can change them. Save it somewhere private, and send only the final copy.";
         FileName.TextChanged += (_, _) => UpdateNotes();
         UpdateNotes();
         ShowGaps(request.Gaps, request.PageCount);
@@ -86,7 +86,7 @@ public partial class ExportDialog : UserControl
     }
 
     /// <summary>
-    /// "Possible gaps we spotted" (🎨 6): boxes are summed up per page ("3 of 4 boxes ticked on page 1") and each empty
+    /// "Possible gaps" (🎨 6): boxes are summed up per page ("3 of 4 boxes ticked on page 1") and each empty
     /// blank gets a row, each with Show me.
     /// </summary>
     private void ShowGaps(Core.Gaps.GapReport report, int pageCount)
@@ -98,8 +98,8 @@ public partial class ExportDialog : UserControl
 
         GapsSection.IsVisible = true;
         GapsNote.Text = report.PagesChecked < pageCount
-            ? "We can’t check everything, and we only looked at pages you’ve added to. Look over each page before you send it."
-            : "We can’t check everything. Look over each page before you send it.";
+            ? "Fillsign can’t check everything, and only looked at pages you’ve added to. Look over each page before you send it."
+            : "Fillsign can’t check everything. Look over each page before you send it.";
 
         var rows = new List<(string Title, string? Detail, int GapIndex)>();
         var boxPagesDone = new HashSet<Fillsign.Core.Model.PageId>();

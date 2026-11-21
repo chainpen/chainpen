@@ -160,7 +160,7 @@ public sealed class SaveTests : IDisposable
         Assert.Equal(SessionStatus.None, SessionStore.Find(File.ReadAllBytes(final)).Status);
         Assert.StartsWith("sample-form-final.pdf (", s.Editor.Exported!.Text, StringComparison.Ordinal);
 
-        // "Also save my working copy" was ticked, so the working copy was saved too.
+        // "Also save the working copy" was ticked, so the working copy was saved too.
         Assert.False(dialog.FindControl<CheckBox>("LockFields")!.IsVisible, "a form with no fields has nothing to lock");
         await Pump(() => !s.Editor.HasUnsavedChanges);
         Assert.True(File.Exists(Path.Combine(_folder, "sample-form.pdf")));

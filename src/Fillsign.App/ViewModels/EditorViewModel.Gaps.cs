@@ -267,7 +267,7 @@ public sealed partial class EditorViewModel
     private static string DescribeField(Gap gap) => gap.Kind switch
     {
         GapKind.Unticked when gap.Question.Length > 0 => $"“{gap.Question}” isn’t answered",
-        GapKind.Unticked => $"Nothing ticked: {gap.Label}",
+        GapKind.Unticked => gap.Label.Length > 0 ? $"Not ticked: “{gap.Label}”" : "A box isn’t ticked",
         _ when gap.BlankKind == BlankKind.Signature => $"“{gap.Label}” isn’t signed",
         _ => $"“{gap.Label}” is empty",
     };

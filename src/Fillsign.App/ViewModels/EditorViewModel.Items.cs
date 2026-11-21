@@ -161,15 +161,15 @@ public sealed partial class EditorViewModel
     /// <summary>What the current tool does and how to stop (FR-3.10).</summary>
     public string ToolHint => Tool switch
     {
-        EditorTool.Text => "Click where the text should start, then type.",
-        EditorTool.Tick => "Click each box to tick it. Tick stays on until you pick another tool · Esc to stop",
-        EditorTool.Cross => "Click each box to cross it. Cross stays on until you pick another tool · Esc to stop",
-        EditorTool.Date => "Click to add today’s date (DD/MM/YYYY) · Esc to cancel",
+        EditorTool.Text => "Click where the text should start, then type",
+        EditorTool.Tick => "Click each box to tick it · Tick stays on until you choose another tool · Esc to stop",
+        EditorTool.Cross => "Click each box to cross it · Cross stays on until you choose another tool · Esc to stop",
+        EditorTool.Date => $"Click to add today’s date ({Platform.DateFormats.Label(Platform.DateFormats.Current)}) · Esc to cancel",
         EditorTool.Shape => "Drag on the page to draw it. Click instead for a standard size · Esc to stop",
-        EditorTool.Draw => "Strokes join into one drawing until you’re done.",
+        EditorTool.Draw => "Draw on the page · strokes join into one drawing · Done or Esc to finish",
         // FS-950: on a form with fields, filling them is the main way in; the tools add your own on top.
         _ when HasFillableFields && !IsViewOnly => FormHint(),
-        _ => "Nothing selected. Pick a tool, then click on the page: Tick for boxes, Text for lines, Sign for the signature.",
+        _ => "Choose a tool, then click on the page: Tick for boxes, Text for lines, Sign for your signature.",
     };
 
     public string PlacingText => PlacingSignature?.Kind == SignatureKind.Initials ? "Click where your initials should go." : "Click where your signature should go.";
@@ -278,6 +278,7 @@ public sealed partial class EditorViewModel
         _joiningInk = null;
         PlacingSignature = null;
         Notice = null;
+        IsNudgingTools = false;
         Cursor = null;
         if (tool != EditorTool.Select)
         {
@@ -364,6 +365,7 @@ public sealed partial class EditorViewModel
     public void PointerPressed(int pageIndex, PagePoint point, bool isShift, bool isCommand, int clickCount, double tolerance)
     {
         Notice = null;
+        IsNudgingTools = false;
         IsKeyboardCursor = false;
         if (pageIndex < 0 || pageIndex >= State.Pages.Length)
         {
@@ -417,7 +419,7 @@ public sealed partial class EditorViewModel
                 break;
             case EditorTool.Date:
             {
-                TextItem date = AddText(page, point, DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), startTyping: false);
+                TextItem date = AddText(page, point, Platform.DateFormats.Format(DateTime.Now), startTyping: false);
 
                 // A form needs one date, so go back to Select with the date selected, ready to nudge into place (FR-3.3).
                 SwitchTool(EditorTool.Select);
@@ -564,6 +566,10 @@ public sealed partial class EditorViewModel
                 if (SelectionBox is { } rect && (rect.Box.Width >= ItemGeometry.ClickTolerance || rect.Box.Height >= ItemGeometry.ClickTolerance))
                 {
                     Selection = Selections.SelectInBox(box.SelectionBefore, State, box.Page, rect.Box, box.IsAdditive, Measurer);
+                }
+                else if (!box.IsAdditive && box.SelectionBefore.IsEmpty)
+                {
+                    NudgeTowardsTools();
                 }
 
                 SelectionBox = null;
@@ -1254,7 +1260,7 @@ public sealed partial class EditorViewModel
 
     public string OptionsHint => ContextMode switch
     {
-        ContextMode.Typing => "Enter: new line · Esc or click outside: finish",
+        ContextMode.Typing => "Enter for a new line · Esc or click outside to finish",
         ContextMode.Selection => SelectionHint,
         _ => ToolHint,
     };

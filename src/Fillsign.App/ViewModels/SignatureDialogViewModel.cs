@@ -578,7 +578,7 @@ public sealed class SignatureOptionViewModel
     /// <summary>"New signature" or "New".</summary>
     public string NewLabel { get; }
 
-    public string LastUsedText => Saved.LastUsed.ToLocalTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+    public string LastUsedText => Platform.DateFormats.Format(Saved.LastUsed.ToLocalTime().DateTime);
 
     /// <summary>"Saved signature, drawn, last used 12/11/2026" for screen readers.</summary>
     public string AccessibleName => IsNew

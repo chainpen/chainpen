@@ -45,6 +45,11 @@
             <SolidColorBrush x:Key="FocusRing" Color="#173c96" />
             <Color x:Key="SelectionOnPageColor">#1f4fc4</Color>
             <SolidColorBrush x:Key="SelectionOnPage" Color="#1f4fc4" />
+            <!-- The practice guide's "do this next": orange, so it never reads as a tool that's on or selected (blue). -->
+            <SolidColorBrush x:Key="Guide" Color="#c2410c" />
+            <SolidColorBrush x:Key="GuideTint" Color="#ffedd5" />
+            <SolidColorBrush x:Key="GuideStrong" Color="#9a3412" />
+            <Color x:Key="GuideOnPageColor">#c2410c</Color>
             <Color x:Key="WarningColor">#92400e</Color>
             <SolidColorBrush x:Key="Warning" Color="#92400e" />
             <Color x:Key="WarningTintColor">#fff7ed</Color>
@@ -124,6 +129,11 @@
             <SolidColorBrush x:Key="FocusRing" Color="#a9c1ff" />
             <Color x:Key="SelectionOnPageColor">#1f4fc4</Color>
             <SolidColorBrush x:Key="SelectionOnPage" Color="#1f4fc4" />
+            <SolidColorBrush x:Key="Guide" Color="#fb923c" />
+            <SolidColorBrush x:Key="GuideTint" Color="#43261a" />
+            <SolidColorBrush x:Key="GuideStrong" Color="#fdba74" />
+            <!-- Pages stay white in dark mode, so the outline on them keeps the light theme's orange. -->
+            <Color x:Key="GuideOnPageColor">#c2410c</Color>
             <Color x:Key="WarningColor">#f0a868</Color>
             <SolidColorBrush x:Key="Warning" Color="#f0a868" />
             <Color x:Key="WarningTintColor">#3a2a1a</Color>

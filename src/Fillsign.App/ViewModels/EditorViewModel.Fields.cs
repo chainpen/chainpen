@@ -691,8 +691,8 @@ public sealed partial class EditorViewModel
         if (filled == 0)
         {
             return total == 1
-                ? "1 field to fill · click it, or press Tab to go to it · Pick a tool to add your own: Text, Tick, Sign."
-                : $"{total} fields to fill · click one, or press Tab to go through them · Pick a tool to add your own: Text, Tick, Sign.";
+                ? "1 field to fill · click it, or press Tab to go to it · Choose a tool to add your own: Text, Tick, Sign."
+                : $"{total} fields to fill · click one, or press Tab to go through them · Choose a tool to add your own: Text, Tick, Sign.";
         }
 
         return filled == total
