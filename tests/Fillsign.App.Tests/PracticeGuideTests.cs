@@ -130,6 +130,8 @@ public sealed class PracticeGuideTests
     [AvaloniaFact]
     public async Task Arrow_bounces_on_arriving_and_survives_moving_and_hiding_after_a_bounce_ends()
     {
+        // As if the computer allowed motion, whatever the one running the tests is set to.
+        Platform.ReducedMotion.Override = false;
         var (window, editor, view, _) = await OpenPracticeAsync();
         try
         {
@@ -163,6 +165,40 @@ public sealed class PracticeGuideTests
         }
         finally
         {
+            Platform.ReducedMotion.Override = null;
+            window.CloseWithoutAsking();
+        }
+    }
+
+    [Fact]
+    public void The_computers_reduce_motion_setting_can_be_read()
+    {
+        // Asks macOS, Windows or GNOME for real: a broken native call throws here rather than in front of someone.
+        _ = Platform.ReducedMotion.IsOn;
+    }
+
+    [AvaloniaFact]
+    public async Task With_reduced_motion_the_arrow_points_without_bouncing()
+    {
+        Platform.ReducedMotion.Override = true;
+        var (window, editor, view, _) = await OpenPracticeAsync();
+        try
+        {
+            var arrow = view.FindControl<Avalonia.Controls.Shapes.Path>("GuideArrow")!;
+            await Pump(() => arrow.IsVisible);
+            AssertArrowUnder(view, ToolButton(view, "Tick"));
+            editor.SelectToolCommand.Execute(EditorTool.Tick);
+            editor.SelectToolCommand.Execute(EditorTool.Select);
+            await Pump(() => arrow.IsVisible);
+            await Task.Delay(400);
+            await Pump(() => true);
+            Assert.DoesNotContain("bouncing", arrow.Classes);
+            var lift = ((Avalonia.Media.TransformGroup)arrow.RenderTransform!).Children.OfType<Avalonia.Media.TranslateTransform>().Single();
+            Assert.Equal(0, lift.Y);
+        }
+        finally
+        {
+            Platform.ReducedMotion.Override = null;
             window.CloseWithoutAsking();
         }
     }

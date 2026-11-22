@@ -61,6 +61,12 @@ public partial class EditorView : UserControl
     private void BounceGuideArrow()
     {
         GuideArrow.Classes.Remove("bouncing");
+        if (Platform.ReducedMotion.IsOn)
+        {
+            // The arrow still points, it just doesn't move.
+            return;
+        }
+
         Avalonia.Threading.Dispatcher.UIThread.Post(() => GuideArrow.Classes.Add("bouncing"), Avalonia.Threading.DispatcherPriority.Background);
     }
 

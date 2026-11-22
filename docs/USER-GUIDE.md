@@ -4,7 +4,7 @@ Fillsign fills in and signs documents, especially scans and photos of paper form
 
 ## Try it first
 
-The first time you open Fillsign, the start screen offers **Try it with a practice form**. The practice form is an example of a scanned paper form, and a note at the top says so. Like most forms you'll fill in, its boxes and lines are only part of the picture, so you choose a tool and then click where each answer goes. A guide in the corner takes you through it one step at a time: tick a box, write your name, sign and export. It lights up the button to choose in orange with an arrow pointing at it, then outlines the place to click, and moves on as you do each step. **Skip guide** closes it. **Help → Try the practice form** opens the practice form and its guide again whenever you like (in a new window if a document is open).
+The first time you open Fillsign, the start screen offers **Try it with a practice form**. The practice form is an example of a scanned paper form, and a note at the top says so. Like most forms you'll fill in, its boxes and lines are only part of the picture, so you choose a tool and then click where each answer goes. A guide in the corner takes you through it one step at a time: tick a box, write your name, sign and export. It lights up the button to choose in orange with an arrow pointing at it (the arrow bounces briefly, unless your computer is set to reduce motion), then outlines the place to click, and moves on as you do each step. **Skip guide** closes it. **Help → Try the practice form** opens the practice form and its guide again whenever you like (in a new window if a document is open).
 
 ## Open a document
 

@@ -190,7 +190,7 @@
                         </StackPanel>
                     </Border>
                 </UniformGrid>
-                <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.Start_DocumentsYouOpenWillBeListed}" />
+                <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Start_DocumentsYouOpenWillBeListed}" />
             </StackPanel>
 
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"

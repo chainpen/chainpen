@@ -447,11 +447,11 @@
                 </DockPanel>
 
                 <!-- Dragging a selection box (E5). -->
-                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowsBoxSelecting}" VerticalAlignment="Center">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding ShowsBoxSelecting}" VerticalAlignment="Center">
                     <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding BoxSelectingText}" />
-                    <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center"
+                    <TextBlock Grid.Column="1" Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                Text="{x:Static l:Strings.Editor_LetGoToSelectThemHold}" />
-                </StackPanel>
+                </Grid>
 
             </Panel>
             </Panel>
@@ -812,7 +812,8 @@
 
     <UserControl.Styles>
         <!-- The guide's arrow bounces and grows three times as it arrives at a button, then holds still: motion that
-             ran past five seconds would need a way to stop it (WCAG 2.2.2). -->
+             ran past five seconds would need a way to stop it (WCAG 2.2.2). It doesn't bounce at all when the computer
+             is set to reduce motion (Platform.ReducedMotion). -->
         <Style Selector="Path#GuideArrow.bouncing">
             <Style.Animations>
                 <Animation Duration="0:0:1" IterationCount="3" Easing="SineEaseInOut">

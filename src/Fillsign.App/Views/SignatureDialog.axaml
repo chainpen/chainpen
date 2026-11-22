@@ -164,7 +164,7 @@
                                 <CheckBox Margin="0,14,0,0" IsChecked="{Binding RemoveBackground}" IsVisible="{Binding HasPhoto}">
                                     <StackPanel Spacing="2">
                                         <TextBlock Text="{x:Static l:Strings.Signature_RemoveThePaperBackground}" />
-                                        <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.Signature_UntickIfPartsOfYourSignature}" />
+                                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Signature_UntickIfPartsOfYourSignature}" />
                                     </StackPanel>
                                 </CheckBox>
                             </StackPanel>
