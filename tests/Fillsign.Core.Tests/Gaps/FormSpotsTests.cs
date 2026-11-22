@@ -89,6 +89,26 @@ public sealed class FormSpotsTests
         Assert.Equal("Name", blank.Label);
     }
 
+    [Fact]
+    public void German_and_Japanese_labels_are_read_as_blanks_of_the_right_kind()
+    {
+        IReadOnlyList<FormSpot> spots = Find(
+            Line(60, 100, "Vorname:"), Line(60, 140, "Geburtsdatum:"), Line(60, 180, "Unterschrift:"),
+            Line(60, 220, "氏名："), Line(60, 260, "記入日："), Line(60, 300, "署名："));
+        BlankSpot[] blanks = [.. spots.OfType<BlankSpot>()];
+        Assert.Equal(["Vorname", "Geburtsdatum", "Unterschrift", "氏名", "記入日", "署名"], blanks.Select(blank => blank.Label));
+        Assert.Equal(
+            [BlankKind.Text, BlankKind.Date, BlankKind.Signature, BlankKind.Text, BlankKind.Date, BlankKind.Signature],
+            blanks.Select(blank => blank.Kind));
+    }
+
+    [Fact]
+    public void Office_use_sections_in_German_and_Japanese_are_left_alone()
+    {
+        Assert.Empty(Find(Line(60, 100, "Nur für den Dienstgebrauch – Datum:")));
+        Assert.Empty(Find(Line(60, 100, "事務処理欄 日付：")));
+    }
+
     private static IReadOnlyList<FormSpot> Find(params PageCharacter[][] lines) => FormSpots.Find([.. lines.SelectMany(line => line)], PageWidth);
 
     /// <summary>Characters 6 pt wide and 12 pt tall from (x, top), spaces included, as a PDF's text gives them.</summary>

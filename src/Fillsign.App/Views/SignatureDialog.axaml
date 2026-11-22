@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Fillsign.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Fillsign.App.Controls"
              xmlns:vm="using:Fillsign.App.ViewModels"
@@ -13,7 +14,7 @@
             <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsForm}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="icon" BorderThickness="0" Background="Transparent" VerticalAlignment="Top"
-                            Command="{Binding CancelCommand}" AutomationProperties.Name="Close">
+                            Command="{Binding CancelCommand}" AutomationProperties.Name="{x:Static l:Strings.Common_Close}">
                         <c:StrokeIcon Data="{StaticResource IconCross}" Foreground="{DynamicResource TextMuted}" />
                     </Button>
                     <TextBlock Classes="heading-dialog" FontSize="20" VerticalAlignment="Center" Text="{Binding Title}" />
@@ -57,7 +58,7 @@
                                 <Image Source="{Binding SelectedSaved.Thumbnail, FallbackValue={x:Null}}" MaxWidth="260" MaxHeight="72" Stretch="Uniform"
                                        AutomationProperties.Name="{Binding SelectedSaved.AccessibleName, FallbackValue=''}" />
                                 <TextBlock Classes="caption" Foreground="#4a505a" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
-                                           Text="{Binding PlaceLabel, StringFormat='After you choose {0}, click where it should go on the page.'}" />
+                                           Text="{Binding PlaceLabel, StringFormat={x:Static l:Strings.Signature_AfterYouChoose}}" />
                             </StackPanel>
                         </Border>
 
@@ -65,9 +66,9 @@
                         <StackPanel IsVisible="{Binding IsCreating}">
                             <Border Margin="0,16,0,0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderSubtle}">
                                 <StackPanel Orientation="Horizontal" Spacing="20">
-                                    <RadioButton Classes="tab" GroupName="method" Content="Draw" IsChecked="{Binding IsDrawTab}" />
-                                    <RadioButton Classes="tab" GroupName="method" Content="Type" IsChecked="{Binding IsTypeTab}" />
-                                    <RadioButton Classes="tab" GroupName="method" Content="Photo or scan" IsChecked="{Binding IsPhotoTab}" />
+                                    <RadioButton Classes="tab" GroupName="method" Content="{x:Static l:Strings.Common_Draw}" IsChecked="{Binding IsDrawTab}" />
+                                    <RadioButton Classes="tab" GroupName="method" Content="{x:Static l:Strings.Signature_Type}" IsChecked="{Binding IsTypeTab}" />
+                                    <RadioButton Classes="tab" GroupName="method" Content="{x:Static l:Strings.Signature_PhotoOrScan}" IsChecked="{Binding IsPhotoTab}" />
                                 </StackPanel>
                             </Border>
 
@@ -80,13 +81,13 @@
 
                             <Grid Margin="0,14,0,0" ColumnDefinitions="*,Auto" IsVisible="{Binding ShowsInk}">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock x:Name="InkLabel" Classes="muted" FontSize="13" VerticalAlignment="Center" Text="Ink" />
+                                    <TextBlock x:Name="InkLabel" Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{x:Static l:Strings.Signature_Ink}" />
                                     <RadioButton Classes="swatch" GroupName="ink" Background="{DynamicResource InkBlack}" IsChecked="{Binding IsBlackInk}"
-                                                 AutomationProperties.Name="Black ink" />
+                                                 AutomationProperties.Name="{x:Static l:Strings.Signature_BlackInk}" />
                                     <RadioButton Classes="swatch" GroupName="ink" Background="{DynamicResource InkBlue}" IsChecked="{Binding IsBlueInk}"
-                                                 AutomationProperties.Name="Blue ink" />
+                                                 AutomationProperties.Name="{x:Static l:Strings.Signature_BlueInk}" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Classes="small" Content="Clear" Command="{Binding ClearPadCommand}"
+                                <Button Grid.Column="1" Classes="small" Content="{x:Static l:Strings.Signature_Clear}" Command="{Binding ClearPadCommand}"
                                         IsVisible="{Binding IsDrawTab}" IsEnabled="{Binding HasInk}" />
                             </Grid>
 
@@ -101,11 +102,11 @@
                             <!-- Draw (D1). Initials get a smaller pad (D11). -->
                             <c:SignaturePad x:Name="Pad" Margin="0,8,0,0" IsVisible="{Binding IsDrawTab}" Classes.initials="{Binding IsInitials}"
                                             Strokes="{Binding Strokes}" Ink="{Binding Ink}" Hint="{Binding PadHint}" HasError="{Binding HasError}"
-                                            AutomationProperties.Name="Signature pad. Sign with your mouse, trackpad, pen or finger, or use the Type tab." />
+                                            AutomationProperties.Name="{x:Static l:Strings.Signature_SignaturePadSignWithYourMouse}" />
 
                             <!-- Type (D2): three handwriting styles. -->
                             <StackPanel IsVisible="{Binding IsTypeTab}">
-                                <TextBlock x:Name="StyleLabel" Margin="0,14,0,8" FontWeight="SemiBold" Text="Style" />
+                                <TextBlock x:Name="StyleLabel" Margin="0,14,0,8" FontWeight="SemiBold" Text="{x:Static l:Strings.Signature_Style}" />
                                 <ListBox Classes="options styles" Margin="-5,0" ItemsSource="{Binding StyleOptions}" SelectedItem="{Binding SelectedStyle}"
                                          AutomationProperties.LabeledBy="{Binding #StyleLabel}">
                                     <ListBox.ItemsPanel>
@@ -130,13 +131,13 @@
                                         IsVisible="{Binding !HasPhoto}">
                                     <StackPanel Classes="content">
                                         <c:StrokeIcon Data="{StaticResource IconImage}" />
-                                        <TextBlock Text="Choose a photo or scan…" />
+                                        <TextBlock Text="{x:Static l:Strings.Signature_ChooseAPhotoOrScan}" />
                                     </StackPanel>
                                 </Button>
                                 <Border IsVisible="{Binding HasPhoto}" Margin="0,14,0,0" Padding="12,8" CornerRadius="{StaticResource RadiusLarge}"
                                         BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}">
                                     <DockPanel>
-                                        <Button DockPanel.Dock="Right" Classes="small" Content="Choose another…" Command="{Binding ChoosePhotoCommand}" />
+                                        <Button DockPanel.Dock="Right" Classes="small" Content="{x:Static l:Strings.Signature_ChooseAnother}" Command="{Binding ChoosePhotoCommand}" />
                                         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                             <c:StrokeIcon Data="{StaticResource IconImage}" />
                                             <TextBlock FontWeight="SemiBold" Text="{Binding PhotoName}" TextTrimming="CharacterEllipsis" MaxWidth="320" />
@@ -146,24 +147,24 @@
                                 </Border>
                                 <Grid ColumnDefinitions="*,*" ColumnSpacing="14" Margin="0,14,0,0" IsVisible="{Binding HasPhoto}">
                                     <StackPanel Spacing="6">
-                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="Your photo" />
+                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{x:Static l:Strings.Signature_YourPhoto}" />
                                         <Border Height="150" CornerRadius="{StaticResource RadiusLarge}" BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}"
                                                 ClipToBounds="True" Padding="8">
-                                            <Image Source="{Binding PhotoOriginal}" Stretch="Uniform" AutomationProperties.Name="Your photo" />
+                                            <Image Source="{Binding PhotoOriginal}" Stretch="Uniform" AutomationProperties.Name="{x:Static l:Strings.Signature_YourPhoto}" />
                                         </Border>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="6">
-                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="How it will look on the page" />
+                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{x:Static l:Strings.Signature_HowItWillLookOnThe}" />
                                         <Border Height="150" CornerRadius="{StaticResource RadiusLarge}" BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}"
                                                 ClipToBounds="True" Padding="8" Background="{StaticResource Checkerboard}">
-                                            <Image Source="{Binding PhotoResult}" Stretch="Uniform" AutomationProperties.Name="Your signature as it will look on the page" />
+                                            <Image Source="{Binding PhotoResult}" Stretch="Uniform" AutomationProperties.Name="{x:Static l:Strings.Signature_YourSignatureAsItWillLook}" />
                                         </Border>
                                     </StackPanel>
                                 </Grid>
                                 <CheckBox Margin="0,14,0,0" IsChecked="{Binding RemoveBackground}" IsVisible="{Binding HasPhoto}">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="Remove the paper background" />
-                                        <TextBlock Classes="muted" FontSize="13" Text="Untick if parts of your signature disappear." />
+                                        <TextBlock Text="{x:Static l:Strings.Signature_RemoveThePaperBackground}" />
+                                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Signature_UntickIfPartsOfYourSignature}" />
                                     </StackPanel>
                                 </CheckBox>
                             </StackPanel>
@@ -186,11 +187,11 @@
                         <Panel VerticalAlignment="Center">
                             <Button Classes="link danger" HorizontalAlignment="Left" Content="{Binding RemoveLabel}"
                                     Command="{Binding AskToRemoveCommand}" IsVisible="{Binding IsSavedSelected}" />
-                            <TextBlock Classes="muted" FontSize="13" Text="The photo stays on this computer."
+                            <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.Signature_ThePhotoStaysOnThisComputer}"
                                        IsVisible="{Binding IsPhotoTab}" />
                         </Panel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                            <Button Content="{x:Static l:Strings.Common_Cancel}" Command="{Binding CancelCommand}" />
                             <Button x:Name="PlaceButton" Classes="primary" Content="{Binding PlaceLabel}" Command="{Binding PlaceCommand}" />
                         </StackPanel>
                     </Grid>
@@ -208,10 +209,10 @@
                     </StackPanel>
                 </Border>
                 <TextBlock Classes="muted" Margin="0,14,0,0" TextWrapping="Wrap" LineHeight="21"
-                           Text="It will be removed from this computer and can’t be brought back. Documents you’ve already saved or exported keep it." />
+                           Text="{x:Static l:Strings.Signature_ItWillBeRemovedFromThis}" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">
                     <!-- Focus starts on Cancel; Enter never triggers the red button. -->
-                    <Button x:Name="KeepButton" Content="Cancel" Command="{Binding CancelCommand}" />
+                    <Button x:Name="KeepButton" Content="{x:Static l:Strings.Common_Cancel}" Command="{Binding CancelCommand}" />
                     <Button Classes="danger-fill" Content="{Binding RemoveButtonLabel}" Command="{Binding ConfirmRemoveCommand}" />
                 </StackPanel>
             </StackPanel>

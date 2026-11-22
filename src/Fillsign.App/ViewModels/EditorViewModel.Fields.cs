@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Fillsign.App.Localization;
 using Fillsign.Core.Editing;
 using Fillsign.Core.Geometry;
 using Fillsign.Core.Model;
@@ -62,13 +63,11 @@ public sealed partial class EditorViewModel
     public string? WhyNotFillable(PageId page, PagePoint point) =>
         Tool is not (EditorTool.Select or EditorTool.Text) ? null : TopFieldAt(page, point)?.Field switch
         {
-            { Kind: FormFieldKind.PushButton } => FormButtonNote,
-            { IsReadOnly: true } => ReadOnlyFieldNote,
+            { Kind: FormFieldKind.PushButton } => Strings.Editor_FormButtonNote,
+            { IsReadOnly: true } => Strings.Editor_ReadOnlyFieldNote,
             _ => null,
         };
 
-    private const string FormButtonNote = "Fillsign doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.";
-    private const string ReadOnlyFieldNote = "That field can’t be changed: the form fills it in itself.";
 
     /// <summary>The topmost field of any kind at a point.</summary>
     private FieldHit? TopFieldAt(PageId page, PagePoint point)
@@ -127,14 +126,14 @@ public sealed partial class EditorViewModel
         // Say why nothing happens, instead of ignoring the click.
         if (hit.Field.IsReadOnly)
         {
-            Tell(ReadOnlyFieldNote);
+            Tell(Strings.Editor_ReadOnlyFieldNote);
             Changed();
             return true;
         }
 
         if (hit.Field.Kind == FormFieldKind.PushButton)
         {
-            Tell(FormButtonNote);
+            Tell(Strings.Editor_FormButtonNote);
             Changed();
             return true;
         }
@@ -535,8 +534,8 @@ public sealed partial class EditorViewModel
         {
             if (EditingField is { } editing)
             {
-                string enter = editing.Hit.Field.IsMultiline ? "Enter for a new line" : "Enter to finish";
-                return $"Typing in “{editing.Hit.Field.DisplayName}” · {enter} · {TabHint(editing.Hit)} · Esc to cancel";
+                string enter = editing.Hit.Field.IsMultiline ? Strings.Editor_EnterForANewLine : Strings.Editor_EnterToFinish;
+                return Text.Format(Strings.Editor_TypingInFieldHint, editing.Hit.Field.DisplayName, enter, TabHint(editing.Hit));
             }
 
             if (FocusedField is not { Field: var focused })
@@ -546,15 +545,15 @@ public sealed partial class EditorViewModel
 
             string keys = focused.Kind switch
             {
-                FormFieldKind.CheckBox => "Space to tick or untick",
-                FormFieldKind.Radio => "← → to choose an answer",
-                FormFieldKind.Choice when focused.IsMultiSelect => "↑ ↓ to move · Space to tick or untick · click a row to add or remove it",
-                FormFieldKind.Choice when focused.IsList => "↑ ↓ to choose",
-                FormFieldKind.Choice => "↑ ↓ to change · Space to open the list",
-                FormFieldKind.Signature => "Space to sign",
-                _ => "Space to fill",
+                FormFieldKind.CheckBox => Strings.Editor_FieldKeysCheckBox,
+                FormFieldKind.Radio => Strings.Editor_FieldKeysRadio,
+                FormFieldKind.Choice when focused.IsMultiSelect => Strings.Editor_FieldKeysMultiSelect,
+                FormFieldKind.Choice when focused.IsList => Strings.Editor_FieldKeysList,
+                FormFieldKind.Choice => Strings.Editor_FieldKeysDropDown,
+                FormFieldKind.Signature => Strings.Editor_FieldKeysSignature,
+                _ => Strings.Editor_FieldKeysFill,
             };
-            return $"“{focused.DisplayName}” · {keys} · {TabHint(FocusedField!)}";
+            return Text.Format(Strings.Editor_FocusedFieldHint, focused.DisplayName, keys, TabHint(FocusedField!));
         }
     }
 
@@ -562,8 +561,12 @@ public sealed partial class EditorViewModel
     public static string FieldBoxName(FormField field)
     {
         ArgumentNullException.ThrowIfNull(field);
-        string kind = field.Kind == FormFieldKind.Choice ? "drop-down, type an answer" : field.IsMultiline ? "text field, several lines" : "text field";
-        return field.MaxLength > 0 ? $"{field.DisplayName}, {kind}, up to {field.MaxLength} characters" : $"{field.DisplayName}, {kind}";
+        string kind = field.Kind == FormFieldKind.Choice ? Strings.Editor_FieldKindDropDownTyped
+            : field.IsMultiline ? Strings.Editor_FieldKindTextSeveralLines
+            : Strings.Editor_FieldKindText;
+        return field.MaxLength > 0
+            ? Text.Format(Strings.Editor_FieldBoxNameWithLimit, field.DisplayName, kind, field.MaxLength)
+            : Text.Format(Strings.Editor_FieldBoxName, field.DisplayName, kind);
     }
 
     private string Describe(FieldHit hit)
@@ -573,21 +576,35 @@ public sealed partial class EditorViewModel
         switch (field.Kind)
         {
             case FormFieldKind.CheckBox:
-                return $"{AccessibleName(hit)}, check box, {(value == PdfiumDocument.FieldOff ? "not ticked" : "ticked")}";
+                return Text.Format(value == PdfiumDocument.FieldOff ? Strings.Editor_FieldCheckBoxNotTicked : Strings.Editor_FieldCheckBoxTicked, AccessibleName(hit));
             case FormFieldKind.Radio:
                 List<FieldHit> group = FieldsInDocumentOrder().FindAll(other => other.Field.Name == field.Name);
                 int position = group.FindIndex(other => other.Page == hit.Page && other.Box == hit.Box) + 1;
-                return $"{field.DisplayName}, radio button {field.OnValue}, {position} of {group.Count}, {(value == field.OnValue ? "chosen" : "not chosen")}";
+                return Text.Format(
+                    value == field.OnValue ? Strings.Editor_FieldRadioChosen : Strings.Editor_FieldRadioNotChosen,
+                    field.DisplayName,
+                    field.OnValue,
+                    position,
+                    group.Count);
             case FormFieldKind.Choice when field.IsMultiSelect && !field.Options.IsEmpty:
                 IReadOnlySet<string> chosen = PdfiumDocument.SplitChoices(value);
                 string row = field.Options[Math.Clamp(FocusedOption, 0, field.Options.Length - 1)];
-                return $"{field.DisplayName}, list, several answers, {row}, {(chosen.Contains(row) ? "ticked" : "not ticked")}, {chosen.Count} of {field.Options.Length} chosen";
+                return Text.Format(
+                    chosen.Contains(row) ? Strings.Editor_FieldMultiSelectTicked : Strings.Editor_FieldMultiSelectNotTicked,
+                    field.DisplayName,
+                    row,
+                    chosen.Count,
+                    field.Options.Length);
             case FormFieldKind.Choice:
-                return $"{field.DisplayName}, {(field.IsList ? "list" : "drop-down")}, {(value.Length > 0 ? value : "nothing chosen")}";
+                return value.Length > 0
+                    ? Text.Format(field.IsList ? Strings.Editor_FieldList : Strings.Editor_FieldDropDown, field.DisplayName, value)
+                    : Text.Format(field.IsList ? Strings.Editor_FieldListNothingChosen : Strings.Editor_FieldDropDownNothingChosen, field.DisplayName);
             case FormFieldKind.Signature:
-                return $"{field.DisplayName}, signature field. Press Space to sign.";
+                return Text.Format(Strings.Editor_FieldSignature, field.DisplayName);
             default:
-                return $"{field.DisplayName}, text field, {(value.Length > 0 ? value : "empty")}";
+                return value.Length > 0
+                    ? Text.Format(Strings.Editor_FieldText, field.DisplayName, value)
+                    : Text.Format(Strings.Editor_FieldTextEmpty, field.DisplayName);
         }
     }
 
@@ -626,7 +643,7 @@ public sealed partial class EditorViewModel
 
         return question.Length == 0 || string.Equals(question, field.DisplayName, StringComparison.OrdinalIgnoreCase)
             ? field.DisplayName
-            : $"{question}: {field.DisplayName}";
+            : Text.Format(Strings.Editor_FieldQuestionAndName, question, field.DisplayName);
     }
 
     private readonly Dictionary<string, string> _rowQuestions = new(StringComparer.Ordinal);
@@ -636,7 +653,7 @@ public sealed partial class EditorViewModel
     {
         List<FieldHit> order = TabStops();
         bool isLast = order.Count > 1 && order[^1].Page == hit.Page && order[^1].Box == hit.Box;
-        return isLast ? "Tab to go back to the first field · F6 to leave the form" : "Tab for the next field";
+        return isLast ? Strings.Editor_TabBackToFirstField : Strings.Editor_TabForNextField;
     }
 
     /// <summary>For screen readers: fills a field as a click or Space would (ticks a box, opens signing).</summary>
@@ -690,14 +707,12 @@ public sealed partial class EditorViewModel
         int filled = stops.Count(IsFilled);
         if (filled == 0)
         {
-            return total == 1
-                ? "1 field to fill · click it, or press Tab to go to it · Pick a tool to add your own: Text, Tick, Sign."
-                : $"{total} fields to fill · click one, or press Tab to go through them · Pick a tool to add your own: Text, Tick, Sign.";
+            return Text.Plural(total, Strings.Editor_FieldsToFill_One, Strings.Editor_FieldsToFill_Other);
         }
 
         return filled == total
-            ? $"All {total} fields filled · Export when you’re done"
-            : $"{filled} of {total} filled · Tab for the next field · Export when you’re done";
+            ? Text.Format(Strings.Editor_AllFieldsFilled, total)
+            : Text.Format(Strings.Editor_FieldsFilledOfTotal, filled, total);
     }
 
     /// <summary>Whether a field has an answer: text or a choice, a ticked box, a chosen button, or a signature placed on it.</summary>

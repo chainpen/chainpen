@@ -7,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Controls.Presenters;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 using Fillsign.Pdf.Pdfium;
 
@@ -26,24 +27,32 @@ public sealed partial class PagesCanvas
 
     private void AttachFields(EditorViewModel editor)
     {
-        editor.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(EditorViewModel.EditingField))
-            {
-                SyncFieldBox();
-                InvalidateLayers();
-            }
-            else if (args.PropertyName is nameof(EditorViewModel.FocusedField) or nameof(EditorViewModel.FocusedOption))
-            {
-                InvalidateLayers();
-            }
-            else if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex))
-            {
-                // Screen readers see the fields near the page in view; moving on changes which those are.
-                (ControlAutomationPeer.FromElement(this) as PagesCanvasAutomationPeer)?.RefreshFields();
-            }
-        };
+        editor.PropertyChanged += OnFieldsPropertyChanged;
         editor.FieldChoiceRequested += OfferChoices;
+    }
+
+    private void DetachFields(EditorViewModel editor)
+    {
+        editor.PropertyChanged -= OnFieldsPropertyChanged;
+        editor.FieldChoiceRequested -= OfferChoices;
+    }
+
+    private void OnFieldsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(EditorViewModel.EditingField))
+        {
+            SyncFieldBox();
+            InvalidateLayers();
+        }
+        else if (args.PropertyName is nameof(EditorViewModel.FocusedField) or nameof(EditorViewModel.FocusedOption))
+        {
+            InvalidateLayers();
+        }
+        else if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex))
+        {
+            // Screen readers see the fields near the page in view; moving on changes which those are.
+            (ControlAutomationPeer.FromElement(this) as PagesCanvasAutomationPeer)?.RefreshFields();
+        }
     }
 
     private void SyncFieldBox()
@@ -260,7 +269,7 @@ public sealed partial class PagesCanvas
         {
             var item = new MenuItem
             {
-                Header = option.Length > 0 ? option : "(empty)",
+                Header = option.Length > 0 ? option : Strings.Editor_EmptyOption,
                 Icon = chosen.Contains(option) ? new TextBlock { Text = "✓" } : null,
             };
             item.Click += (_, _) => _editor?.ChooseOption(hit.Field, option);
@@ -275,7 +284,7 @@ public sealed partial class PagesCanvas
                 menu.Items.Add(new Separator());
             }
 
-            var type = new MenuItem { Header = "Type an answer…" };
+            var type = new MenuItem { Header = Strings.Editor_TypeAnAnswer };
             type.Click += (_, _) => _editor?.TypeIntoField(hit);
             menu.Items.Add(type);
         }

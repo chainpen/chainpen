@@ -15,25 +15,6 @@
         <NativeMenuBar x:Name="MenuBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,0,0,0"
                        Height="{StaticResource TitleStripHeight}" />
 
-        <!-- First-run tips (E1): shown once, not modal. -->
-        <Border x:Name="FirstRunTips" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="300,150,0,0"
-                Width="380" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                CornerRadius="12" Padding="20,18" BoxShadow="{StaticResource ShadowPopover}">
-            <StackPanel Spacing="12">
-                <TextBlock Classes="heading-section" Text="Fill in this form in four steps" />
-                <ItemsControl x:Name="FirstRunSteps">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Spacing="12" /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-                <DockPanel Margin="0,4,0,0">
-                    <Button DockPanel.Dock="Right" MinHeight="36" Content="Got it" Click="OnDismissTips" />
-                    <TextBlock Classes="caption" VerticalAlignment="Center" TextWrapping="Wrap"
-                               Text="You can find this again in the Help menu." />
-                </DockPanel>
-            </StackPanel>
-        </Border>
-
         <!-- Modal dialogs over a dimmed window. -->
         <Border x:Name="DialogLayer" IsVisible="False" Background="{DynamicResource Overlay}" KeyboardNavigation.TabNavigation="Cycle">
             <ContentControl x:Name="DialogHost" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,160,0,0" />

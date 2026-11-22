@@ -177,11 +177,51 @@ public sealed class PdfCompactorTests
         Assert.Null(PdfCompactor.CompactKeepingOnlyUsed(deep));
     }
 
+    [Fact]
+    public void An_update_over_a_classic_table_stays_classic_and_keeps_only_what_changed()
+    {
+        // A file this small doesn't get smaller packed, so its clean source keeps PDFium's classic table and its PDF
+        // 1.4 header. A cross-reference stream (PDF 1.5) in its update would be a feature the header says isn't used.
+        byte[] clean;
+        using (PdfiumDocument pdf = PdfiumDocument.Open(ClassicPdf(
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R >>",
+            "<< /Length 23 >>\nstream\n0 0 1 rg 20 20 80 80 re f\nendstream")))
+        {
+            byte[] saved = pdf.SaveCopy(removeSecurity: true);
+            clean = PdfCompactor.Compact(saved);
+            Assert.Same(saved, clean);
+        }
+
+        byte[] updated;
+        using (PdfiumDocument pdf = PdfiumDocument.Open(clean))
+        {
+            pdf.SetRotation(0, 1);
+            updated = pdf.SaveIncremental();
+        }
+
+        byte[] compact = PdfCompactor.CompactUpdate(updated, clean.Length);
+        Assert.True(compact.Length < updated.Length, $"{compact.Length} bytes isn't smaller than {updated.Length}");
+        Assert.True(compact.AsSpan(0, clean.Length).SequenceEqual(clean), "the original changed");
+        string update = System.Text.Encoding.Latin1.GetString(compact, clean.Length, compact.Length - clean.Length);
+        Assert.Contains("\nxref\n", update, StringComparison.Ordinal);
+        Assert.DoesNotContain("/XRef", update, StringComparison.Ordinal);
+        Assert.DoesNotContain("/ObjStm", update, StringComparison.Ordinal);
+        Assert.Contains("/Rotate", update, StringComparison.Ordinal);
+        AssertSameDocument(updated, compact);
+        using PdfiumDocument reopened = PdfiumDocument.Open(compact);
+        Assert.Equal(1, reopened.PageCount);
+    }
+
     /// <summary>A minimal PDF with a plain cross-reference table, as PDFium writes, holding one extra object.</summary>
-    private static byte[] ClassicPdf(string extraObject)
+    private static byte[] ClassicPdf(string extraObject) =>
+        ClassicPdf("<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>", extraObject);
+
+    /// <summary>A minimal PDF 1.4 file with a plain cross-reference table, the objects numbered from 1.</summary>
+    private static byte[] ClassicPdf(params string[] objects)
     {
         var text = new System.Text.StringBuilder("%PDF-1.4\n");
-        string[] objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>", extraObject];
         var offsets = new List<int>();
         for (int i = 0; i < objects.Length; i++)
         {

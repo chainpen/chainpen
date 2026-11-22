@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 using Fillsign.Core.Model;
 
@@ -124,19 +125,19 @@ public partial class EditorView
         var menu = new MenuFlyout();
         if (targets.Count > 1)
         {
-            menu.Items.Add(new MenuItem { Header = $"{targets.Count} selected pages", IsEnabled = false });
+            menu.Items.Add(new MenuItem { Header = Text.Format(Strings.Editor_SelectedPages, targets.Count), IsEnabled = false });
             menu.Items.Add(new Separator());
         }
 
-        menu.Items.Add(Item("Rotate left", "IconRotateLeft", editor.RotatePagesLeftCommand, page));
-        menu.Items.Add(Item("Rotate right", "IconRotateRight", editor.RotatePagesRightCommand, page));
-        menu.Items.Add(Item("Duplicate", "IconDuplicate", editor.DuplicatePagesCommand, page));
+        menu.Items.Add(Item(Strings.Editor_RotateLeft, "IconRotateLeft", editor.RotatePagesLeftCommand, page));
+        menu.Items.Add(Item(Strings.Editor_RotateRight, "IconRotateRight", editor.RotatePagesRightCommand, page));
+        menu.Items.Add(Item(Strings.Editor_Duplicate, "IconDuplicate", editor.DuplicatePagesCommand, page));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item("Move up", "IconArrowUp", editor.MovePagesUpCommand, page, isEnabled: first > 0));
-        menu.Items.Add(Item("Move down", "IconArrowDown", editor.MovePagesDownCommand, page, isEnabled: last < editor.Pages.Count - 1));
-        menu.Items.Add(Item("Move to…", null, editor.MovePagesToCommand, page));
+        menu.Items.Add(Item(Strings.Menu_MoveUp, "IconArrowUp", editor.MovePagesUpCommand, page, isEnabled: first > 0));
+        menu.Items.Add(Item(Strings.Menu_MoveDown, "IconArrowDown", editor.MovePagesDownCommand, page, isEnabled: last < editor.Pages.Count - 1));
+        menu.Items.Add(Item(Strings.Editor_MoveTo, null, editor.MovePagesToCommand, page));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(targets.Count > 1 ? $"Delete {targets.Count} pages" : "Delete page", "IconDelete", editor.DeletePagesCommand, page));
+        menu.Items.Add(Item(targets.Count > 1 ? Text.Format(Strings.Editor_DeleteCountPages, targets.Count) : Strings.Menu_DeletePage, "IconDelete", editor.DeletePagesCommand, page));
         return menu;
     }
 

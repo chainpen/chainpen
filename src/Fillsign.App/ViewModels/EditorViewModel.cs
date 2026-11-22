@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.App.Rendering;
 using Fillsign.Core.Editing;
 using Fillsign.Core.Model;
@@ -88,13 +89,25 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
 
     public int CurrentPageNumber => CurrentPageIndex + 1;
 
-    public string PageStatus => $"Page {CurrentPageNumber} of {Pages.Count}";
+    /// <summary>The interface language changed: every bound text, here and on each page, is read again.</summary>
+    public void RefreshText()
+    {
+        OnPropertyChanged(string.Empty);
+        foreach (PageViewModel page in Pages)
+        {
+            page.RefreshText();
+        }
+
+        ItemsChanged?.Invoke();
+    }
+
+    public string PageStatus => Text.Format(Strings.Editor_PageOfPages, CurrentPageNumber, Pages.Count);
 
     public bool HasDamagedPages => DamagedPageCount > 0;
 
-    public string DamagedStatus => DamagedPageCount == 1 ? "1 page can’t be shown" : $"{DamagedPageCount} pages can’t be shown";
+    public string DamagedStatus => Text.Plural(DamagedPageCount, Strings.Editor_PagesCantBeShown_One, Strings.Editor_PagesCantBeShown_Other);
 
-    public string LoadingText => $"Loading pages: {LoadedPageCount} of {Source.PageCount}";
+    public string LoadingText => Text.Format(Strings.Editor_LoadingPages, LoadedPageCount, Source.PageCount);
 
     public double LoadingFraction => Source.PageCount == 0 ? 1 : (double)LoadedPageCount / Source.PageCount;
 
@@ -110,24 +123,33 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         {
             if (IsLoading)
             {
-                return $"Opening · {Source.PageCount} pages";
+                return Text.Format(Strings.Editor_OpeningPages, Source.PageCount);
             }
 
             if (ChangedElsewhere is not null)
             {
-                return "Opened as it is now · Fillsign edits not restored";
+                return Strings.Editor_OpenedAsItIsNow;
             }
 
-            string state = HasUnsavedChanges ? "not saved to file"
-                : LastSavedAt is { } saved ? $"saved {saved.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)}"
-                : "no changes yet";
-            string signature = State.ContainsSignature ? " · contains your signature" : string.Empty;
-            return $"Working copy · {state}{signature}";
+            // Each state is a whole sentence, with and without the signature reminder, so translations can order them.
+            bool signed = State.ContainsSignature;
+            if (HasUnsavedChanges)
+            {
+                return signed ? Strings.Editor_WorkingCopyNotSaved_Signed : Strings.Editor_WorkingCopyNotSaved;
+            }
+
+            if (LastSavedAt is { } saved)
+            {
+                string time = saved.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
+                return Text.Format(signed ? Strings.Editor_WorkingCopySaved_Signed : Strings.Editor_WorkingCopySaved, time);
+            }
+
+            return signed ? Strings.Editor_WorkingCopyNoChanges_Signed : Strings.Editor_WorkingCopyNoChanges;
         }
     }
 
     public string ContextHint => IsLoading
-        ? "You can start on page 1 now. The rest of the pages are still loading."
+        ? Strings.Editor_YouCanStartOnPage1
         : FieldHint ?? ToolHint;
 
     /// <summary>Loads page sizes in the background so page 1 is usable straight away (FR-1.9).</summary>
@@ -225,8 +247,8 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         if (!PageEdits.TryDelete(State, new HashSet<PageId> { page.Id }, out DocumentState result))
         {
             await _host.ShowMessageAsync(
-                "Can’t delete every page",
-                "A document needs at least one page. Add another page first, or open a different document.").ConfigureAwait(true);
+                Strings.Editor_CantDeleteEveryPage,
+                Strings.Editor_ADocumentNeedsAtLeastOnePage).ConfigureAwait(true);
             return;
         }
 

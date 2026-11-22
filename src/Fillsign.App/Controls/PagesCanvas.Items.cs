@@ -2,9 +2,9 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Fillsign.App.Localization;
 using Fillsign.App.Rendering;
 using Fillsign.App.ViewModels;
 using Fillsign.Core.Geometry;
@@ -38,20 +38,36 @@ public sealed partial class PagesCanvas
     // The page a drag started on: the drag stays on that page (FR-5.3) even when the pointer leaves it.
     private int _dragPage = -1;
 
+    private void DetachItems(EditorViewModel editor)
+    {
+        editor.ItemsChanged -= OnItemsChanged;
+        editor.PropertyChanged -= OnItemsPropertyChanged;
+        DetachFields(editor);
+    }
+
+    private void OnItemsChanged()
+    {
+        SyncTypingBox();
+        InvalidateLayers();
+    }
+
+    private void OnItemsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(EditorViewModel.Tool) or nameof(EditorViewModel.PlacingSignature))
+        {
+            UpdatePointerCursor(null);
+        }
+
+        if (args.PropertyName == nameof(EditorViewModel.GuideTarget))
+        {
+            InvalidateLayers();
+        }
+    }
+
     private void AttachItems(EditorViewModel editor)
     {
-        editor.ItemsChanged += () =>
-        {
-            SyncTypingBox();
-            InvalidateLayers();
-        };
-        editor.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName is nameof(EditorViewModel.Tool) or nameof(EditorViewModel.PlacingSignature))
-            {
-                UpdatePointerCursor(null);
-            }
-        };
+        editor.ItemsChanged += OnItemsChanged;
+        editor.PropertyChanged += OnItemsPropertyChanged;
         AttachFields(editor);
         PointerPressed += OnPointerPressed;
         PointerMoved += OnPointerMoved;
@@ -103,17 +119,20 @@ public sealed partial class PagesCanvas
     }
 
     /// <summary>The possible gap being checked (E10): an amber outline with a label beside it.</summary>
-    private void DrawCheckingGap(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge)
+    private void DrawCheckingGap(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge) =>
+        DrawCallout(context, pageRect, area, badge, Color.FromRgb(0xc2, 0x41, 0x0c), Color.FromRgb(0x92, 0x40, 0x0e));
+
+    /// <summary>An outline around part of the page with a label above it: a gap being checked, or where the guide points.</summary>
+    private void DrawCallout(DrawingContext context, Rect pageRect, Fillsign.Core.Model.PageRect area, string badge, Color outlineColour, Color badgeColour)
     {
-        var amber = Color.FromRgb(0xc2, 0x41, 0x0c);
         var outline = new Rect(pageRect.X + (area.X * Zoom), pageRect.Y + (area.Y * Zoom), area.Width * Zoom, area.Height * Zoom).Inflate(6);
-        context.DrawRectangle(new SolidColorBrush(amber, 0.06), new Pen(new SolidColorBrush(amber), 2), outline, 6, 6);
+        context.DrawRectangle(new SolidColorBrush(outlineColour, 0.08), new Pen(new SolidColorBrush(outlineColour), 2), outline, 6, 6);
 
         var text = new FormattedText(badge, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold), 12, Brushes.White);
         // Above the outline: beside it would cover the words that go with a box.
         double width = text.Width + 16, height = text.Height + 4;
         var pill = new Rect(Math.Min(outline.X, pageRect.Right - width - 4), outline.Y - height - 4, width, height);
-        context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x92, 0x40, 0x0e)), null, pill, height / 2, height / 2);
+        context.DrawRectangle(new SolidColorBrush(badgeColour), null, pill, height / 2, height / 2);
         context.DrawText(text, new Point(pill.X + 8, pill.Y + 2));
     }
 
@@ -133,12 +152,18 @@ public sealed partial class PagesCanvas
             DrawCheckingGap(context, rect, gap.Area, editor.CheckingBadge);
         }
 
+        if (editor.GuideTarget is { } target && target.Page == page.Id)
+        {
+            Color guide = this.TryFindResource("GuideOnPageColor", ActualThemeVariant, out object? found) && found is Color colour ? colour : Color.FromRgb(0xc2, 0x41, 0x0c);
+            DrawCallout(context, rect, target.Area, target.Label, guide, guide);
+        }
+
         // UX review 4: an empty signature field is easy to miss, so it's outlined with "Sign here" while editing.
         foreach (FieldHit unsigned in editor.UnsignedSignatureFields(page.Id))
         {
             var box = new Rect(rect.X + (unsigned.Box.X * Zoom), rect.Y + (unsigned.Box.Y * Zoom), unsigned.Box.Width * Zoom, unsigned.Box.Height * Zoom);
             context.DrawRectangle(tint, new Pen(blue, 1.5, s_signHereDash), box, 3, 3);
-            var signHere = new FormattedText("Sign here", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), blue);
+            var signHere = new FormattedText(Strings.Editor_SignHere, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), blue);
             if (signHere.Width + 16 <= box.Width && signHere.Height <= box.Height)
             {
                 context.DrawText(signHere, new Point(box.X + 8, box.Y + ((box.Height - signHere.Height) / 2)));
@@ -543,7 +568,7 @@ public sealed partial class PagesCanvas
                 FontFeatures = ItemPainter.NoKerning,
                 Classes = { "onPage" },
             };
-            AutomationProperties.SetName(_typingBox, "Text on the page");
+            AutomationProperties.SetName(_typingBox, Strings.Editor_TextOnThePage);
             _typingBox.TextChanged += (_, _) =>
             {
                 if (_typingBoxItem is not null)

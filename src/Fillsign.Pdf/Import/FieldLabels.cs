@@ -1,4 +1,5 @@
 using System.Text;
+using Fillsign.Pdf.Localization;
 using Fillsign.Pdf.Pdfium;
 
 namespace Fillsign.Pdf.Import;
@@ -61,6 +62,7 @@ public static class FieldLabels
     private static FormField[] NumberPieces(FormField[] labelled, IReadOnlyList<FormField> original)
     {
         var parts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var roots = new Dictionary<int, string>();
         for (int i = 0; i < labelled.Length; i++)
         {
             FormField field = labelled[i];
@@ -70,22 +72,26 @@ public static class FieldLabels
             }
 
             double middle = (field.Rect.Bottom + field.Rect.Top) / 2;
-            FormField? earlier = labelled.Take(i)
-                .Where(other => other.Kind == FormFieldKind.Text && other.Label.Length > 0 && Math.Abs(((other.Rect.Bottom + other.Rect.Top) / 2) - middle) <= 4
-                    && other.Rect.Right <= field.Rect.Left + 2)
-                .OrderByDescending(other => other.Rect.Left)
-                .FirstOrDefault();
-            if (earlier is null)
+            int earlier = labelled.Take(i).Select((other, index) => (Other: other, Index: index))
+                .Where(pair => pair.Other.Kind == FormFieldKind.Text && pair.Other.Label.Length > 0
+                    && Math.Abs(((pair.Other.Rect.Bottom + pair.Other.Rect.Top) / 2) - middle) <= 4 && pair.Other.Rect.Right <= field.Rect.Left + 2)
+                .OrderByDescending(pair => pair.Other.Rect.Left)
+                .Select(pair => pair.Index)
+                .DefaultIfEmpty(-1)
+                .First();
+            if (earlier < 0)
             {
                 continue;
             }
 
-            string root = earlier.Label.Split(", part ")[0];
+            // The first piece's own words, not its numbered label, whatever language "part" is written in.
+            string root = roots.GetValueOrDefault(earlier, labelled[earlier].Label);
             if (field.Label == root || field.Label.StartsWith(root + " ", StringComparison.Ordinal))
             {
                 int part = parts.GetValueOrDefault(root, 1) + 1;
                 parts[root] = part;
-                labelled[i] = field with { Label = $"{root}, part {part}" };
+                roots[i] = root;
+                labelled[i] = field with { Label = Text.Format(Strings.Field_LabelPart, root, part) };
             }
         }
 

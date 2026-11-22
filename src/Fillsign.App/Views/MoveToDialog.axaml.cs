@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Views;
 
@@ -23,9 +24,9 @@ public partial class MoveToDialog : UserControl
     {
         InitializeComponent();
         _pageCount = pageCount;
-        Heading.Text = count == 1 ? "Move 1 page" : $"Move {count} pages";
-        OfPages.Text = $"of {pageCount}";
-        AtEndText.Text = $"At the end (after page {pageCount})";
+        Heading.Text = Text.Plural(count, Strings.MoveTo_MovePages_One, Strings.MoveTo_MovePages_Other);
+        OfPages.Text = Text.Format(Strings.MoveTo_OfPages, pageCount);
+        AtEndText.Text = Text.Format(Strings.MoveTo_AtTheEndAfterPage, pageCount);
 
         // Typing a number means "after that page", so the choice follows the typing.
         PageNumber.GotFocus += (_, _) => AfterPage.IsChecked = true;
@@ -88,7 +89,7 @@ public partial class MoveToDialog : UserControl
             return page;
         }
 
-        problem = typed.Length == 0 ? "Type a page number." : $"Type a page number from 1 to {_pageCount}.";
+        problem = typed.Length == 0 ? Strings.MoveTo_TypeAPageNumber : Text.Format(Strings.MoveTo_TypeAPageNumberFrom1To, _pageCount);
         return null;
     }
 

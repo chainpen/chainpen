@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Fillsign.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Fillsign.App.Controls"
              x:Class="Fillsign.App.Views.MoveToDialog"
@@ -7,17 +8,17 @@
     <Border Classes="dialog">
         <StackPanel>
             <TextBlock x:Name="Heading" Classes="heading-dialog" />
-            <TextBlock Margin="0,16,0,8" FontWeight="SemiBold" Text="Put them" />
+            <TextBlock Margin="0,16,0,8" FontWeight="SemiBold" Text="{x:Static l:Strings.MoveTo_PutThem}" />
             <StackPanel Spacing="10">
                 <RadioButton x:Name="AtStart" Classes="choice" GroupName="moveTo">
-                    <TextBlock FontWeight="SemiBold" Text="At the start" />
+                    <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.MoveTo_AtTheStart}" />
                 </RadioButton>
                 <RadioButton x:Name="AfterPage" Classes="choice" GroupName="moveTo"
-                             AutomationProperties.Name="After a page you type">
+                             AutomationProperties.Name="{x:Static l:Strings.MoveTo_AfterAPageYouType}">
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock FontWeight="SemiBold" Text="After page" VerticalAlignment="Center" />
+                        <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.MoveTo_AfterPage}" VerticalAlignment="Center" />
                         <TextBox x:Name="PageNumber" Width="80" MinHeight="32" MaxLength="6"
-                                 AutomationProperties.Name="Page number" />
+                                 AutomationProperties.Name="{x:Static l:Strings.MoveTo_PageNumber}" />
                         <TextBlock x:Name="OfPages" Classes="muted" VerticalAlignment="Center" />
                     </StackPanel>
                 </RadioButton>
@@ -31,8 +32,8 @@
                 <TextBlock x:Name="ErrorText" FontSize="13" Foreground="{DynamicResource Danger}" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,22,0,0">
-                <Button Content="Cancel" Click="OnCancel" />
-                <Button x:Name="MoveButton" Classes="primary" Content="Move" Click="OnMove" />
+                <Button Content="{x:Static l:Strings.Common_Cancel}" Click="OnCancel" />
+                <Button x:Name="MoveButton" Classes="primary" Content="{x:Static l:Strings.MoveTo_Move}" Click="OnMove" />
             </StackPanel>
         </StackPanel>
     </Border>

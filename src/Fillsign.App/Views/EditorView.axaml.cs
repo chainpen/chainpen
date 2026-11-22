@@ -2,9 +2,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using Avalonia.Layout;
 using Avalonia.LogicalTree;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 
 namespace Fillsign.App.Views;
@@ -46,16 +48,64 @@ public partial class EditorView : UserControl
         AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
         AddHandler(DragDrop.DropEvent, OnDrop);
         DragDrop.SetAllowDrop(this, true);
-        SizeChanged += (_, args) => CollapseToolbar(args.NewSize.Width);
+        SizeChanged += (_, args) =>
+        {
+            CollapseToolbar(args.NewSize.Width);
+            PlaceGuideArrow();
+        };
     }
 
-    /// <summary>Widths below which the toolbar collapses (INTERACTION-PATTERNS §3); the smallest window (S2, 1024) has both.</summary>
-    private const double CompactSwitchBelowWidth = 1640;
-    private const double IconsBelowWidth = 1340;
-    private const double LateIconsBelowWidth = 1248;
-    private const double MoreMenuBelowWidth = 1248;
-    private const double DateInMoreBelowWidth = 1100;
-    private const double ShortcutsBelowWidth = 1340;
+    private Button? _guideArrowTarget;
+
+    /// <summary>Restarts the arrow's bounce (a style animation on the <c>bouncing</c> class) as it arrives at a button.</summary>
+    private void BounceGuideArrow()
+    {
+        GuideArrow.Classes.Remove("bouncing");
+        if (Platform.ReducedMotion.IsOn)
+        {
+            // The arrow still points, it just doesn't move.
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => GuideArrow.Classes.Add("bouncing"), Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Points the practice guide's arrow up at the button it wants next, once that button's been laid out. Hidden when
+    /// there's no guide, or several buttons are lit (the nudge).
+    /// </summary>
+    private void PlaceGuideArrow() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                Button[] lit = _editor is { IsGuiding: true }
+                    ? [.. ToolbarBar.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("guided") && button.IsEffectivelyVisible)]
+                    : [];
+                if (lit is [Button target] && target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height), GuideArrowLayer) is { } tip)
+                {
+                    Avalonia.Controls.Canvas.SetLeft(GuideArrow, tip.X - 11);
+                    Avalonia.Controls.Canvas.SetTop(GuideArrow, tip.Y + 3);
+                    GuideArrow.IsVisible = true;
+                    if (!ReferenceEquals(target, _guideArrowTarget))
+                    {
+                        _guideArrowTarget = target;
+                        BounceGuideArrow();
+                    }
+                }
+                else
+                {
+                    GuideArrow.IsVisible = false;
+                    _guideArrowTarget = null;
+                    GuideArrow.Classes.Remove("bouncing");
+                }
+            },
+            Avalonia.Threading.DispatcherPriority.Background);
+
+    /// <summary>The last stage of <see cref="ApplyCollapse"/>, with everything collapsed for the smallest window.</summary>
+    private const int MostCollapsed = 5;
+
+    /// <summary>Room kept free at the end of the toolbar, so it never looks crammed just before the next stage.</summary>
+    private const double ToolbarSlack = 8;
 
     /// <summary>Files dropped on "Add to this document" or between pages: (paths, insert position or null for the end).</summary>
     public event Action<IReadOnlyList<string>, int?>? AddFilesRequested;
@@ -66,6 +116,12 @@ public partial class EditorView : UserControl
     /// <summary>The Pages panel's Add button.</summary>
     public event EventHandler? AddPagesRequested;
 
+    /// <summary>For a view rebuilt over an open document: keep its zoom rather than fitting the width.</summary>
+    public void KeepZoom() => Canvas.KeepZoom();
+
+    /// <summary>Scrolls the page with this index into view.</summary>
+    public void ShowPage(int index) => Canvas.ScrollToPage(index);
+
     public void ZoomIn() => Canvas.ZoomStep(+1);
 
     public void ZoomOut() => Canvas.ZoomStep(-1);
@@ -73,34 +129,82 @@ public partial class EditorView : UserControl
     public void FitWidth() => Canvas.FitWidth();
 
     /// <summary>
-    /// Narrower windows first turn Select, Rotate left and Rotate right into icons, then Cross and Date, then move Shapes
-    /// and Draw into More, hide Keyboard shortcuts (it's in the Help menu) and show the Edit content / Organise pages
-    /// switch as icons (S3). Nothing may overlap at any width down to the smallest window.
+    /// Narrower windows collapse the toolbar in the stages of <see cref="ApplyCollapse"/> (S3), as far as it takes to fit
+    /// the labels in the interface's language. Nothing may overlap at any width down to the smallest window.
     /// Tick, Text and Sign always keep their labels (NFR-11).
     /// </summary>
     private void CollapseToolbar(double width)
     {
-        bool isIconsOnly = width < IconsBelowWidth;
-        // A style hides every "collapsible" label, including ones in bars that haven't been shown yet.
-        Classes.Set("iconsOnly", isIconsOnly);
-        Classes.Set("iconsOnlyLate", width < LateIconsBelowWidth);
+        // Measured rather than at fixed widths, so it suits every language: German labels collapse sooner, Japanese
+        // ones later. Each stage collapses a little more until the toolbar fits.
+        if (width <= 0 || ToolbarBar.Child is not { } content)
+        {
+            return;
+        }
 
-        bool usesMoreMenu = width < MoreMenuBelowWidth;
+        for (int stage = 0; stage <= MostCollapsed; stage++)
+        {
+            ApplyCollapse(stage);
+
+            // Showing or hiding a label only marks the label itself for measuring; the panels around it would answer
+            // from their last measurement, so they're all measured afresh.
+            foreach (Layoutable layoutable in content.GetVisualDescendants().OfType<Layoutable>().Prepend(content))
+            {
+                layoutable.InvalidateMeasure();
+            }
+
+            content.Measure(Size.Infinity);
+            if (content.DesiredSize.Width + ToolbarBar.Padding.Left + ToolbarBar.Padding.Right + ToolbarSlack <= width)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stage 1: the Edit content / Organise pages switch shows icons and Export is shortened. 2: Select, Rotate left and
+    /// Rotate right become icons and Keyboard shortcuts goes (it's in the Help menu). 3: Cross and Date become icons
+    /// and Shapes and Draw move into More. 4: Date joins them in More, so Sign's arrow fits. 5: for the smallest windows
+    /// in longer languages, Initials, More and Save become icons too (they keep their accessible names).
+    /// </summary>
+    private void ApplyCollapse(int stage)
+    {
+        bool isCompact = stage >= 1;
+        ExportLabel.Text = isCompact ? Strings.Editor_Export : Strings.Editor_ExportFinalCopy;
+        EditContentLabel.IsVisible = !isCompact;
+        OrganiseLabel.IsVisible = !isCompact;
+
+        // A style hides every "collapsible" label, including ones in bars that haven't been shown yet. The toolbar's own
+        // are also set here, so measuring sees them straight away.
+        Classes.Set("iconsOnly", stage >= 2);
+        Classes.Set("iconsOnlyLate", stage >= 3);
+        foreach (TextBlock label in ToolbarBar.GetLogicalDescendants().OfType<TextBlock>())
+        {
+            if (label.Classes.Contains("collapsible"))
+            {
+                label.IsVisible = stage < 2;
+            }
+            else if (label.Classes.Contains("collapsibleLate"))
+            {
+                label.IsVisible = stage < 3;
+            }
+        }
+
+        ShortcutsButton.IsVisible = stage < 2;
+
+        bool usesMoreMenu = stage >= 3;
         ShapesButton.IsVisible = !usesMoreMenu;
         DrawButton.IsVisible = !usesMoreMenu;
         MoreButton.IsVisible = usesMoreMenu;
 
-        // At this width the tools row is wider than its slot and was drawn under Undo: the shortcuts are in Help.
-        ShortcutsButton.IsVisible = width >= ShortcutsBelowWidth;
+        bool isLeastRoom = stage >= 5;
+        InitialsLabel.IsVisible = !isLeastRoom;
+        MoreLabel.IsVisible = !isLeastRoom;
+        SaveLabel.IsVisible = !isLeastRoom;
 
-        // The smallest windows: Date joins Shapes and Draw in More, so Sign's arrow fits.
-        bool isDateInMore = width < DateInMoreBelowWidth;
+        bool isDateInMore = stage >= 4;
         DateButton.IsVisible = !isDateInMore;
         MoreDateItem.IsVisible = isDateInMore;
-        bool isCompact = width < CompactSwitchBelowWidth;
-        ExportLabel.Text = isCompact ? "Export…" : "Export final copy…";
-        EditContentLabel.IsVisible = !isCompact;
-        OrganiseLabel.IsVisible = !isCompact;
     }
 
     private readonly Dictionary<Control, (string Plain, string Letter)> _toolTips = [];
@@ -182,24 +286,64 @@ public partial class EditorView : UserControl
         _editor = editor;
         Canvas.DamagedCardFactory = page => new DamagedPageCard(editor) { DataContext = page };
         Canvas.Attach(editor, Scroller);
-        editor.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex) && editor.CurrentPageIndex < editor.Pages.Count)
-            {
-                PageList.ScrollIntoView(editor.CurrentPageIndex);
-            }
-
-            if (args.PropertyName == nameof(EditorViewModel.Notice))
-            {
-                _toastTimer.Stop();
-                if (editor.HasToast)
-                {
-                    _toastTimer.Start();
-                }
-            }
-        };
+        editor.PropertyChanged += OnEditorPropertyChanged;
         editor.PageSelectionChanged += SyncListSelection;
         editor.PagesChanged += SyncListSelection;
+    }
+
+    /// <summary>
+    /// Stops following the document, for a view that's being replaced while the document stays open (a new document,
+    /// or the interface rebuilt in another language). Otherwise the old view would keep handling its events, and its
+    /// toast timer would close a toast the new view is showing.
+    /// </summary>
+    public void Detach()
+    {
+        if (_editor is not { } editor)
+        {
+            return;
+        }
+
+        editor.PropertyChanged -= OnEditorPropertyChanged;
+        editor.PageSelectionChanged -= SyncListSelection;
+        editor.PagesChanged -= SyncListSelection;
+        Canvas.Detach();
+        _toastTimer.Stop();
+        _editor = null;
+    }
+
+    private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (_editor is not { } editor)
+        {
+            return;
+        }
+
+        if (args.PropertyName == nameof(EditorViewModel.CurrentPageIndex) && editor.CurrentPageIndex < editor.Pages.Count)
+        {
+            PageList.ScrollIntoView(editor.CurrentPageIndex);
+        }
+
+        // Organise pages has a different toolbar, so it's fitted again.
+        if (args.PropertyName == nameof(EditorViewModel.IsOrganising))
+        {
+            CollapseToolbar(Bounds.Width);
+        }
+
+        // Switching to Organise pages hides the tools, so the arrow moves or goes with them.
+        if (args.PropertyName is nameof(EditorViewModel.IsGuiding) or nameof(EditorViewModel.IsOrganising) or nameof(EditorViewModel.GuideLightsTick)
+            or nameof(EditorViewModel.GuideLightsText) or nameof(EditorViewModel.GuideLightsSign) or nameof(EditorViewModel.GuideLightsExport))
+        {
+            PlaceGuideArrow();
+        }
+
+        if (args.PropertyName == nameof(EditorViewModel.Notice))
+        {
+            _toastTimer.Stop();
+            if (editor.HasToast)
+            {
+                _toastTimer.Start();
+            }
+        }
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -277,7 +421,7 @@ public partial class EditorView : UserControl
         }
 
         DropOverlay.IsVisible = true;
-        DropCaption.Text = "Where you let go decides: add the pages here, or open them on their own.";
+        DropCaption.Text = Strings.Editor_WhereYouLetGoDecides;
         Canvas.Opacity = 0.5;
 
         bool isOverPages = PagesPanel.IsVisible && PagesPanel.Bounds.Contains(e.GetPosition(PagesPanel.Parent as Visual ?? this));
@@ -442,7 +586,7 @@ public partial class EditorView : UserControl
         Resources["PagesThumbWidth"] = thumb;
         Resources["PagesThumbHeight"] = Math.Round(thumb * ThumbRatio);
         InsertMarker.Width = thumb + 16;
-        Avalonia.Automation.AutomationProperties.SetHelpText(PagesPanelResizer, $"{width:0} points wide. Left and Right arrow keys change it.");
+        Avalonia.Automation.AutomationProperties.SetHelpText(PagesPanelResizer, Text.Format(Strings.Editor_PagesPanelWidthHelp, width));
     }
 
     /// <summary>View → Reset layout: the pages panel back at its standard width and shown, and the page fitted to the width.</summary>

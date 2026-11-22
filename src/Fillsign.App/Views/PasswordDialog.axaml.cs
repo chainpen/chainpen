@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Views;
 
@@ -18,7 +19,7 @@ public partial class PasswordDialog : UserControl
     public PasswordDialog(string fileName, bool wasWrong)
     {
         InitializeComponent();
-        Heading.Text = $"{fileName} needs a password to open";
+        Heading.Text = Text.Format(Strings.Password_NeedsAPasswordToOpen, fileName);
         Error.IsVisible = wasWrong;
         Password.Classes.Set("error", wasWrong);
 
@@ -50,8 +51,8 @@ public partial class PasswordDialog : UserControl
     {
         bool isHidden = Password.PasswordChar != '\0';
         Password.PasswordChar = isHidden ? '\0' : '•';
-        ShowText.Text = isHidden ? "Hide" : "Show";
+        ShowText.Text = isHidden ? Strings.Password_Hide : Strings.Password_Show;
         ShowIcon.Data = (Geometry?)this.FindResource(isHidden ? "IconEyeClosed" : "IconEye");
-        AutomationProperties.SetName(ShowButton, isHidden ? "Hide password" : "Show password");
+        AutomationProperties.SetName(ShowButton, isHidden ? Strings.Password_HidePassword : Strings.Password_ShowPassword);
     }
 }

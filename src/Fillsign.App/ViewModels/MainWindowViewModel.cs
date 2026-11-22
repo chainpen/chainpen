@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.ViewModels;
 
@@ -19,7 +20,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public EditorViewModel? Editor => Content as EditorViewModel;
 
-    public string Title => Editor is { } editor ? $"{editor.Title} – Fillsign" : "Fillsign";
+    public string Title => Editor is { } editor ? Text.Format(Strings.Window_DocumentTitle, editor.Title) : "Fillsign";
 
     public void ShowEditor(EditorViewModel editor)
     {

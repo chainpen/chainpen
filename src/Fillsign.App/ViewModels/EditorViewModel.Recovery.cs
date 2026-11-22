@@ -1,5 +1,6 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Fillsign.App.Localization;
 using Fillsign.App.Platform;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Export;
@@ -30,7 +31,7 @@ public sealed partial class EditorViewModel
     [NotifyPropertyChangedFor(nameof(RecoveryStatus), nameof(HasRecoveryStatus))]
     public partial DateTimeOffset? RecoveryKeptAt { get; private set; }
 
-    public string RecoveryStatus => RecoveryKeptAt is { } kept ? $"Recovery copy kept {kept.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)}" : string.Empty;
+    public string RecoveryStatus => RecoveryKeptAt is { } kept ? Text.Format(Strings.Editor_RecoveryCopyKept, kept.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)) : string.Empty;
 
     public bool HasRecoveryStatus => RecoveryKeptAt is not null;
 
@@ -144,7 +145,7 @@ public sealed partial class EditorViewModel
         _savedState = null;
         _autosavedState = State;
         RecoveryKeptAt = copy.SavedAt;
-        RestoredNotice = $"Your unsaved changes from {FormatWhen(copy.SavedAt)} were recovered. Save to keep them in the file.";
+        RestoredNotice = Text.Format(Strings.Editor_UnsavedChangesRecovered, FormatWhen(copy.SavedAt));
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(DocumentStatus));
     }

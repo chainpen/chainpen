@@ -1,10 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
-using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using Fillsign.App.Localization;
 using Fillsign.App.Platform;
 using Fillsign.App.Platform.Signatures;
 using Fillsign.App.ViewModels;
@@ -19,16 +18,19 @@ namespace Fillsign.App.Views;
 /// </summary>
 public partial class MainWindow : Window, IEditorHost
 {
-    private const string PracticeFormName = "Practice form.pdf";
     private const double DefaultDialogTop = 160;
-    private static readonly FilePickerFileType s_documents = new("PDFs and images")
+
+    // Shown as the document's title, so it's in the interface language.
+    private static string PracticeFormName => Strings.Main_PracticeFormPdf;
+
+    private static FilePickerFileType DocumentsFileType => new(Strings.Main_PdfsAndImages)
     {
         Patterns = ["*.pdf", "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp", "*.heic", "*.heif"],
         AppleUniformTypeIdentifiers = ["com.adobe.pdf", "public.image"],
         MimeTypes = ["application/pdf", "image/*"],
     };
 
-    private static readonly FilePickerFileType s_photos = new("Photos and scans")
+    private static FilePickerFileType PhotosFileType => new(Strings.Main_PhotosAndScans)
     {
         Patterns = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp", "*.heic", "*.heif"],
         AppleUniformTypeIdentifiers = ["public.image"],
@@ -60,6 +62,8 @@ public partial class MainWindow : Window, IEditorHost
         MenuBar.IsVisible = !OperatingSystem.IsMacOS();
         RestorePlacement();
         Closed += (_, _) => RememberPlacement();
+        Opened += (_, _) => s_open.Add(this);
+        Closed += (_, _) => s_open.Remove(this);
         Opened += (_, _) => WindowFit.KeepOnScreen(this);
         _viewModel = new MainWindowViewModel(isFirstLaunch);
         DataContext = _viewModel;
@@ -128,7 +132,7 @@ public partial class MainWindow : Window, IEditorHost
 
         if (_viewModel.Editor is { } editor)
         {
-            string title = paths.Count == 1 ? $"Open {Path.GetFileName(paths[0])}" : $"Open {paths.Count} files";
+            string title = paths.Count == 1 ? Text.Format(Strings.Main_OpenFileName, Path.GetFileName(paths[0])) : Text.Format(Strings.Main_OpenCountFiles, paths.Count);
             OpenChoice choice = await AskOpenOrAddAsync(title, editor.Title, 0).ConfigureAwait(true);
             if (choice == OpenChoice.NewWindow)
             {
@@ -176,7 +180,7 @@ public partial class MainWindow : Window, IEditorHost
 
             if (isPracticeForm)
             {
-                ShowFirstRunTipsOnce();
+                editor.StartPracticeGuide();
             }
 
             return editor;
@@ -210,9 +214,11 @@ public partial class MainWindow : Window, IEditorHost
         await OpenPathsAsync(paths).ConfigureAwait(true);
     }
 
-    private async Task OpenPracticeFormAsync()
+    internal async Task OpenPracticeFormAsync()
     {
-        await using Stream stream = AssetLoader.Open(new Uri("avares://Fillsign.App/Assets/practice-form.pdf"));
+        // The form in the interface's language, so the guide's quotes match what's printed on it.
+        string file = Languages.Running == "en" ? "practice-form.pdf" : $"practice-form.{Languages.Running}.pdf";
+        await using Stream stream = AssetLoader.Open(new Uri($"avares://Fillsign.App/Assets/{file}"));
         using var copy = new MemoryStream();
         await stream.CopyToAsync(copy).ConfigureAwait(true);
         await OpenFilesAsync([new InputFile(PracticeFormName, null, copy.ToArray())], isPracticeForm: true).ConfigureAwait(true);
@@ -220,6 +226,8 @@ public partial class MainWindow : Window, IEditorHost
 
     private void ShowStart()
     {
+        _editorView?.Detach();
+        _editorView = null;
         _viewModel.Start.Refresh();
         _startView = new StartView { DataContext = _viewModel.Start };
         _startView.OpenRequested += async (_, _) => await ChooseAndOpenAsync().ConfigureAwait(true);
@@ -266,7 +274,7 @@ public partial class MainWindow : Window, IEditorHost
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            await ShowMessageAsync("The changes can’t be recovered", $"The recovery copy couldn’t be read. ({ex.Message})").ConfigureAwait(true);
+            await ShowMessageAsync(Strings.Main_TheChangesCantBeRecovered, Text.Format(Strings.Main_TheRecoveryCopyCouldntBeRead, ex.Message)).ConfigureAwait(true);
             return;
         }
 
@@ -285,12 +293,47 @@ public partial class MainWindow : Window, IEditorHost
             return;
         }
 
-        s_settingsWindow = new SettingsWindow();
-        s_settingsWindow.Closed += (_, _) => s_settingsWindow = null;
-        s_settingsWindow.Show();
+        Track(new SettingsWindow()).Show();
     }
 
     private static SettingsWindow? s_settingsWindow;
+
+    /// <summary>Makes <paramref name="settings"/> the one Settings window, until it closes.</summary>
+    private static SettingsWindow Track(SettingsWindow settings)
+    {
+        s_settingsWindow = settings;
+        settings.Closed += (_, _) =>
+        {
+            // A window replaced by its rebuilt self closes after the new one is tracked; that mustn't untrack it.
+            if (ReferenceEquals(s_settingsWindow, settings))
+            {
+                s_settingsWindow = null;
+            }
+        };
+        return settings;
+    }
+
+    private static readonly List<MainWindow> s_open = [];
+
+    /// <summary>The document windows open now.</summary>
+    internal static IReadOnlyList<MainWindow> OpenWindows => s_open;
+
+    /// <summary>The Settings window, when it's open.</summary>
+    internal static SettingsWindow? OpenSettings => s_settingsWindow;
+
+    /// <summary>The interface language changed: Settings opens again in it, in the same place, on the language list.</summary>
+    internal static void ShowSettingsInNewLanguage()
+    {
+        if (s_settingsWindow is not { } old)
+        {
+            return;
+        }
+
+        SettingsWindow reopened = Track(new SettingsWindow { Position = old.Position, WindowStartupLocation = WindowStartupLocation.Manual });
+        reopened.Show();
+        old.Close();
+        reopened.FocusLanguage();
+    }
 
     /// <summary>Shows a newly opened document, closing the one it replaces ("Open final copy instead", restoring edits).</summary>
     private void ReplaceEditor(EditorViewModel editor)
@@ -394,13 +437,15 @@ public partial class MainWindow : Window, IEditorHost
     /// <summary>D4: Save is the default and has focus; Don't save is never the default (FR-8.11).</summary>
     private async Task AskBeforeClosingAsync(EditorViewModel editor)
     {
-        string since = editor.LastSavedAt is { } saved ? $" since {saved.ToLocalTime():HH:mm}" : string.Empty;
+        string unsaved = editor.LastSavedAt is { } saved
+            ? Text.Format(Strings.Main_UnsavedChangesSince, saved.ToLocalTime())
+            : Strings.Main_UnsavedChanges;
         Choice choice = await ShowDialogAsync(
             new ChoiceDialog(
-                $"Save changes to {editor.Title} before closing?",
-                $"Your changes{since} aren’t saved to the file. If you don’t save, they’re lost.",
-                "Save",
-                "Don’t save",
+                Text.Format(Strings.Main_SaveChangesBeforeClosing, editor.Title),
+                unsaved,
+                Strings.Editor_Save,
+                Strings.Main_DontSave,
                 focusMain: true),
             dialog => dialog.Result).ConfigureAwait(true);
         bool canClose = choice switch
@@ -415,9 +460,36 @@ public partial class MainWindow : Window, IEditorHost
         }
     }
 
-    private void ShowEditor(EditorViewModel editor)
+    /// <summary>
+    /// The interface language changed: the menu and the view are built again in it, over the same document or start
+    /// screen, keeping the zoom and the page in view. Toasts and dialogs already showing keep their wording.
+    /// </summary>
+    internal void ShowInNewLanguage()
     {
+        RenameMenu();
+        if (_viewModel.Editor is { } editor && _editorView is not null)
+        {
+            int page = editor.CurrentPageIndex;
+            editor.FinishTyping();
+            ShowEditor(editor, keepView: true);
+            editor.RefreshText();
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => _editorView?.ShowPage(page), Avalonia.Threading.DispatcherPriority.Background);
+        }
+        else
+        {
+            ShowStart();
+        }
+    }
+
+    private void ShowEditor(EditorViewModel editor, bool keepView = false)
+    {
+        _editorView?.Detach();
         _editorView = new EditorView { DataContext = editor };
+        if (keepView)
+        {
+            _editorView.KeepZoom();
+        }
+
         _editorView.AddPagesRequested += async (_, _) =>
         {
             IReadOnlyList<string> paths = await ChooseFilesAsync().ConfigureAwait(true);
@@ -431,27 +503,6 @@ public partial class MainWindow : Window, IEditorHost
         Host.Content = _editorView;
         _startView = null;
     }
-
-    private void ShowFirstRunTipsOnce()
-    {
-        AppSettings settings = AppSettings.Load();
-        if (settings.HasSeenFirstRunTips)
-        {
-            return;
-        }
-
-        (settings with { HasSeenFirstRunTips = true }).Save();
-        FirstRunSteps.ItemsSource = new[]
-        {
-            "1   Tick the boxes that apply",
-            "2   Text or Date on the lines",
-            "3   Sign on the signature line",
-            "4   Export final copy to get a file to send",
-        };
-        FirstRunTips.IsVisible = true;
-    }
-
-    private void OnDismissTips(object? sender, RoutedEventArgs e) => FirstRunTips.IsVisible = false;
 
     // ----- Dropping on the start screen -----
 
@@ -559,9 +610,6 @@ public partial class MainWindow : Window, IEditorHost
                 break;
             case Key.PageUp when editor is not null && !isTyping:
                 editor.PreviousPageCommand.Execute(null);
-                break;
-            case Key.Escape when FirstRunTips.IsVisible:
-                FirstRunTips.IsVisible = false;
                 break;
             case Key.Escape when editor is not null:
                 // Back out one level, including finishing typing (FR-7.7).
@@ -678,8 +726,8 @@ public partial class MainWindow : Window, IEditorHost
         if (!isPasted && hasOther && !editor.IsOrganising)
         {
             await ShowMessageAsync(
-                "That can’t be pasted",
-                "Fillsign can paste its own items, text and pictures from other apps. What’s on the clipboard isn’t one of those.").ConfigureAwait(true);
+                Strings.Main_ThatCantBePasted,
+                Strings.Main_FillsignCanPasteItsOwnItems).ConfigureAwait(true);
         }
     }
 
@@ -778,9 +826,9 @@ public partial class MainWindow : Window, IEditorHost
     {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open a PDF or image",
+            Title = Strings.Main_OpenAPdfOrImage,
             AllowMultiple = true,
-            FileTypeFilter = [s_documents, FilePickerFileTypes.All],
+            FileTypeFilter = [DocumentsFileType, FilePickerFileTypes.All],
         }).ConfigureAwait(true);
         return [.. files.Select(file => file.TryGetLocalPath()).OfType<string>()];
     }
@@ -800,18 +848,18 @@ public partial class MainWindow : Window, IEditorHost
 
         int total = problems.Count + openedCount;
         string title = openedCount > 0
-            ? $"{openedCount} of {total} files were opened"
-            : problems.Count == 1 ? problems[0].Title : "These files can’t be opened";
-        var paragraphs = problems.Select(problem => problems.Count == 1 && openedCount == 0 ? problem.Message : $"{problem.Title}. {problem.Message}").ToList();
-        await ShowDialogAsync(new MessageDialog(title, paragraphs, "Close"), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
+            ? Text.Format(Strings.Main_FilesWereOpened, openedCount, total)
+            : problems.Count == 1 ? problems[0].Title : Strings.Main_TheseFilesCantBeOpened;
+        var paragraphs = problems.Select(problem => problems.Count == 1 && openedCount == 0 ? problem.Message : Text.Format(Strings.Main_ProblemTitleAndMessage, problem.Title, problem.Message)).ToList();
+        await ShowDialogAsync(new MessageDialog(title, paragraphs, Strings.Common_Close), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
     }
 
     public async Task ShowMessageAsync(string title, string message) =>
-        await ShowDialogAsync(new MessageDialog(title, [message], "Got it"), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
+        await ShowDialogAsync(new MessageDialog(title, [message], Strings.Main_GotIt), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
 
     /// <summary>A message that's just information, such as About: no warning icon.</summary>
     public async Task ShowInformationAsync(string title, string message) =>
-        await ShowDialogAsync(new MessageDialog(title, [message], "Got it", MessageTone.Information), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
+        await ShowDialogAsync(new MessageDialog(title, [message], Strings.Main_GotIt, MessageTone.Information), dialog => dialog.Closed.ContinueWith(_ => true, TaskScheduler.Default)).ConfigureAwait(true);
 
     /// <summary>Saved signatures and initials. Tests point this at a temporary folder.</summary>
     internal static SavedSignatureStore? SignatureStoreOverride { get; set; }
@@ -833,9 +881,9 @@ public partial class MainWindow : Window, IEditorHost
     {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Choose a photo or scan of your signature",
+            Title = Strings.Main_ChooseAPhotoOrScanOfYourSignature,
             AllowMultiple = false,
-            FileTypeFilter = [s_photos, FilePickerFileTypes.All],
+            FileTypeFilter = [PhotosFileType, FilePickerFileTypes.All],
         }).ConfigureAwait(true);
         return files.Select(file => file.TryGetLocalPath()).OfType<string>().FirstOrDefault();
     }
@@ -852,11 +900,11 @@ public partial class MainWindow : Window, IEditorHost
 
         IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save your working copy",
+            Title = Strings.Main_SaveYourWorkingCopy,
             SuggestedFileName = suggestedName,
             SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(folder).ConfigureAwait(true),
             DefaultExtension = "pdf",
-            FileTypeChoices = [new FilePickerFileType("PDF") { Patterns = ["*.pdf"], AppleUniformTypeIdentifiers = ["com.adobe.pdf"], MimeTypes = ["application/pdf"] }],
+            FileTypeChoices = [new FilePickerFileType(Strings.Main_PdfFileType) { Patterns = ["*.pdf"], AppleUniformTypeIdentifiers = ["com.adobe.pdf"], MimeTypes = ["application/pdf"] }],
             ShowOverwritePrompt = true,
         }).ConfigureAwait(true);
         return file?.TryGetLocalPath();
@@ -880,15 +928,15 @@ public partial class MainWindow : Window, IEditorHost
     public async Task<RestrictedChoice> AskAboutRestrictedAsync(IReadOnlyList<string> fileNames)
     {
         ArgumentNullException.ThrowIfNull(fileNames);
-        string which = fileNames.Count == 1 ? fileNames[0] : $"{fileNames.Count} of these files";
+        bool isOne = fileNames.Count == 1;
         Choice choice = await ShowDialogAsync(
             new ChoiceDialog(
-                $"{(fileNames.Count == 1 ? which : "These files")} can’t be changed",
-                $"The owner of {which} set it so it shouldn’t be changed. You can view it, or edit it anyway if you’re allowed to fill it in. Copies you save or export from Fillsign won’t carry the restriction.",
-                "View only",
-                otherLabel: "Edit anyway",
+                isOne ? Text.Format(Strings.Main_FileCantBeChanged, fileNames[0]) : Strings.Main_TheseFilesCantBeChanged,
+                isOne ? Text.Format(Strings.Main_RestrictedFileBody, fileNames[0]) : Text.Format(Strings.Main_RestrictedFilesBody, fileNames.Count),
+                Strings.Main_ViewOnly,
+                otherLabel: Strings.Editor_EditAnyway,
                 focusMain: true,
-                cancelLabel: "Don’t open"),
+                cancelLabel: Strings.Main_DontOpen),
             dialog => dialog.Result).ConfigureAwait(true);
         return choice switch
         {
@@ -901,27 +949,31 @@ public partial class MainWindow : Window, IEditorHost
     public async Task<bool> ConfirmAddRestrictedAsync(IReadOnlyList<string> fileNames)
     {
         ArgumentNullException.ThrowIfNull(fileNames);
-        string which = fileNames.Count == 1 ? fileNames[0] : $"{fileNames.Count} of these files";
+        string body = fileNames.Count == 1
+            ? Text.Format(Strings.Main_AddRestrictedFileBody, fileNames[0])
+            : Text.Format(Strings.Main_AddRestrictedFilesBody, fileNames.Count);
         Choice choice = await ShowDialogAsync(
             new ChoiceDialog(
-                "Add pages that can’t be changed?",
-                $"The owner of {which} set it so it shouldn’t be changed. Adding its pages copies them into this document without the restriction.",
-                "Add pages anyway",
+                Strings.Main_AddPagesThatCantBeChanged,
+                body,
+                Strings.Main_AddPagesAnyway,
                 otherLabel: null,
                 focusMain: false,
-                cancelLabel: "Don’t add"),
+                cancelLabel: Strings.Main_DontAdd),
             dialog => dialog.Result).ConfigureAwait(true);
         return choice == Choice.Main;
     }
 
     public async Task<bool> ConfirmRestoreAsync(DateTimeOffset? savedAt)
     {
-        string when = savedAt is { } saved ? $" from {saved.ToLocalTime():dd/MM/yyyy, HH:mm}" : string.Empty;
+        string body = savedAt is { } saved
+            ? Text.Format(Strings.Main_RestoreBodyFrom, DateFormats.FormatWithTime(saved))
+            : Strings.Main_RestoreBody;
         Choice choice = await ShowDialogAsync(
             new ChoiceDialog(
-                "Restore your Fillsign edits?",
-                $"Your editable ticks, text and signature{when} come back, and the changes made in the other app are removed from this window. The file isn’t changed until you save.",
-                "Restore edits",
+                Strings.Main_RestoreYourFillsignEdits,
+                body,
+                Strings.Main_RestoreEdits,
                 otherLabel: null,
                 focusMain: false,
                 isMainDestructive: true),

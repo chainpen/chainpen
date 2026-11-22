@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.Core.Editing;
 using Fillsign.Core.Model;
 
@@ -53,14 +54,12 @@ public sealed partial class EditorViewModel
     /// <summary>"2 pages selected", "All 4 pages selected".</summary>
     public string PageSelectionLabel => SelectedPages.Count switch
     {
-        1 => "1 page selected",
-        int count when count == Pages.Count => $"All {count} pages selected",
-        int count => $"{count} pages selected",
+        int count when count != 1 && count == Pages.Count => Text.Format(Strings.Editor_AllPagesSelected, count),
+        int count => Text.Plural(count, Strings.Editor_PagesSelected_One, Strings.Editor_PagesSelected_Other),
     };
 
     public string OrganiseHint =>
-        $"{Pages.Count} {(Pages.Count == 1 ? "page" : "pages")} · Drag pages to reorder, or drop files between pages to insert them. "
-        + Controls.KeysExtension.ForThisComputer("Shift-click selects a range, Mod-click adds a page. Double-click opens a page.", OperatingSystem.IsMacOS());
+        Controls.KeysExtension.ForThisComputer(Text.Plural(Pages.Count, Strings.Editor_OrganiseHint_One, Strings.Editor_OrganiseHint_Other), OperatingSystem.IsMacOS());
 
     /// <summary>Raised when the page selection changes, so the page lists show it.</summary>
     public event Action? PageSelectionChanged;
@@ -158,21 +157,21 @@ public sealed partial class EditorViewModel
         int[] numbers = [.. Pages.Where(p => targets.Contains(p.Id)).Select(p => p.Number)];
         if (!PageEdits.TryDelete(State, targets, out DocumentState result))
         {
-            const string Reason = "A document needs at least one page. Deselect the page you want to keep, then delete the others.";
+            string reason = Strings.Editor_DeselectThePageToKeep;
             if (IsOrganising && page is null)
             {
-                PageMessage = Reason;
+                PageMessage = reason;
                 return;
             }
 
-            await _host.ShowMessageAsync("Can’t delete every page", Pages.Count == 1
-                ? "A document needs at least one page. Add another page first, or open a different document."
-                : Reason).ConfigureAwait(true);
+            await _host.ShowMessageAsync(Strings.Editor_CantDeleteEveryPage, Pages.Count == 1
+                ? Strings.Editor_ADocumentNeedsAtLeastOnePage
+                : reason).ConfigureAwait(true);
             return;
         }
 
         Change(result);
-        Notice = numbers.Length == 1 ? $"Page {numbers[0]} deleted" : $"{numbers.Length} pages deleted";
+        Notice = numbers.Length == 1 ? Text.Format(Strings.Editor_PageDeleted, numbers[0]) : Text.Format(Strings.Editor_PagesDeleted, numbers.Length);
     }
 
     /// <summary>Moves pages one place up, keeping them together (FR-6.4, the non-drag way).</summary>

@@ -1,7 +1,7 @@
 using Avalonia;
-using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 using Fillsign.Pdf.Pdfium;
 
@@ -143,7 +143,7 @@ internal sealed class RadioFieldPeer(PagesCanvas canvas, EditorViewModel editor,
 
     public void Select() => Editor.Activate(Hit);
 
-    protected override string? GetNameCore() => $"{Field.DisplayName}: {Field.OnValue}";
+    protected override string GetNameCore() => Text.Format(Strings.Editor_RadioButtonName, Field.DisplayName, Field.OnValue);
 
     protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.RadioButton;
 }
@@ -152,7 +152,7 @@ internal sealed class ChoiceFieldPeer(PagesCanvas canvas, EditorViewModel editor
 {
     public bool IsReadOnly => Field.IsReadOnly || Editor.IsViewOnly;
 
-    string? IValueProvider.Value => Field.IsMultiSelect ? string.Join(", ", PdfiumDocument.SplitChoices(Value)) : Value;
+    string IValueProvider.Value => Field.IsMultiSelect ? string.Join(Strings.Editor_ListSeparator, PdfiumDocument.SplitChoices(Value)) : Value;
 
     /// <summary>A screen reader setting the value: an option by its name, or a typed answer where the drop-down takes one.</summary>
     public void SetValue(string? value)
@@ -179,7 +179,7 @@ internal sealed class SignatureFieldPeer(PagesCanvas canvas, EditorViewModel edi
 {
     public void Invoke() => Editor.Activate(Hit);
 
-    protected override string? GetNameCore() => $"{Field.DisplayName}, signature field";
+    protected override string GetNameCore() => Text.Format(Strings.Editor_SignatureFieldName, Field.DisplayName);
 
     protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Button;
 }

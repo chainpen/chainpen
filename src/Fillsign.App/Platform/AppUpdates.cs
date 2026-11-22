@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Velopack;
 using Velopack.Sources;
 
@@ -56,7 +57,7 @@ public sealed partial class AppUpdates : ObservableObject
 
     public bool IsReady => Ready is not null;
 
-    public string Title => Ready is { } ready ? $"Fillsign {ready.Version} is ready to install" : string.Empty;
+    public string Title => Ready is { } ready ? Text.Format(Strings.Updates_ReadyToInstall, ready.Version) : string.Empty;
 
     /// <summary>Shows an update as ready without downloading one, or none with null. For tests and screenshots.</summary>
     internal void ShowReady(UpdateReady? ready) => Ready = ready;
@@ -148,10 +149,10 @@ public sealed partial class AppUpdates : ObservableObject
     /// <summary>What to tell someone who chose Check for Updates.</summary>
     public static (string Title, string Message) Describe(UpdateCheck result, string currentVersion, UpdateReady? ready) => result switch
     {
-        UpdateCheck.UpToDate => ("You’re up to date", $"Fillsign {currentVersion} is the latest version."),
-        UpdateCheck.Ready => ("Update ready", $"Fillsign {ready?.Version} has been downloaded. Choose Update ready at the bottom of the window to install it; your work is kept."),
-        UpdateCheck.NotInstalled => ("Updates aren’t available for this copy", $"This copy of Fillsign ({currentVersion}) wasn’t installed with the Fillsign installer, so it can’t update itself. Download the latest version from the Fillsign releases page."),
-        _ => ("Couldn’t check for updates", "Fillsign couldn’t reach the update server. Check your internet connection and try again later."),
+        UpdateCheck.UpToDate => (Strings.Updates_YoureUpToDate, Text.Format(Strings.Updates_IsTheLatestVersion, currentVersion)),
+        UpdateCheck.Ready => (Strings.Editor_UpdateReady, Text.Format(Strings.Updates_HasBeenDownloaded, ready?.Version)),
+        UpdateCheck.NotInstalled => (Strings.Updates_NotAvailableForThisCopy, Text.Format(Strings.Updates_NotInstalledWithInstaller, currentVersion)),
+        _ => (Strings.Updates_CouldntCheckForUpdates, Strings.Updates_CouldntReachTheUpdateServer),
     };
 
     /// <summary>"Restart and update": unsaved work is kept as recovery copies and offered back after the restart.</summary>
@@ -166,7 +167,7 @@ public sealed partial class AppUpdates : ObservableObject
         // Never restart over work that couldn't be kept: say so, and leave everything open.
         if (KeepUnsavedWork is { } keep && !await keep().ConfigureAwait(true))
         {
-            RestartProblem = "Fillsign couldn’t keep a copy of your unsaved work, so it hasn’t restarted. Wait for every page to load, or save your work, then try again.";
+            RestartProblem = Strings.Updates_CouldntKeepUnsavedWork;
             return;
         }
 

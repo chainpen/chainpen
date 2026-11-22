@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Fillsign.App.Localization;
 using Fillsign.App.Platform;
 using Fillsign.Pdf.Import;
 
@@ -21,9 +22,7 @@ public sealed partial class StartViewModel : ObservableObject
     /// <summary>First launch shows "How it works" and the practice form (FR-1.8).</summary>
     public bool IsFirstLaunch { get; }
 
-    public string DropHint => IsFirstLaunch
-        ? "PDF, JPG, PNG and other images. Drop several to combine them."
-        : "PDF, JPG, PNG and other images. Drop several files to combine them into one document.";
+    public string DropHint => IsFirstLaunch ? Strings.Start_DropHintFirstLaunch : Strings.Start_DropHint;
 
     /// <summary>Why the last open failed (D6), shown above the drop zone until dismissed.</summary>
     [ObservableProperty]
@@ -44,13 +43,14 @@ public sealed partial class StartViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasRecovery), nameof(RecoveryText), nameof(RecoveryTitle))]
     public partial RecoveryCopy? Recovery { get; private set; }
 
-    public string RecoveryTitle => Recovery is { IsForUpdate: true } ? "Fillsign was updated." : "Fillsign closed unexpectedly.";
+    public string RecoveryTitle => Recovery is { IsForUpdate: true } ? Strings.Start_FillsignWasUpdated : Strings.Start_FillsignClosedUnexpectedly;
 
     public bool HasRecovery => Recovery is not null;
 
-    public string RecoveryText => Recovery is { } copy
-        ? $"Changes to {copy.Name} from {When(copy.SavedAt)} weren’t saved to the file, and can be recovered. If you choose Not now, you can still recover them from Recent for {AppSettings.Load().RecoveryDays} days."
-        : string.Empty;
+    public string RecoveryText => Recovery is { } copy ? DescribeRecovery(copy, AppSettings.Load().RecoveryDays) : string.Empty;
+
+    private static string DescribeRecovery(RecoveryCopy copy, int days) =>
+        Text.Format(days == 1 ? Strings.Start_RecoveryText_One : Strings.Start_RecoveryText_Other, copy.Name, When(copy.SavedAt), days);
 
     // ----- Crash reports (FS-902) -----
 
@@ -140,8 +140,8 @@ public sealed partial class StartViewModel : ObservableObject
     {
         DateTime local = when.ToLocalTime().DateTime;
         return local.Date == DateTime.Today
-            ? "today, " + local.ToString("HH:mm", CultureInfo.InvariantCulture)
-            : local.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+            ? Text.Format(Strings.Start_TodayAt, local.ToString("HH:mm", CultureInfo.InvariantCulture))
+            : DateFormats.Format(local);
     }
 }
 
@@ -178,7 +178,9 @@ public sealed class RecentItemViewModel
     /// <summary>Most files have nothing to say, so the status only shows when there's one (UX review 9).</summary>
     public bool HasStatus => Status.Length > 0;
 
-    public string AccessibleName => HasStatus ? $"{Name}, {Folder}, last opened {LastOpened}, {Status}" : $"{Name}, {Folder}, last opened {LastOpened}";
+    public string AccessibleName => HasStatus
+        ? Text.Format(Strings.Start_RecentAccessibleNameWithStatus, Name, Folder, LastOpened, Status)
+        : Text.Format(Strings.Start_RecentAccessibleName, Name, Folder, LastOpened);
 
     public static RecentItemViewModel ForFile(RecentFile file, RecoveryCopy? recovery)
     {
@@ -187,19 +189,19 @@ public sealed class RecentItemViewModel
         string opened = Capitalise(StartViewModel.When(file.LastOpened));
         if (recovery is not null)
         {
-            return new(name, folder, opened, "Changes not saved · open to recover", isWarning: true, file.Path, recovery);
+            return new(name, folder, opened, Strings.Start_ChangesNotSavedOpenToRecover, isWarning: true, file.Path, recovery);
         }
 
         if (!File.Exists(file.Path))
         {
-            return new(name, folder, opened, "Can’t find this file", isWarning: true, file.Path, null);
+            return new(name, folder, opened, Strings.Start_CantFindThisFile, isWarning: true, file.Path, null);
         }
 
-        return new(name, folder, opened, file.IsFinalCopy ? "Final copy (can’t be edited)" : string.Empty, isWarning: false, file.Path, null);
+        return new(name, folder, opened, file.IsFinalCopy ? Strings.Start_FinalCopyCantBeEdited : string.Empty, isWarning: false, file.Path, null);
     }
 
     public static RecentItemViewModel ForUnsavedWork(RecoveryCopy copy) =>
-        new(copy.Name, "Not saved to a file", Capitalise(StartViewModel.When(copy.SavedAt)), "Changes not saved · open to recover", isWarning: true, null, copy);
+        new(copy.Name, Strings.Start_NotSavedToAFile, Capitalise(StartViewModel.When(copy.SavedAt)), Strings.Start_ChangesNotSavedOpenToRecover, isWarning: true, null, copy);
 
     private static string Capitalise(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 }

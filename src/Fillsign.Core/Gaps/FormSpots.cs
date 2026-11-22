@@ -46,7 +46,17 @@ public static class FormSpots
     private static readonly ImmutableHashSet<int> s_tickedBoxes = [0x2611, 0x2612, 0x2BBD, 0x2BBE, 0xF0FE, 0xF0FD, 0xF078];
 
     // Words that mark something for someone else to fill: the person sending the form shouldn't be pointed at them.
-    private static readonly string[] s_notForTheSender = ["assessor", "trainer", "office use", "official use", "staff use", "for office"];
+    private static readonly string[] s_notForTheSender =
+    [
+        "assessor", "trainer", "office use", "official use", "staff use", "for office",
+        "dienstgebrauch", "vom amt", "von der behörde", "bearbeitungsvermerk", "interne vermerke",
+        "事務処理", "事務局使用", "記入不要", "係員記入", "受付欄",
+    ];
+
+    // A colon ends a label in English and German; Japanese forms use the full-width one.
+    private static readonly char[] s_colons = [':', '：'];
+
+    private static bool EndsWithColon(string text) => text.Length > 0 && s_colons.Contains(text[^1]);
 
     private const int MinUnderscores = 4;
     private const int MinDots = 6;
@@ -142,7 +152,7 @@ public static class FormSpots
 
             int lastBox = run.Characters.FindLastIndex(c => IsBox(c.Code));
             string text = run.Words(lastBox + 1, run.Characters.Count);
-            if (!text.EndsWith(':') || text.Length > MaxLabelLength || text.Count(char.IsWhiteSpace) > 4 || !NamesAField(text))
+            if (!EndsWithColon(text) || text.Length > MaxLabelLength || text.Count(char.IsWhiteSpace) > 4 || !NamesAField(text))
             {
                 continue;
             }
@@ -155,7 +165,7 @@ public static class FormSpots
             }
 
             var blank = new PageRect(from, run.Box.Y - 2, to - from, run.Box.Height + 4);
-            string trimmed = text.TrimEnd(':').Trim();
+            string trimmed = text.TrimEnd(s_colons).Trim();
             yield return new BlankSpot(blank, trimmed, KindOf(trimmed));
         }
     }
@@ -208,7 +218,7 @@ public static class FormSpots
         string before = WordsBeforeBox(line, run, index);
         string after = WordsAfterBox(line, run, index);
         string label = labelsBefore ? (before.Length > 0 ? before : after) : (after.Length > 0 ? after : before);
-        return Shorten(label.TrimEnd(':'));
+        return Shorten(label.TrimEnd(s_colons));
     }
 
     /// <summary>The words between this box and the next one (or the line's end).</summary>
@@ -258,7 +268,7 @@ public static class FormSpots
         Rune[] runes = [.. text.EnumerateRunes()];
         string beforeFirst = string.Concat(runes.Take(boxes[0]).Select(r => r.ToString())).Trim();
         string afterLast = string.Concat(runes.Skip(boxes[^1] + 1).Select(r => r.ToString())).Trim();
-        return beforeFirst.Length > 0 && (afterLast.Length == 0 || afterLast.EndsWith(':'));
+        return beforeFirst.Length > 0 && (afterLast.Length == 0 || EndsWithColon(afterLast));
     }
 
     private static string LabelBefore(Line line, Run run, int start)
@@ -271,7 +281,7 @@ public static class FormSpots
             before = previous.Words(0, previous.Characters.Count);
         }
 
-        return Shorten(LastWords(before.TrimEnd(':').Trim(), 6));
+        return Shorten(LastWords(before.TrimEnd(s_colons).Trim(), 6));
     }
 
     private static bool IsBox(int code) => s_emptyBoxes.Contains(code) || s_tickedBoxes.Contains(code);
@@ -291,11 +301,13 @@ public static class FormSpots
     private static BlankKind KindOf(string label)
     {
         string lower = label.ToLower(CultureInfo.InvariantCulture);
-        return lower.Contains("initial", StringComparison.Ordinal) ? BlankKind.Initials
-            : lower.Contains("sign", StringComparison.Ordinal) ? BlankKind.Signature
-            : lower.Contains("date", StringComparison.Ordinal) || lower.Contains("dob", StringComparison.Ordinal) ? BlankKind.Date
+        return ContainsAny(lower, "initial", "kürzel", "paraphe", "イニシャル") ? BlankKind.Initials
+            : ContainsAny(lower, "sign", "unterschrift", "署名", "サイン") ? BlankKind.Signature
+            : ContainsAny(lower, "date", "dob", "datum", "日付", "年月日", "記入日") ? BlankKind.Date
             : BlankKind.Text;
     }
+
+    private static bool ContainsAny(string text, params string[] words) => words.Any(word => text.Contains(word, StringComparison.Ordinal));
 
     /// <summary>
     /// Whether a label names something people write in. A colon alone also ends headings and sentences ("Residential
@@ -304,8 +316,10 @@ public static class FormSpots
     private static bool NamesAField(string label)
     {
         // Whole words, or the start of one for longer words ("Signature", "Initials"), so "id" isn't found in "provided".
-        string[] words = label.ToLower(CultureInfo.InvariantCulture).Split([' ', ':', '/', '(', ')', '-', ','], StringSplitOptions.RemoveEmptyEntries);
-        return words.Any(word => s_fieldWords.Any(field => word == field || (field.Length >= 4 && word.StartsWith(field, StringComparison.Ordinal))));
+        string[] words = label.ToLower(CultureInfo.InvariantCulture).Split([' ', ':', '：', '/', '(', ')', '-', ',', '、'], StringSplitOptions.RemoveEmptyEntries);
+        // Japanese doesn't put spaces between words, so its field words are found anywhere in the label ("ご住所").
+        return words.Any(word => s_fieldWords.Any(field => word == field || (field.Length >= 4 && word.StartsWith(field, StringComparison.Ordinal))))
+            || s_japaneseFieldWords.Any(field => label.Contains(field, StringComparison.Ordinal));
     }
 
     private static readonly string[] s_fieldWords =
@@ -314,6 +328,14 @@ public static class FormSpots
         "birth", "dob", "id", "campus", "postcode", "contact", "relationship", "occupation", "school", "class", "course",
         "time", "location", "age", "gender", "title", "position", "organisation", "organization", "company", "suburb",
         "state", "country", "witness", "employer",
+        "vorname", "nachname", "datum", "unterschrift", "ort", "anschrift", "adresse", "straße", "strasse", "plz", "postleitzahl",
+        "telefon", "geburtsdatum", "geburtsort", "firma", "beruf", "nr", "nr.", "kürzel", "staatsangehörigkeit", "wohnort",
+    ];
+
+    private static readonly string[] s_japaneseFieldWords =
+    [
+        "氏名", "名前", "フリガナ", "ふりがな", "住所", "電話", "日付", "年月日", "記入日", "署名", "会社", "勤務先", "メール", "職業", "性別", "年齢",
+        "郵便番号", "所属", "連絡先",
     ];
 
     private static bool IsForSomeoneElse(string text)

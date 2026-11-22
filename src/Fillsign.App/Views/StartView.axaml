@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Fillsign.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Fillsign.App.ViewModels"
              xmlns:c="using:Fillsign.App.Controls"
@@ -10,10 +11,10 @@
                 BorderThickness="0,0,0,1" Padding="12,0">
             <Panel>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Text="Fillsign" />
-                <Button HorizontalAlignment="Right" Classes="tool" Click="OnSettings" ToolTip.Tip="Settings" AutomationProperties.Name="Settings">
+                <Button HorizontalAlignment="Right" Classes="tool" Click="OnSettings" ToolTip.Tip="{x:Static l:Strings.Start_Settings}" AutomationProperties.Name="{x:Static l:Strings.Start_Settings}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <c:StrokeIcon Data="{StaticResource IconSettings}" />
-                        <TextBlock Text="Settings" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Static l:Strings.Start_Settings}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </Panel>
@@ -25,13 +26,13 @@
                 AutomationProperties.LiveSetting="Polite">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <Button Classes="primary" MinHeight="36" Content="Review and send…" Click="OnSendCrashReport"
-                            ToolTip.Tip="Opens a GitHub issue with the report filled in. Nothing is sent until you submit it." />
-                    <Button MinHeight="36" Content="Delete" Click="OnDeleteCrashReports" />
+                    <Button Classes="primary" MinHeight="36" Content="{x:Static l:Strings.Start_ReviewAndSend}" Click="OnSendCrashReport"
+                            ToolTip.Tip="{x:Static l:Strings.Start_OpensAGitHubIssueWithThe}" />
+                    <Button MinHeight="36" Content="{x:Static l:Strings.Common_Delete}" Click="OnDeleteCrashReports" />
                 </StackPanel>
                 <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
-                    <Run FontWeight="SemiBold" Text="Fillsign hit a problem last time." />
-                    <Run Text="A report of what went wrong is ready: the app version, your system and the code that failed. No documents, signatures or file names." />
+                    <Run FontWeight="SemiBold" Text="{x:Static l:Strings.Start_FillsignHitAProblemLastTime}" />
+                    <Run Text="{x:Static l:Strings.Start_AReportOfWhatWentWrong}" />
                 </TextBlock>
             </DockPanel>
         </Border>
@@ -41,12 +42,12 @@
                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="24,12">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <Button Classes="primary" MinHeight="36" Content="Yes, keep reports" Click="OnCrashReportsYes" />
-                    <Button MinHeight="36" Content="No thanks" Click="OnCrashReportsNo" />
+                    <Button Classes="primary" MinHeight="36" Content="{x:Static l:Strings.Start_YesKeepReports}" Click="OnCrashReportsYes" />
+                    <Button MinHeight="36" Content="{x:Static l:Strings.Start_NoThanks}" Click="OnCrashReportsNo" />
                 </StackPanel>
                 <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
-                    <Run FontWeight="SemiBold" Text="Help fix problems?" />
-                    <Run Text="If something goes wrong, Fillsign can keep a short report on this computer for you to review and send. It never includes your documents, signatures or file names. You can change this in Settings." />
+                    <Run FontWeight="SemiBold" Text="{x:Static l:Strings.Start_HelpFixProblems}" />
+                    <Run Text="{x:Static l:Strings.Start_IfSomethingGoesWrongFillsignCan}" />
                 </TextBlock>
             </DockPanel>
         </Border>
@@ -57,8 +58,8 @@
                 AutomationProperties.LiveSetting="Assertive">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <Button Classes="primary" MinHeight="36" Content="Recover changes" Click="OnRecover" />
-                    <Button MinHeight="36" Content="Not now" Click="OnNotNow" ToolTip.Tip="You can recover it from Recent" />
+                    <Button Classes="primary" MinHeight="36" Content="{x:Static l:Strings.Start_RecoverChanges}" Click="OnRecover" />
+                    <Button MinHeight="36" Content="{x:Static l:Strings.Start_NotNow}" Click="OnNotNow" ToolTip.Tip="{x:Static l:Strings.Start_YouCanRecoverItFromRecent}" />
                 </StackPanel>
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" VerticalAlignment="Center">
                     <c:StrokeIcon Data="{StaticResource IconClock}" Foreground="{DynamicResource Warning}" />
@@ -73,9 +74,9 @@
     <ScrollViewer>
         <StackPanel MaxWidth="880" Margin="24,48,24,40" Spacing="24">
             <StackPanel Spacing="8">
-                <TextBlock Classes="heading-page" Text="Fill in and sign a document" />
+                <TextBlock Classes="heading-page" Text="{x:Static l:Strings.Start_FillInAndSignADocument}" />
                 <TextBlock Classes="muted" FontSize="16" TextWrapping="Wrap"
-                           Text="Open a PDF, or a photo or scan of a paper form. Your files stay on this computer." />
+                           Text="{x:Static l:Strings.Start_OpenAPDFOrAPhoto}" />
             </StackPanel>
 
             <!-- D6: what went wrong with the last open. -->
@@ -88,8 +89,8 @@
                         <TextBlock FontSize="16" FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Problem.Title, FallbackValue=''}" />
                         <TextBlock TextWrapping="Wrap" Text="{Binding Problem.Message, FallbackValue=''}" />
                         <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
-                            <Button Classes="primary" Content="Choose another file…" Click="OnOpen" />
-                            <Button Content="Dismiss" Click="OnDismissProblem" />
+                            <Button Classes="primary" Content="{x:Static l:Strings.Start_ChooseAnotherFile}" Click="OnOpen" />
+                            <Button Content="{x:Static l:Strings.Common_Dismiss}" Click="OnDismissProblem" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -105,14 +106,14 @@
                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel VerticalAlignment="Center" Width="420" Spacing="4">
-                        <TextBlock FontSize="17" FontWeight="SemiBold" Text="Drop files here to open them" />
+                        <TextBlock FontSize="17" FontWeight="SemiBold" Text="{x:Static l:Strings.Start_DropFilesHereToOpenThem}" />
                         <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding DropHint}" />
                     </StackPanel>
                     <Button Classes="primary" VerticalAlignment="Center" Click="OnOpen" IsEnabled="{Binding !IsOpening}"
-                            ToolTip.Tip="{c:Keys 'Open a PDF or image (Mod+O)'}">
+                            ToolTip.Tip="{c:Keys {x:Static l:Strings.Start_OpenAPDFOrImageMod}}">
                         <StackPanel Classes="content">
                             <c:StrokeIcon Data="{StaticResource IconFolder}" />
-                            <TextBlock Text="Open…" />
+                            <TextBlock Text="{x:Static l:Strings.Start_Open}" />
                         </StackPanel>
                     </Button>
                 </WrapPanel>
@@ -123,12 +124,12 @@
                     BorderThickness="1" CornerRadius="14" ClipToBounds="True">
                 <StackPanel>
                     <DockPanel Margin="16,10,8,10">
-                        <Button DockPanel.Dock="Right" Classes="link" Content="Clear list" Click="OnClearRecent" />
-                        <TextBlock x:Name="RecentHeading" Classes="heading-section" FontSize="15" VerticalAlignment="Center" Text="Recent" />
+                        <Button DockPanel.Dock="Right" Classes="link" Content="{x:Static l:Strings.Start_ClearList}" Click="OnClearRecent" />
+                        <TextBlock x:Name="RecentHeading" Classes="heading-section" FontSize="15" VerticalAlignment="Center" Text="{x:Static l:Strings.Start_Recent}" />
                     </DockPanel>
                     <Grid Classes="recentHeader" ColumnDefinitions="*,140">
-                        <TextBlock Text="Name" />
-                        <TextBlock Grid.Column="1" Text="Last opened" />
+                        <TextBlock Text="{x:Static l:Strings.Start_Name}" />
+                        <TextBlock Grid.Column="1" Text="{x:Static l:Strings.Start_LastOpened}" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Recent}" AutomationProperties.LabeledBy="{Binding #RecentHeading}">
                         <ItemsControl.ItemTemplate>
@@ -159,44 +160,44 @@
             <StackPanel IsVisible="{Binding IsFirstLaunch}" Spacing="10">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" MinHeight="36" FontSize="13" Click="OnPracticeForm"
-                            Content="Try it with a practice form"
-                            ToolTip.Tip="Opens “Practice form”. Nothing is saved unless you choose to." />
-                    <TextBlock Classes="heading-section" VerticalAlignment="Center" Text="How it works" />
+                            Content="{x:Static l:Strings.Start_TryItWithAPracticeForm}"
+                            ToolTip.Tip="{x:Static l:Strings.Start_OpensAPracticeFormWithA}" />
+                    <TextBlock Classes="heading-section" VerticalAlignment="Center" Text="{x:Static l:Strings.Start_HowItWorks}" />
                 </DockPanel>
                 <UniformGrid Columns="3" ColumnSpacing="12">
                     <Border Padding="16" CornerRadius="12" BorderThickness="1"
                             BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Surface}">
                         <StackPanel Spacing="6">
                             <Border Classes="badge"><TextBlock Text="1" /></Border>
-                            <TextBlock FontWeight="SemiBold" Text="Open your form" />
-                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A PDF, or a photo of a paper form." />
+                            <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.Start_OpenYourForm}" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Start_APDFOrAPhotoOr}" />
                         </StackPanel>
                     </Border>
                     <Border Padding="16" CornerRadius="12" BorderThickness="1"
                             BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Surface}">
                         <StackPanel Spacing="6">
                             <Border Classes="badge"><TextBlock Text="2" /></Border>
-                            <TextBlock FontWeight="SemiBold" Text="Tick, type and sign" />
-                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Click on the page where each answer goes." />
+                            <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.Start_TickTypeAndSign}" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Start_ChooseAToolThenClickWhere}" />
                         </StackPanel>
                     </Border>
                     <Border Padding="16" CornerRadius="12" BorderThickness="1"
                             BorderBrush="{DynamicResource BorderSubtle}" Background="{DynamicResource Surface}">
                         <StackPanel Spacing="6">
                             <Border Classes="badge"><TextBlock Text="3" /></Border>
-                            <TextBlock FontWeight="SemiBold" Text="Export a final copy" />
-                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A file that looks the same for whoever you send it to." />
+                            <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.Common_ExportAFinalCopy}" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Start_AFileThatLooksTheSame}" />
                         </StackPanel>
                     </Border>
                 </UniformGrid>
-                <TextBlock Classes="muted" FontSize="13" Text="Documents you open will be listed here next time." />
+                <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Start_DocumentsYouOpenWillBeListed}" />
             </StackPanel>
 
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                       Text="Nothing leaves this computer: Fillsign doesn’t need an account or an internet connection." />
+                       Text="{x:Static l:Strings.Start_NothingLeavesThisComputerFillsignDoesnt}" />
             <!-- The licence in a sentence (FS-027): free for personal use, and for everyone during the beta. -->
             <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                       Text="Free for personal use, and free for businesses during the beta. About Fillsign has the details." />
+                       Text="{x:Static l:Strings.Start_FreeForPersonalUseAndFree}" />
         </StackPanel>
     </ScrollViewer>
     </DockPanel>

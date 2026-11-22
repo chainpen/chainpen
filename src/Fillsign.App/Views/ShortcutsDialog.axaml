@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Fillsign.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:v="using:Fillsign.App.Views"
              x:Class="Fillsign.App.Views.ShortcutsDialog">
@@ -6,7 +7,7 @@
     <Border Classes="dialog">
         <!-- FS-709: on a short window the list scrolls; Close stays put (S5). -->
         <DockPanel>
-            <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Classes="primary" HorizontalAlignment="Right" Margin="0,16,0,0" Content="Close" Click="OnClose" />
+            <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Classes="primary" HorizontalAlignment="Right" Margin="0,16,0,0" Content="{x:Static l:Strings.Common_Close}" Click="OnClose" />
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="-4,0">
                 <StackPanel Margin="4,4">
                     <v:ShortcutsPanel x:Name="Panel" />

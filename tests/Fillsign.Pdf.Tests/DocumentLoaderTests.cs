@@ -102,8 +102,8 @@ public sealed class DocumentLoaderTests
 
         var ex = await Assert.ThrowsAsync<DocumentOpenException>(() => DocumentLoader.OpenAsync([docx, broken, missing], s_noPassword, CancellationToken.None));
         Assert.Equal([OpenProblemKind.NotPdfOrImage, OpenProblemKind.Damaged, OpenProblemKind.CantRead], ex.Problems.Select(p => p.Kind));
-        Assert.Equal("notes.docx isn't a PDF or an image. Save it as a PDF first, then open it here.", ex.Problems[0].Message);
-        Assert.Equal("referral.pdf is damaged and can't be opened", ex.Problems[1].Title);
+        Assert.Equal("notes.docx isn’t a PDF or an image. Save it as a PDF first, then open it here.", ex.Problems[0].Message);
+        Assert.Equal("referral.pdf is damaged and can’t be opened", ex.Problems[1].Title);
     }
 
     [Fact]

@@ -14,8 +14,8 @@ namespace Fillsign.Pdf.Export;
 /// </summary>
 /// <remarks>
 /// Anything it doesn't expect (an encrypted file, more than one cross-reference section, a stream whose length doesn't
-/// add up) leaves the file as it was. The result is reopened with PDFium and must have the same pages; if not, the
-/// original is returned. A smaller file is only ever a nicety, never worth a broken one.
+/// add up) leaves the file as it was. The result is reopened with PDFium and must have the same pages, annotations and
+/// form field values; if not, the original is returned. A smaller file is only ever a nicety, never worth a broken one.
 /// </remarks>
 public static class PdfCompactor
 {
@@ -186,7 +186,18 @@ public static class PdfCompactor
                 Write(output, "\n");
             }
 
-            WritePacked(output, pdf, update.Changed, update.Freed, update.NextNumber, update.Trailer, update.PreviousXref);
+            if (update.IsOverClassicTable)
+            {
+                // Packing needs a cross-reference stream, a PDF 1.5 feature that a file with a classic table may say
+                // (in its header) it doesn't use. Such a file only comes here when compacting the original didn't
+                // make it smaller, so its update gets the classic form too: just what changed, written plainly.
+                WritePlainUpdate(output, pdf, update);
+            }
+            else
+            {
+                WritePacked(output, pdf, update.Changed, update.Freed, update.NextNumber, update.Trailer, update.PreviousXref);
+            }
+
             byte[] compact = output.ToArray();
             return compact.Length < pdf.Length && HasSamePages(pdf, compact) ? compact : pdf;
         }
@@ -200,17 +211,48 @@ public static class PdfCompactor
     private static bool IsUnreadable(Exception ex) => ex is FormatException or InvalidOperationException or IndexOutOfRangeException
         or ArgumentException or OverflowException or KeyNotFoundException or InvalidDataException;
 
+    /// <summary>
+    /// Whether the compacted file reads as the same document: the same pages, the same number of annotations on each,
+    /// and the same form fields with the same values. A bug that left out an object that changed (a filled answer,
+    /// say) would otherwise pass unnoticed, and someone would lose an edit without being told.
+    /// </summary>
     private static bool HasSamePages(byte[] original, byte[] compact)
     {
         try
         {
             using PdfiumDocument before = PdfiumDocument.Open(original);
             using PdfiumDocument after = PdfiumDocument.Open(compact);
-            return before.PageCount == after.PageCount;
+            return before.PageCount == after.PageCount && Summary(before).SequenceEqual(Summary(after));
         }
         catch (Exception ex) when (ex is PdfOpenException or InvalidOperationException)
         {
             return false;
+        }
+    }
+
+    /// <summary>Each page's annotation count and form fields (name, kind, place, value and state), as text to compare.</summary>
+    private static IEnumerable<string> Summary(PdfiumDocument pdf)
+    {
+        for (int page = 0; page < pdf.PageCount; page++)
+        {
+            string summary;
+            try
+            {
+                var text = new StringBuilder();
+                text.Append(CultureInfo.InvariantCulture, $"{page}: {pdf.GetAnnotationCount(page)} annotations");
+                foreach (FormField field in pdf.GetFormFields(page))
+                {
+                    text.Append(CultureInfo.InvariantCulture, $"\n{field.Name} {field.Kind} {field.Rect} {field.IsChecked} {field.IsReadOnly} {field.Value}");
+                }
+
+                summary = text.ToString();
+            }
+            catch (PdfPageException)
+            {
+                summary = $"{page}: damaged"; // A damaged page has to stay exactly as damaged.
+            }
+
+            yield return summary;
         }
     }
 
@@ -481,7 +523,7 @@ public static class PdfCompactor
     // ----- Reading an update section -----
 
     private sealed record Update(IReadOnlyList<PdfObject> Changed, IReadOnlyDictionary<int, int> Freed, int NextNumber,
-        Dictionary<string, (int Start, int End)> Trailer, int PreviousXref);
+        Dictionary<string, (int Start, int End)> Trailer, int PreviousXref, bool IsOverClassicTable);
 
     private static Update? ReadUpdate(byte[] pdf, int baseLength)
     {
@@ -532,7 +574,8 @@ public static class PdfCompactor
             }
         }
 
-        return new Update(changed, freed, Integer(pdf, update.Trailer["Size"]), update.Trailer, baseOffset);
+        return new Update(changed, freed, Integer(pdf, update.Trailer["Size"]), update.Trailer, baseOffset,
+            IsOverClassicTable: StartsWith(pdf, baseOffset, "xref"u8));
     }
 
     /// <summary>The objects of a file's original section, for comparing an update's objects with; object streams are unpacked as needed.</summary>
@@ -742,6 +785,20 @@ public static class PdfCompactor
         }
 
         byte[] xref = Deflate(rows.ToArray());
+        StringBuilder trailer = KeptTrailerEntries(pdf, trailerEntries);
+        if (previousXref is int previous)
+        {
+            trailer.Append(CultureInfo.InvariantCulture, $" /Index [{IndexRuns(numbers)}] /Prev {previous}");
+        }
+
+        Write(output, $"{xrefNumber} 0 obj\n<< /Type /XRef /Size {size} /W [1 {offsetBytes} 2]{trailer} /Filter /FlateDecode /Length {xref.Length} >>\nstream\n");
+        output.Write(xref);
+        Write(output, $"\nendstream\nendobj\nstartxref\n{xrefOffset}\n%%EOF\n");
+    }
+
+    /// <summary>The trailer entries a rewritten section carries over: " /Root … /Info … /ID …".</summary>
+    private static StringBuilder KeptTrailerEntries(byte[] pdf, Dictionary<string, (int Start, int End)> trailerEntries)
+    {
         var trailer = new StringBuilder();
         foreach (string key in (string[])["Root", "Info", "ID"])
         {
@@ -751,14 +808,59 @@ public static class PdfCompactor
             }
         }
 
-        if (previousXref is int previous)
+        return trailer;
+    }
+
+    /// <summary>
+    /// An update section over a classic cross-reference table: the changed objects written plainly (uncompressed
+    /// streams still compressed), then a classic table listing them and the freed ones, pointing back to the original.
+    /// </summary>
+    private static void WritePlainUpdate(MemoryStream output, byte[] pdf, Update update)
+    {
+        var entries = new SortedDictionary<int, string>();
+        foreach ((int number, int generation) in update.Freed)
         {
-            trailer.Append(CultureInfo.InvariantCulture, $" /Index [{IndexRuns(numbers)}] /Prev {previous}");
+            entries[number] = string.Create(CultureInfo.InvariantCulture, $"{0:D10} {generation:D5} f\r\n");
         }
 
-        Write(output, $"{xrefNumber} 0 obj\n<< /Type /XRef /Size {size} /W [1 {offsetBytes} 2]{trailer} /Filter /FlateDecode /Length {xref.Length} >>\nstream\n");
-        output.Write(xref);
-        Write(output, $"\nendstream\nendobj\nstartxref\n{xrefOffset}\n%%EOF\n");
+        foreach (PdfObject item in update.Changed)
+        {
+            entries[item.Number] = string.Create(CultureInfo.InvariantCulture, $"{output.Position:D10} {item.Generation:D5} n\r\n");
+            Write(output, $"{item.Number} {item.Generation} obj\n");
+            if (item.Stream is { } stream)
+            {
+                WriteStream(output, pdf, stream);
+            }
+            else
+            {
+                output.Write(pdf.AsSpan(item.ValueStart, item.ValueEnd - item.ValueStart));
+            }
+
+            Write(output, "\nendobj\n");
+        }
+
+        long xrefOffset = output.Position;
+        var table = new StringBuilder("xref\n");
+        int[] numbers = [.. entries.Keys];
+        for (int start = 0; start < numbers.Length;)
+        {
+            int end = start + 1;
+            while (end < numbers.Length && numbers[end] == numbers[end - 1] + 1)
+            {
+                end++;
+            }
+
+            table.Append(CultureInfo.InvariantCulture, $"{numbers[start]} {end - start}\n");
+            for (int i = start; i < end; i++)
+            {
+                table.Append(entries[numbers[i]]);
+            }
+
+            start = end;
+        }
+
+        table.Append(CultureInfo.InvariantCulture, $"trailer\n<< /Size {update.NextNumber}{KeptTrailerEntries(pdf, update.Trailer)} /Prev {update.PreviousXref} >>\nstartxref\n{xrefOffset}\n%%EOF\n");
+        Write(output, table.ToString());
     }
 
     /// <summary>Sorted object numbers as /Index runs: "first count first count …".</summary>

@@ -653,7 +653,7 @@ public sealed class EditingTests(ITestOutputHelper output)
         e.Editor.SelectToolCommand.Execute(EditorTool.Date);
         e.Click(200, 150);
         TextItem date = Assert.Single(e.Editor.State.Items.OfType<TextItem>());
-        Assert.Matches(@"^\d\d/\d\d/\d{4}$", date.Text);
+        Assert.Equal(Platform.DateFormats.Format(DateTime.Today), date.Text);
         Assert.Null(e.Editor.TypingItem);
         Assert.Equal(EditorTool.Select, e.Editor.Tool);
         Assert.Equal([date.Id], e.Editor.SelectedIds);

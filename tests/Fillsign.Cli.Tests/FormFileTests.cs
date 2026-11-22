@@ -155,7 +155,7 @@ public sealed class FormFileTests : IDisposable
         // Something that isn't an ordinary file, which would never stop reading: an answer, not a hang.
         if (!OperatingSystem.IsWindows())
         {
-            Assert.Contains("isn't a PDF", await Call("document_info", new JsonObject { ["path"] = "/dev/zero" }), StringComparison.Ordinal);
+            Assert.Contains("isn’t a PDF", await Call("document_info", new JsonObject { ["path"] = "/dev/zero" }), StringComparison.Ordinal);
         }
 
         // Tools that write say so, so assistants ask first.

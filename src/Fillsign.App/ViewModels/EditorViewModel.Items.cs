@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.Core.Editing;
 using Fillsign.Core.Geometry;
 using Fillsign.Core.Model;
@@ -55,7 +56,7 @@ public sealed partial class EditorViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ContextMode), nameof(SelectionLabel), nameof(SelectionHint), nameof(OptionsHaveColour), nameof(OptionsHaveSize))]
     [NotifyPropertyChangedFor(nameof(SizeLabel), nameof(SizeTip), nameof(CurrentColour), nameof(SelectedIds))]
-    [NotifyCanExecuteChangedFor(nameof(DeleteSelectionCommand), nameof(DuplicateSelectionCommand), nameof(AddToEveryPageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectionCommand), nameof(DuplicateSelectionCommand))]
     public partial Selection Selection { get; private set; } = Selection.None;
 
     /// <summary>Colour for new items, and the last colour chosen (FR-5.5). Blue by default (FR-3.9).</summary>
@@ -154,27 +155,33 @@ public sealed partial class EditorViewModel
     public string ToolLabel => Tool switch
     {
         EditorTool.Shape => ShapeName(ShapeKind),
-        EditorTool.Draw => "Pen",
+        EditorTool.Draw => Strings.Editor_Pen,
+        EditorTool.Select => Strings.Editor_Select,
+        EditorTool.Text => Strings.Editor_Text,
+        EditorTool.Tick => Strings.Editor_Tick,
+        EditorTool.Cross => Strings.Editor_Cross,
+        EditorTool.Date => Strings.Editor_Date,
+        EditorTool.Sign => Strings.Editor_Sign,
         _ => Tool.ToString(),
     };
 
     /// <summary>What the current tool does and how to stop (FR-3.10).</summary>
     public string ToolHint => Tool switch
     {
-        EditorTool.Text => "Click where the text should start, then type.",
-        EditorTool.Tick => "Click each box to tick it. Tick stays on until you pick another tool · Esc to stop",
-        EditorTool.Cross => "Click each box to cross it. Cross stays on until you pick another tool · Esc to stop",
-        EditorTool.Date => "Click to add today’s date (DD/MM/YYYY) · Esc to cancel",
-        EditorTool.Shape => "Drag on the page to draw it. Click instead for a standard size · Esc to stop",
-        EditorTool.Draw => "Strokes join into one drawing until you’re done.",
+        EditorTool.Text => Strings.Editor_ToolHintText,
+        EditorTool.Tick => Strings.Editor_ToolHintTick,
+        EditorTool.Cross => Strings.Editor_ToolHintCross,
+        EditorTool.Date => Text.Format(Strings.Editor_ToolHintDate, Platform.DateFormats.Label(Platform.DateFormats.Current)),
+        EditorTool.Shape => Strings.Editor_ToolHintShape,
+        EditorTool.Draw => Strings.Editor_ToolHintDraw,
         // FS-950: on a form with fields, filling them is the main way in; the tools add your own on top.
         _ when HasFillableFields && !IsViewOnly => FormHint(),
-        _ => "Nothing selected. Pick a tool, then click on the page: Tick for boxes, Text for lines, Sign for the signature.",
+        _ => Strings.Editor_ToolHintChooseATool,
     };
 
-    public string PlacingText => PlacingSignature?.Kind == SignatureKind.Initials ? "Click where your initials should go." : "Click where your signature should go.";
+    public string PlacingText => PlacingSignature?.Kind == SignatureKind.Initials ? Strings.Editor_PlacingInitials : Strings.Editor_PlacingSignature;
 
-    public string BoxSelectingText => BoxCandidateCount == 1 ? "Selecting: 1 item in the box" : $"Selecting: {BoxCandidateCount} items in the box";
+    public string BoxSelectingText => Text.Plural(BoxCandidateCount, Strings.Editor_SelectingItemsInBox_One, Strings.Editor_SelectingItemsInBox_Other);
 
     public string SelectionLabel => DescribeSelection([.. SelectedItems()]);
 
@@ -185,10 +192,10 @@ public sealed partial class EditorViewModel
             var items = SelectedItems().ToList();
             return items switch
             {
-                [TextItem] => "Double-click to edit · drag to move · drag a corner to change the size · arrow keys nudge",
-                [SignatureItem or InkItem or PictureItem] => "Drag to move · drag a corner to resize (keeps its shape) · arrow keys nudge",
-                [_] => "Drag to move · drag a corner to resize · arrow keys nudge",
-                _ => "Drag to move them together · Shift-click to add or remove · arrow keys nudge",
+                [TextItem] => Strings.Editor_SelectionHintText,
+                [SignatureItem or InkItem or PictureItem] => Strings.Editor_SelectionHintKeepsShape,
+                [_] => Strings.Editor_SelectionHintOne,
+                _ => Strings.Editor_SelectionHintSeveral,
             };
         }
     }
@@ -278,6 +285,7 @@ public sealed partial class EditorViewModel
         _joiningInk = null;
         PlacingSignature = null;
         Notice = null;
+        IsNudgingTools = false;
         Cursor = null;
         if (tool != EditorTool.Select)
         {
@@ -364,6 +372,7 @@ public sealed partial class EditorViewModel
     public void PointerPressed(int pageIndex, PagePoint point, bool isShift, bool isCommand, int clickCount, double tolerance)
     {
         Notice = null;
+        IsNudgingTools = false;
         IsKeyboardCursor = false;
         if (pageIndex < 0 || pageIndex >= State.Pages.Length)
         {
@@ -417,7 +426,7 @@ public sealed partial class EditorViewModel
                 break;
             case EditorTool.Date:
             {
-                TextItem date = AddText(page, point, DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), startTyping: false);
+                TextItem date = AddText(page, point, Platform.DateFormats.Format(DateTime.Now), startTyping: false);
 
                 // A form needs one date, so go back to Select with the date selected, ready to nudge into place (FR-3.3).
                 SwitchTool(EditorTool.Select);
@@ -564,6 +573,10 @@ public sealed partial class EditorViewModel
                 if (SelectionBox is { } rect && (rect.Box.Width >= ItemGeometry.ClickTolerance || rect.Box.Height >= ItemGeometry.ClickTolerance))
                 {
                     Selection = Selections.SelectInBox(box.SelectionBefore, State, box.Page, rect.Box, box.IsAdditive, Measurer);
+                }
+                else if (!box.IsAdditive && box.SelectionBefore.IsEmpty)
+                {
+                    NudgeTowardsTools();
                 }
 
                 SelectionBox = null;
@@ -719,7 +732,7 @@ public sealed partial class EditorViewModel
 
         Change(ItemEdits.Remove(State, SelectedIds));
         Selection = Selection.None;
-        Notice = items.Count == 1 ? $"{ItemName(items[0])} deleted" : $"{items.Count} items deleted";
+        Notice = items.Count == 1 ? ItemWords(items[0]).Deleted : Text.Format(Strings.Editor_ItemsDeleted, items.Count);
         Changed();
     }
 
@@ -729,28 +742,6 @@ public sealed partial class EditorViewModel
         _clipboard.CopyItems(State, SelectedIds);
         Paste(SelectedItems().First().Page);
     }
-
-    /// <summary>FS-957: puts a copy of the selection on every other page, at the same place from the nearest edges.</summary>
-    [RelayCommand(CanExecute = nameof(CanAddToEveryPage))]
-    private void AddToEveryPage()
-    {
-        var items = SelectedItems().ToList();
-        if (items.Count == 0 || State.Pages.Length < 2)
-        {
-            return;
-        }
-
-        Change(ItemEdits.CopyToEveryPage(State, SelectedIds, PageSizeOf, Measurer, out _));
-        int pages = State.Pages.Length - 1;
-        string what = items.Count == 1 ? ItemName(items[0]) : $"{items.Count} items";
-        Notice = $"{what} added to {pages} more {(pages == 1 ? "page" : "pages")}";
-        Changed();
-    }
-
-    /// <summary>The document has more than one page, so "Every page" means something.</summary>
-    public bool IsSeveralPages => State.Pages.Length > 1;
-
-    private bool CanAddToEveryPage() => !Selection.IsEmpty && State.Pages.Length > 1;
 
     private bool HasSelection() => !Selection.IsEmpty;
 
@@ -1133,15 +1124,13 @@ public sealed partial class EditorViewModel
         OnPropertyChanged(nameof(CurrentColour));
         OnPropertyChanged(nameof(OptionsHaveColour));
         OnPropertyChanged(nameof(OptionsHaveSize));
-        OnPropertyChanged(nameof(IsSeveralPages));
         OnPropertyChanged(nameof(FieldAnnouncement));
         OnPropertyChanged(nameof(ContextHint));
         OnTextStyleChanged();
-        AddToEveryPageCommand.NotifyCanExecuteChanged();
         ItemsChanged?.Invoke();
     }
 
-    private (string Label, string Tip) DescribeSize()
+    private (string Label, string Tip, bool IsLine) DescribeSize()
     {
         Item? item = TypingItem is { } typing ? State.FindItem(typing) : SelectedItems().FirstOrDefault(i => i is not ShapeItem { IsFilled: true });
         return item switch
@@ -1156,23 +1145,23 @@ public sealed partial class EditorViewModel
                 EditorTool.Text or EditorTool.Date => FontSizeWords(DefaultFontSize),
                 EditorTool.Tick or EditorTool.Cross => MarkSizeWords(DefaultMarkSize),
                 EditorTool.Shape or EditorTool.Draw => StrokeWords(DefaultStrokeWidth),
-                _ => (string.Empty, string.Empty),
+                _ => (string.Empty, string.Empty, false),
             },
-            _ => (string.Empty, string.Empty),
+            _ => (string.Empty, string.Empty, false),
         };
     }
 
-    private static (string, string) FontSizeWords(double size) =>
-        (size <= 10 ? "Small" : size <= 14 ? "Medium" : "Large", $"{Points(size)} pt");
+    private static (string, string, bool) FontSizeWords(double size) =>
+        (size <= 10 ? Strings.Editor_SizeSmall : size <= 14 ? Strings.Editor_SizeMedium : Strings.Editor_SizeLarge, Text.Format(Strings.Editor_SizePoints, Points(size)), false);
 
-    private static (string, string) MarkSizeWords(double size) =>
-        (size <= 11 ? "Small" : size <= 17 ? "Medium" : "Large", $"{Points(size)} pt");
+    private static (string, string, bool) MarkSizeWords(double size) =>
+        (size <= 11 ? Strings.Editor_SizeSmall : size <= 17 ? Strings.Editor_SizeMedium : Strings.Editor_SizeLarge, Text.Format(Strings.Editor_SizePoints, Points(size)), false);
 
-    private static (string, string) SignatureSizeWords(double width) =>
-        (width < 100 ? "Small" : width < 140 ? "Medium" : "Large", $"{Points(width)} pt wide");
+    private static (string, string, bool) SignatureSizeWords(double width) =>
+        (width < 100 ? Strings.Editor_SizeSmall : width < 140 ? Strings.Editor_SizeMedium : Strings.Editor_SizeLarge, Text.Format(Strings.Editor_SizePointsWide, Points(width)), false);
 
-    private static (string, string) StrokeWords(double width) =>
-        (width <= 2 ? "Thin" : width <= 4 ? "Medium" : "Thick", $"{Points(width)} pt line");
+    private static (string, string, bool) StrokeWords(double width) =>
+        (width <= 2 ? Strings.Editor_SizeThin : width <= 4 ? Strings.Editor_SizeMedium : Strings.Editor_SizeThick, Text.Format(Strings.Editor_SizePointsLine, Points(width)), true);
 
     private static string Points(double value) => Math.Round(value, 1).ToString("0.#", CultureInfo.CurrentCulture);
 
@@ -1182,25 +1171,40 @@ public sealed partial class EditorViewModel
 
     public static string ShapeName(ShapeKind kind) => kind switch
     {
-        ShapeKind.Rectangle => "Rectangle",
-        ShapeKind.Ellipse => "Ellipse",
-        ShapeKind.Line => "Line",
-        ShapeKind.Arrow => "Arrow",
-        ShapeKind.Highlight => "Highlight",
-        ShapeKind.Whiteout => "Whiteout",
+        ShapeKind.Rectangle => Strings.Editor_Rectangle,
+        ShapeKind.Ellipse => Strings.Editor_Ellipse,
+        ShapeKind.Line => Strings.Editor_Line,
+        ShapeKind.Arrow => Strings.Editor_Arrow,
+        ShapeKind.Highlight => Strings.Editor_Highlight,
+        ShapeKind.Whiteout => Strings.Editor_Whiteout,
         _ => kind.ToString(),
     };
 
-    private static string ItemName(Item item) => item switch
+    /// <summary>
+    /// How the bar names one item selected or deleted, and several of the same kind: whole phrases per kind, so each
+    /// language can word them its own way rather than gluing a name to "selected".
+    /// </summary>
+    private static (string Selected, string Deleted, string Several) ItemWords(Item item) => item switch
     {
-        TextItem => "Text",
-        MarkItem { Kind: MarkKind.Tick } => "Tick",
-        MarkItem => "Cross",
-        SignatureItem { Kind: SignatureKind.Initials } => "Initials",
-        SignatureItem => "Signature",
-        ShapeItem shape => ShapeName(shape.Kind),
-        InkItem => "Drawing",
-        PictureItem => "Picture",
+        TextItem => (Strings.Editor_TextSelected, Strings.Editor_TextDeleted, Strings.Editor_SeveralTexts),
+        MarkItem { Kind: MarkKind.Tick } => (Strings.Editor_TickSelected, Strings.Editor_TickDeleted, Strings.Editor_SeveralTicks),
+        MarkItem => (Strings.Editor_CrossSelected, Strings.Editor_CrossDeleted, Strings.Editor_SeveralCrosses),
+        SignatureItem { Kind: SignatureKind.Initials } => (Strings.Editor_InitialsSelected, Strings.Editor_InitialsDeleted, Strings.Editor_SeveralInitials),
+        SignatureItem => (Strings.Editor_SignatureSelected, Strings.Editor_SignatureDeleted, Strings.Editor_SeveralSignatures),
+        ShapeItem shape => ShapeWords(shape.Kind),
+        InkItem => (Strings.Editor_DrawingSelected, Strings.Editor_DrawingDeleted, Strings.Editor_SeveralDrawings),
+        PictureItem => (Strings.Editor_PictureSelected, Strings.Editor_PictureDeleted, Strings.Editor_SeveralPictures),
+    };
+
+    private static (string Selected, string Deleted, string Several) ShapeWords(ShapeKind kind) => kind switch
+    {
+        ShapeKind.Rectangle => (Strings.Editor_RectangleSelected, Strings.Editor_RectangleDeleted, Strings.Editor_SeveralRectangles),
+        ShapeKind.Ellipse => (Strings.Editor_EllipseSelected, Strings.Editor_EllipseDeleted, Strings.Editor_SeveralEllipses),
+        ShapeKind.Line => (Strings.Editor_LineSelected, Strings.Editor_LineDeleted, Strings.Editor_SeveralLines),
+        ShapeKind.Arrow => (Strings.Editor_ArrowSelected, Strings.Editor_ArrowDeleted, Strings.Editor_SeveralArrows),
+        ShapeKind.Highlight => (Strings.Editor_HighlightSelected, Strings.Editor_HighlightDeleted, Strings.Editor_SeveralHighlights),
+        ShapeKind.Whiteout => (Strings.Editor_WhiteoutSelected, Strings.Editor_WhiteoutDeleted, Strings.Editor_SeveralWhiteouts),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
     /// <summary>"Signature selected", "3 ticks", "2 items" (E3, S2).</summary>
@@ -1213,24 +1217,13 @@ public sealed partial class EditorViewModel
 
         if (items.Count == 1)
         {
-            return $"{ItemName(items[0])} selected";
+            return ItemWords(items[0]).Selected;
         }
 
-        var names = items.Select(ItemName).Distinct().ToList();
-        if (names.Count > 1)
-        {
-            return $"{items.Count} items";
-        }
-
-        string plural = names[0] switch
-        {
-            "Cross" => "crosses",
-            "Text" => "texts",
-            "Initials" => "initials",
-            "Whiteout" => "whiteouts",
-            var name => name.ToLowerInvariant() + "s",
-        };
-        return $"{items.Count} {plural}";
+        var kinds = items.Select(ItemWords).Distinct().ToList();
+        return kinds.Count > 1
+            ? Text.Format(Strings.Editor_SeveralItems, items.Count)
+            : Text.Format(kinds[0].Several, items.Count);
     }
 
     // ----- Flags for the view -----
@@ -1270,21 +1263,21 @@ public sealed partial class EditorViewModel
 
     public string OptionsTitle => ContextMode switch
     {
-        ContextMode.Typing => "Typing",
-        ContextMode.Drawing => "Pen",
+        ContextMode.Typing => Strings.Editor_Typing,
+        ContextMode.Drawing => Strings.Editor_Pen,
         ContextMode.Selection => SelectionLabel,
         _ => ToolLabel,
     };
 
     public string OptionsHint => ContextMode switch
     {
-        ContextMode.Typing => "Enter: new line · Esc or click outside: finish",
+        ContextMode.Typing => Strings.Editor_TypingHint,
         ContextMode.Selection => SelectionHint,
         _ => ToolHint,
     };
 
     /// <summary>"Line" for line widths (Thin / Medium / Thick), "Size" otherwise.</summary>
-    public string SizeCaption => SizeTip.EndsWith("line", StringComparison.Ordinal) ? "Line" : "Size";
+    public string SizeCaption => DescribeSize().IsLine ? Strings.Editor_Line : Strings.Editor_Size;
 
     private static readonly string[] s_contextDependents =
     [

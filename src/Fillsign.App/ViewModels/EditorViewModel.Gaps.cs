@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.Core.Gaps;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Export;
@@ -40,17 +41,18 @@ public sealed partial class EditorViewModel
         {
             if (CheckingGap is not { } gap)
             {
-                return "Checking before export · no more gaps spotted. Look over each page before you send it.";
+                return Strings.Editor_CheckingNoMoreGaps;
             }
 
             int position = CheckingReport.Gaps.ToList().FindIndex(other => SameGap(other, gap)) + 1;
-            string where = position > 0 ? $"gap {position} of {CheckingReport.Gaps.Count}" : "gap";
-            return $"Checking before export · {where}: {DescribeForChecking(gap)}";
+            return position > 0
+                ? Text.Format(Strings.Editor_CheckingGapOfGaps, position, CheckingReport.Gaps.Count, DescribeForChecking(gap))
+                : Text.Format(Strings.Editor_CheckingGap, DescribeForChecking(gap));
         }
     }
 
     /// <summary>The short label beside the outlined gap ("Not ticked", "Empty").</summary>
-    public string CheckingBadge => CheckingGap?.Kind == GapKind.Unticked ? "Not ticked" : "Empty";
+    public string CheckingBadge => CheckingGap?.Kind == GapKind.Unticked ? Strings.Editor_GapBadgeNotTicked : Strings.Editor_GapBadgeEmpty;
 
     /// <summary>
     /// Finds the possible gaps now. Reads the text of pages with items on them, so it's run off the UI thread with the
@@ -266,28 +268,39 @@ public sealed partial class EditorViewModel
     /// <summary>A form field's gap, worded as a field: "'Email' is empty", "'Membership' isn't answered".</summary>
     private static string DescribeField(Gap gap) => gap.Kind switch
     {
-        GapKind.Unticked when gap.Question.Length > 0 => $"“{gap.Question}” isn’t answered",
-        GapKind.Unticked => $"Nothing ticked: {gap.Label}",
-        _ when gap.BlankKind == BlankKind.Signature => $"“{gap.Label}” isn’t signed",
-        _ => $"“{gap.Label}” is empty",
+        GapKind.Unticked when gap.Question.Length > 0 => Text.Format(Strings.Editor_GapNotAnswered, gap.Question),
+        GapKind.Unticked => gap.Label.Length > 0 ? Text.Format(Strings.Editor_GapNotTicked, gap.Label) : Strings.Editor_GapBoxNotTicked,
+        _ when gap.BlankKind == BlankKind.Signature => Text.Format(Strings.Editor_GapNotSigned, gap.Label),
+        _ => Text.Format(Strings.Editor_GapEmpty, gap.Label),
+    };
+
+    /// <summary><see cref="DescribeField"/> with the page it's on, each a whole sentence so translations can order it.</summary>
+    private static string DescribeFieldOnPage(Gap gap) => gap.Kind switch
+    {
+        GapKind.Unticked when gap.Question.Length > 0 => Text.Format(Strings.Editor_GapNotAnsweredOnPage, gap.Question, gap.PageNumber),
+        GapKind.Unticked => gap.Label.Length > 0
+            ? Text.Format(Strings.Editor_GapNotTickedOnPage, gap.Label, gap.PageNumber)
+            : Text.Format(Strings.Editor_GapBoxNotTickedOnPage, gap.PageNumber),
+        _ when gap.BlankKind == BlankKind.Signature => Text.Format(Strings.Editor_GapNotSignedOnPage, gap.Label, gap.PageNumber),
+        _ => Text.Format(Strings.Editor_GapEmptyOnPage, gap.Label, gap.PageNumber),
     };
 
     private static string DescribeForChecking(Gap gap) => gap.IsField
         ? gap switch
         {
-            { Kind: GapKind.Unticked } => $"{DescribeField(gap)}. Click an answer to choose it, or leave it if that’s intended.",
-            { BlankKind: BlankKind.Signature } => $"{DescribeField(gap)}. Click it to sign.",
-            _ => $"{DescribeField(gap)}. Click it to fill it, or leave it if that’s intended.",
+            { Kind: GapKind.Unticked } => Text.Format(Strings.Editor_GapClickAnAnswer, DescribeField(gap)),
+            { BlankKind: BlankKind.Signature } => Text.Format(Strings.Editor_GapClickToSign, DescribeField(gap)),
+            _ => Text.Format(Strings.Editor_GapClickToFill, DescribeField(gap)),
         }
         : gap.Kind switch
     {
-        GapKind.Unticked => "a box isn’t ticked. The Tick tool is ready if you want to tick it.",
+        GapKind.Unticked => Strings.Editor_GapCheckBoxNotTicked,
         _ => gap.BlankKind switch
         {
-            BlankKind.Date => "a line that may need a date. The Date tool is ready.",
-            BlankKind.Signature => "a space that may need a signature. Choose Sign to add yours.",
-            BlankKind.Initials => "a space that may need initials. Choose Sign, then Initials.",
-            _ => gap.Label.Length > 0 ? $"nothing after “{gap.Label}”. The Text tool is ready." : "an empty line. The Text tool is ready.",
+            BlankKind.Date => Strings.Editor_GapCheckDate,
+            BlankKind.Signature => Strings.Editor_GapCheckSignature,
+            BlankKind.Initials => Strings.Editor_GapCheckInitials,
+            _ => gap.Label.Length > 0 ? Text.Format(Strings.Editor_GapCheckNothingAfter, gap.Label) : Strings.Editor_GapCheckEmptyLine,
         },
     };
 
@@ -297,21 +310,22 @@ public sealed partial class EditorViewModel
         ArgumentNullException.ThrowIfNull(gap);
         if (gap.IsField)
         {
-            return $"{DescribeField(gap)} on page {gap.PageNumber}";
+            return DescribeFieldOnPage(gap);
         }
 
-        string what = gap.Kind switch
+        return gap.Kind switch
         {
-            GapKind.Unticked => "Box not ticked",
+            GapKind.Unticked => Text.Format(Strings.Editor_GapUntickedOnPage, gap.PageNumber),
             _ => gap.BlankKind switch
             {
-                BlankKind.Date => "Line that may need a date",
-                BlankKind.Signature => "Space that may need a signature",
-                BlankKind.Initials => "Space that may need initials",
-                _ => gap.Label.Length > 0 ? $"Nothing after “{gap.Label}”" : "Empty line",
+                BlankKind.Date => Text.Format(Strings.Editor_GapDateOnPage, gap.PageNumber),
+                BlankKind.Signature => Text.Format(Strings.Editor_GapSignatureOnPage, gap.PageNumber),
+                BlankKind.Initials => Text.Format(Strings.Editor_GapInitialsOnPage, gap.PageNumber),
+                _ => gap.Label.Length > 0
+                    ? Text.Format(Strings.Editor_GapNothingAfterOnPage, gap.Label, gap.PageNumber)
+                    : Text.Format(Strings.Editor_GapEmptyLineOnPage, gap.PageNumber),
             },
         };
-        return $"{what} on page {gap.PageNumber}";
     }
 
     private static bool SameGap(Gap a, Gap b) => a.Page == b.Page && a.Kind == b.Kind && Math.Abs(a.Area.Y - b.Area.Y) < 1 && Math.Abs(a.Area.X - b.Area.X) < 1;

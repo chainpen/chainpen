@@ -163,6 +163,20 @@
         <Setter Property="Foreground" Value="{DynamicResource Accent}" />
     </Style>
 
+    <!-- The button the practice guide (or the nudge) wants next: a pale orange fill with an orange border and text,
+         apart from the blue of a tool that's on, and the same on every button (Export too). The view also points an
+         arrow at it. -->
+    <Style Selector="Button.guided /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource GuideTint}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Guide}" />
+        <Setter Property="Foreground" Value="{DynamicResource Guide}" />
+    </Style>
+    <Style Selector="Button.guided:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.guided:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource GuideTint}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GuideStrong}" />
+        <Setter Property="Foreground" Value="{DynamicResource GuideStrong}" />
+    </Style>
+
     <!-- Bordered action in the bar under the toolbar (Duplicate, Delete, Cancel). -->
     <Style Selector="Button.chip">
         <Setter Property="MinHeight" Value="{StaticResource ControlHeight}" />

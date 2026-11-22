@@ -264,7 +264,7 @@ public sealed class DesktopFitTests : IDisposable
             Assert.DoesNotContain("Settings…", Headers("File"));
             Assert.DoesNotContain("About Fillsign", Headers("Help"));
             NativeMenu appMenu = App.MacAppMenu(() => s.Window);
-            Assert.Equal(["About Fillsign", "Settings…", "Check for Updates…"], appMenu.Items.OfType<NativeMenuItem>().Where(item => item is not NativeMenuItemSeparator).Select(item => item.Header));
+            Assert.Equal(["About Fillsign", "Settings…", "Check for updates…"], appMenu.Items.OfType<NativeMenuItem>().Where(item => item is not NativeMenuItemSeparator).Select(item => item.Header));
         }
         else
         {
