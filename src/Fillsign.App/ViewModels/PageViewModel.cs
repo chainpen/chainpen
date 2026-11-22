@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Fillsign.App.Localization;
 using Fillsign.Core.Model;
 
 namespace Fillsign.App.ViewModels;
@@ -47,8 +48,8 @@ public sealed partial class PageViewModel : ObservableObject
     public bool IsRotated => Entry.Rotation != Rotation.None;
 
     /// <summary>"3", "3 · rotated" or "3 · can't show".</summary>
-    public string NumberLabel => IsDamaged ? $"{Number} · can’t show"
-        : IsRotated ? $"{Number} · rotated"
+    public string NumberLabel => IsDamaged ? Text.Format(Strings.Editor_PageNumberCantShow, Number)
+        : IsRotated ? Text.Format(Strings.Editor_PageNumberRotated, Number)
         : Number.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>"Page 1, current, has edits".</summary>
@@ -56,33 +57,36 @@ public sealed partial class PageViewModel : ObservableObject
     {
         get
         {
-            var parts = new List<string> { $"Page {Number}" };
+            var parts = new List<string> { Text.Format(Strings.Editor_PageNumber, Number) };
             if (IsCurrent)
             {
-                parts.Add("current");
+                parts.Add(Strings.Editor_PageStateCurrent);
             }
 
             if (IsSelected)
             {
-                parts.Add("selected");
+                parts.Add(Strings.Editor_PageStateSelected);
             }
 
             if (IsRotated)
             {
-                parts.Add("rotated");
+                parts.Add(Strings.Editor_PageStateRotated);
             }
 
             if (HasEdits)
             {
-                parts.Add("has edits");
+                parts.Add(Strings.Editor_PageStateHasEdits);
             }
 
             if (IsDamaged)
             {
-                parts.Add("can’t be shown");
+                parts.Add(Strings.Editor_PageStateCantBeShown);
             }
 
-            return string.Join(", ", parts);
+            return string.Join(Strings.Editor_ListSeparator, parts);
         }
     }
+
+    /// <summary>The interface language changed: the page's labels are read again.</summary>
+    public void RefreshText() => OnPropertyChanged(string.Empty);
 }

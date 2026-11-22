@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Views;
 
@@ -16,7 +17,7 @@ public partial class MessageDialog : UserControl
     private readonly TaskCompletionSource _closed = new();
 
     public MessageDialog()
-        : this(string.Empty, [], "Close")
+        : this(string.Empty, [], Strings.Common_Close)
     {
     }
 

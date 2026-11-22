@@ -193,6 +193,23 @@ public sealed class DocumentWriterTests
     }
 
     [Fact]
+    public void Japanese_text_with_kana_and_kanji_exports_as_searchable_text()
+    {
+        using SKTypeface? japanese = SKFontManager.Default.MatchCharacter('や');
+        Assert.SkipWhen(japanese is null, "No font on this computer has Japanese characters.");
+        (byte[] source, SourcePage[] pages) = Source("four-pages.pdf");
+        var state = DocumentState.ForSourcePages(4);
+        var text = new TextItem(ItemId.New(), state.Pages[0].Id, 100, 300, "氏名 やまだ 太郎 2026/11/21", 20, InkColor.Black);
+        byte[] final = DocumentWriter.FinalCopy(source, pages, state.WithItems([text])).Pdf;
+
+        using PdfiumDocument result = PdfiumDocument.Open(final);
+        string extracted = result.GetText(0);
+        Assert.Contains("やまだ", extracted, StringComparison.Ordinal);
+        Assert.Contains("太郎", extracted, StringComparison.Ordinal);
+        Assert.Contains("2026/11/21", extracted, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Highlights_multiply_whiteout_covers_and_signatures_keep_their_transparency()
     {
         (byte[] source, SourcePage[] pages) = Source("four-pages.pdf");

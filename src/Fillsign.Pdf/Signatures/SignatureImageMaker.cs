@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Fonts;
 using HarfBuzzSharp;
@@ -86,8 +87,18 @@ public static class SignatureImageMaker
             name = name[..MaxTypedLength];
         }
 
+        // The handwriting styles draw Latin, Cyrillic and Devanagari names. A name they can't draw (Japanese, Chinese,
+        // Korean, Arabic) is drawn whole in a font that has it, rather than as empty boxes.
         byte[] fontFile = HandwritingFonts.Load(style);
-        (ushort[] glyphs, SKPoint[] positions, float advance) = Shape(fontFile, name, TypedFontSize);
+        int faceIndex = 0;
+        string fontName = $"The {style} font";
+        if (FirstMissing(fontFile, name) is { } missing && FontWithAll(name, missing) is { } fallback)
+        {
+            (fontFile, faceIndex) = fallback;
+            fontName = "The installed font chosen for this name";
+        }
+
+        (ushort[] glyphs, SKPoint[] positions, float advance) = Shape(fontFile, faceIndex, name, TypedFontSize);
 
         // Script fonts swash well past their advances, so leave generous room and crop afterwards.
         float room = TypedFontSize;
@@ -96,7 +107,7 @@ public static class SignatureImageMaker
         float baseline = TypedFontSize * 1.5f;
 
         using var data = SKData.CreateCopy(fontFile);
-        using SKTypeface typeface = SKTypeface.FromData(data) ?? throw new InvalidOperationException($"The {style} font could not be loaded.");
+        using SKTypeface typeface = SKTypeface.FromData(data, faceIndex) ?? throw new InvalidOperationException($"{fontName} could not be loaded.");
         using var font = new SKFont(typeface, TypedFontSize) { Subpixel = true, Edging = SKFontEdging.Antialias };
         using var builder = new SKTextBlobBuilder();
         SKPositionedRunBuffer run = builder.AllocatePositionedRun(font, glyphs.Length);
@@ -179,11 +190,86 @@ public static class SignatureImageMaker
             Math.Min(height, maxY + 1 + TrimPadding));
     }
 
+    /// <summary>The first character of <paramref name="text"/> the font has no glyph for, or null when it has them all.</summary>
+    private static int? FirstMissing(byte[] fontFile, string text)
+    {
+        using var data = SKData.CreateCopy(fontFile);
+        using SKTypeface? typeface = SKTypeface.FromData(data);
+        if (typeface is null)
+        {
+            return null;
+        }
+
+        foreach (Rune rune in text.EnumerateRunes())
+        {
+            if (!Rune.IsWhiteSpace(rune) && !typeface.ContainsGlyph(rune.Value))
+            {
+                return rune.Value;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// An installed font that has every character of <paramref name="text"/> and can be loaded from its file: the
+    /// system's pick for the first missing one (asking for Japanese forms when the name has kana or the interface is
+    /// Japanese, as Chinese fonts draw some kanji differently), else the first family that has them all. The signature
+    /// becomes a picture, so any font will do, embeddable or not.
+    /// </summary>
+    internal static (byte[] File, int FaceIndex)? FontWithAll(string text, int missing)
+    {
+        int[] needed = [.. text.EnumerateRunes().Where(rune => !Rune.IsWhiteSpace(rune)).Select(rune => rune.Value).Distinct()];
+        bool hasKana = needed.Any(codepoint => codepoint is >= 0x3040 and <= 0x30FF);
+        string language = hasKana ? "ja" : System.Globalization.CultureInfo.CurrentUICulture.Name;
+        (byte[] File, int FaceIndex)? Usable(SKTypeface? typeface) =>
+            typeface is not null && needed.All(typeface.ContainsGlyph) && Bytes(typeface) is { } found && Loads(found) ? found : null;
+
+        using (SKTypeface? match = SKFontManager.Default.MatchCharacter(null, SKFontStyle.Normal, [language], missing))
+        {
+            if (Usable(match) is { } matched)
+            {
+                return matched;
+            }
+        }
+
+        foreach (string family in SKFontManager.Default.FontFamilies.Order(StringComparer.Ordinal))
+        {
+            using SKTypeface? candidate = SKFontManager.Default.MatchFamily(family);
+            if (Usable(candidate) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static (byte[] File, int FaceIndex)? Bytes(SKTypeface typeface)
+    {
+        using SKStreamAsset? stream = typeface.OpenStream(out int faceIndex);
+        if (stream is not { Length: > 0 })
+        {
+            return null;
+        }
+
+        var bytes = new byte[stream.Length];
+        return stream.Read(bytes, bytes.Length) == bytes.Length ? (bytes, faceIndex) : null;
+    }
+
+    // Some system fonts (macOS's PingFang) can't be rebuilt from their file, which drawing the signature needs.
+    private static bool Loads((byte[] File, int FaceIndex) font)
+    {
+        using var data = SKData.CreateCopy(font.File);
+        using SKTypeface? typeface = SKTypeface.FromData(data, font.FaceIndex);
+        return typeface is not null;
+    }
+
     /// <summary>Shapes with HarfBuzz so the handwriting fonts' kerning and joins apply.</summary>
-    private static (ushort[] Glyphs, SKPoint[] Positions, float Advance) Shape(byte[] fontFile, string text, float fontSize)
+    private static (ushort[] Glyphs, SKPoint[] Positions, float Advance) Shape(byte[] fontFile, int faceIndex, string text, float fontSize)
     {
         using Blob blob = NativeFontBlob.Create(fontFile);
-        using var face = new Face(blob, 0);
+        using var face = new Face(blob, faceIndex);
         using var font = new HarfBuzzSharp.Font(face);
         int unitsPerEm = face.UnitsPerEm;
         font.SetScale(unitsPerEm, unitsPerEm);

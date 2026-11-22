@@ -54,6 +54,11 @@ Keep to those boundaries: `Core` must not reference Avalonia or PDFium.
 - The working-copy format is a contract with files people already have. If you change the record, keep older files
   opening, and update [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) in the same change.
 - When behaviour people see changes, update [docs/USER-GUIDE.md](docs/USER-GUIDE.md) too.
+- Text people see goes in `Localization/Strings.resx` (app or `Fillsign.Pdf`), never as a literal: `Strings.Key` in C#,
+  `{x:Static l:Strings.Key}` in AXAML. Whole sentences with `{0}` placeholders via `Text.Format`, and `Text.Plural` for
+  counts; never glue a sentence from pieces. Add the German and Japanese values too (`Strings.de.resx`,
+  `Strings.ja.resx`), marked for review in [docs/TRANSLATIONS.md](docs/TRANSLATIONS.md); `TranslationTests` checks they
+  match the English.
 
 ## Commits
 

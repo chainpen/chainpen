@@ -1,4 +1,5 @@
 using Avalonia.Markup.Xaml;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Controls;
 
@@ -19,7 +20,12 @@ public sealed class KeysExtension(string text) : MarkupExtension
         ArgumentNullException.ThrowIfNull(text);
         if (!isMac)
         {
-            return text.Replace("Mod", "Ctrl", StringComparison.Ordinal);
+            // German keyboards say Strg and Umschalt. Only Shift beside Mod is a key name here; elsewhere it's in
+            // a translated sentence already.
+            return text
+                .Replace("Mod+Shift+", $"{Strings.Keys_Ctrl}+{Strings.Keys_Shift}+", StringComparison.Ordinal)
+                .Replace("Mod Shift ", $"{Strings.Keys_Ctrl} {Strings.Keys_Shift} ", StringComparison.Ordinal)
+                .Replace("Mod", Strings.Keys_Ctrl, StringComparison.Ordinal);
         }
 
         // Mac menus write modifiers as symbols, Shift before Command, with no plus signs: ⇧⌘Z.

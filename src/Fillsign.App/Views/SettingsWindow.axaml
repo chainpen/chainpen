@@ -1,26 +1,41 @@
 <Window xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Fillsign.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:Fillsign.App.Controls"
         xmlns:vm="using:Fillsign.App.ViewModels"
         x:Class="Fillsign.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Title="Fillsign settings" Icon="avares://Fillsign.App/Assets/Icon/fillsign-256.png" Width="820" Height="760" MinWidth="560" MinHeight="480"
+        Title="{x:Static l:Strings.Settings_FillsignSettings}" Icon="avares://Fillsign.App/Assets/Icon/fillsign-256.png" Width="820" Height="760" MinWidth="560" MinHeight="480"
         WindowStartupLocation="CenterOwner">
     <!-- 🎨 7: every change is saved as soon as it's made (FR-10.1). -->
     <Panel>
         <ScrollViewer Background="{DynamicResource SurfaceApp}">
             <StackPanel Margin="32,28" Spacing="16" MaxWidth="760" HorizontalAlignment="Left">
-                <TextBlock Classes="muted" FontSize="13" Text="Changes are saved as soon as you make them." />
+                <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.Settings_ChangesAreSavedAsSoonAs}" />
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
-                        <TextBlock x:Name="AppearanceHeading" Classes="heading-section" Text="Appearance" />
-                        <TextBlock Classes="muted" FontSize="13" Text="Match your computer, or choose one. Documents always show as they’ll print." />
+                        <TextBlock x:Name="LanguageHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_Language}" />
+                        <ComboBox x:Name="LanguageChoice" Margin="0,8,0,0" MinWidth="220" ItemsSource="{Binding LanguageOptions}"
+                                  SelectedItem="{Binding SelectedLanguage}" AutomationProperties.LabeledBy="{Binding #LanguageHeading}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LanguageOption">
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="AppearanceHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_Appearance}" />
+                        <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.Settings_MatchYourComputerOrChooseOne}" />
                         <Border Classes="segments" Margin="0,10,0,0" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #AppearanceHeading}">
-                                <RadioButton x:Name="MatchSystem" Classes="segment" GroupName="theme" Content="Match system" IsChecked="{Binding IsMatchSystem}" />
-                                <RadioButton x:Name="Light" Classes="segment" GroupName="theme" Content="Light" IsChecked="{Binding IsLight}" />
-                                <RadioButton x:Name="Dark" Classes="segment" GroupName="theme" Content="Dark" IsChecked="{Binding IsDark}" />
+                                <RadioButton x:Name="MatchSystem" Classes="segment" GroupName="theme" Content="{x:Static l:Strings.Settings_MatchSystem}" IsChecked="{Binding IsMatchSystem}" />
+                                <RadioButton x:Name="Light" Classes="segment" GroupName="theme" Content="{x:Static l:Strings.Settings_Light}" IsChecked="{Binding IsLight}" />
+                                <RadioButton x:Name="Dark" Classes="segment" GroupName="theme" Content="{x:Static l:Strings.Settings_Dark}" IsChecked="{Binding IsDark}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -28,16 +43,16 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
-                        <TextBlock Classes="heading-section" Text="Saved signatures and initials" />
+                        <TextBlock Classes="heading-section" Text="{x:Static l:Strings.Settings_SavedSignaturesAndInitials}" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="Stored only on this computer. Removing one doesn’t change documents you’ve already saved." />
+                                   Text="{x:Static l:Strings.Settings_StoredOnlyOnThisComputerRemoving}" />
                         <TextBlock Classes="muted" FontSize="13" Margin="0,10,0,0" IsVisible="{Binding ShowsNoneSaved}"
-                                   Text="None saved. Tick “Keep … on this computer” when you add one to see it here." />
+                                   Text="{x:Static l:Strings.Settings_NoneSavedTickKeepOnThis}" />
                         <!-- Locked until the key comes back; Start again is the way out if it never does. -->
                         <StackPanel Spacing="8" Margin="0,10,0,0" IsVisible="{Binding AreSignaturesLocked}">
                             <TextBlock FontSize="13" Foreground="{DynamicResource Warning}" TextWrapping="Wrap"
-                                       Text="Saved signatures can’t be opened right now: the system’s keychain or keyring didn’t hand over their key. They’re kept, and come back once it does." />
-                            <Button Classes="small dangerText" HorizontalAlignment="Left" Content="Start again without them…"
+                                       Text="{x:Static l:Strings.Settings_SavedSignaturesCantBeOpenedRight}" />
+                            <Button Classes="small dangerText" HorizontalAlignment="Left" Content="{x:Static l:Strings.Settings_StartAgainWithoutThem}"
                                     Command="{Binding StartSignaturesAgainCommand}" />
                         </StackPanel>
                         <ItemsControl ItemsSource="{Binding Saved}" Margin="0,6,0,0">
@@ -45,9 +60,9 @@
                                 <DataTemplate x:DataType="vm:SavedRowViewModel">
                                     <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}" Padding="0,12">
                                         <DockPanel>
-                                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="Remove…"
+                                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="{x:Static l:Strings.Settings_Remove}"
                                                     Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveSignatureCommand}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Description, StringFormat='Remove {0}'}" />
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Description, StringFormat={x:Static l:Strings.Settings_RemoveNamed}}" />
                                             <Border DockPanel.Dock="Left" Margin="0,0,16,0" Padding="6" CornerRadius="6" Background="{DynamicResource Page}">
                                                 <Image Width="150" Height="42" Stretch="Uniform" HorizontalAlignment="Left" Source="{Binding Thumbnail}" />
                                             </Border>
@@ -62,17 +77,17 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
-                        <TextBlock x:Name="RecoveryHeading" Classes="heading-section" Text="Recovery copies" />
+                        <TextBlock x:Name="RecoveryHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_RecoveryCopies}" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="If Fillsign closes unexpectedly, unsaved changes can be recovered. Copies are kept on this computer for:" />
+                                   Text="{x:Static l:Strings.Settings_IfFillsignClosesUnexpectedlyUnsavedChanges}" />
                         <DockPanel Margin="0,10,0,0">
-                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="Delete all recovery copies…"
+                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="{x:Static l:Strings.Settings_DeleteAllRecoveryCopies}"
                                     Command="{Binding DeleteRecoveryCopiesCommand}" />
                             <Border Classes="segments" HorizontalAlignment="Left">
                                 <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #RecoveryHeading}">
-                                    <RadioButton Classes="segment" GroupName="recovery" Content="1 day" IsChecked="{Binding IsOneDay}" />
-                                    <RadioButton Classes="segment" GroupName="recovery" Content="7 days" IsChecked="{Binding IsSevenDays}" />
-                                    <RadioButton Classes="segment" GroupName="recovery" Content="30 days" IsChecked="{Binding IsThirtyDays}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="{x:Static l:Strings.Settings_1Day}" IsChecked="{Binding IsOneDay}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="{x:Static l:Strings.Settings_7Days}" IsChecked="{Binding IsSevenDays}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="{x:Static l:Strings.Settings_30Days}" IsChecked="{Binding IsThirtyDays}" />
                                 </StackPanel>
                             </Border>
                         </DockPanel>
@@ -81,15 +96,16 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
-                        <TextBlock x:Name="DateFormatHeading" Classes="heading-section" Text="Date format" />
+                        <TextBlock x:Name="DateFormatHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_DateFormat}" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="For dates you add with the Date tool, and dates Fillsign shows. Dates already on a document don’t change." />
+                                   Text="{x:Static l:Strings.Settings_ForDatesYouAddWithThe}" />
                         <Border Classes="segments" HorizontalAlignment="Left" Margin="0,10,0,0">
                             <StackPanel x:Name="DateFormatChoices" Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #DateFormatHeading}">
-                                <RadioButton Classes="segment" GroupName="dateFormat" Content="DD/MM/YYYY" IsChecked="{Binding IsDayMonthYear}" />
-                                <RadioButton Classes="segment" GroupName="dateFormat" Content="MM/DD/YYYY" IsChecked="{Binding IsMonthDayYear}" />
-                                <RadioButton Classes="segment" GroupName="dateFormat" Content="YYYY-MM-DD" IsChecked="{Binding IsYearMonthDay}" />
-                                <RadioButton Classes="segment" GroupName="dateFormat" Content="DD.MM.YYYY" IsChecked="{Binding IsDayMonthYearDots}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_DDMMYYYY}" IsChecked="{Binding IsDayMonthYear}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_MMDDYYYY}" IsChecked="{Binding IsMonthDayYear}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_YYYYMMDD}" IsChecked="{Binding IsYearMonthDay}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_YYYYMMDDSlashes}" IsChecked="{Binding IsYearMonthDaySlashes}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_DDMMYYYYDots}" IsChecked="{Binding IsDayMonthYearDots}" />
                             </StackPanel>
                         </Border>
                         <TextBlock x:Name="DateExample" Classes="muted" FontSize="13" Margin="0,4,0,0" Text="{Binding DateExample}"
@@ -99,21 +115,21 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
-                        <TextBlock Classes="heading-section" Text="Keyboard" />
+                        <TextBlock Classes="heading-section" Text="{x:Static l:Strings.Settings_Keyboard}" />
                         <CheckBox x:Name="SingleKeyTools" Margin="0,6,0,0" IsChecked="{Binding UseSingleKeyTools}"
-                                  Content="Choose tools with single letters (V, T, C, X, D, S, R, P)" />
+                                  Content="{x:Static l:Strings.Settings_ChooseToolsWithSingleLettersV}" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="Off unless you turn it on. Leave it off if you use speech input, or would press letters by accident." />
+                                   Text="{x:Static l:Strings.Settings_OffUnlessYouTurnItOn}" />
                     </StackPanel>
                 </Border>
 
                 <Border Classes="card">
                     <StackPanel Spacing="4">
-                        <TextBlock Classes="heading-section" Text="Crash reports" />
+                        <TextBlock Classes="heading-section" Text="{x:Static l:Strings.Settings_CrashReports}" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="If something goes wrong, a short report is kept on this computer: the app version, your system and the code that failed. It never includes your documents, signatures or file names. Next time you start Fillsign, you can review it and send it as a GitHub issue." />
-                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="Keep reports for me to review" IsChecked="{Binding SendCrashReports}" />
-                        <RadioButton GroupName="crash" Content="Don’t keep reports" IsChecked="{Binding DontSendCrashReports}" />
+                                   Text="{x:Static l:Strings.Settings_IfSomethingGoesWrongAShort}" />
+                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="{x:Static l:Strings.Settings_KeepReportsForMeToReview}" IsChecked="{Binding SendCrashReports}" />
+                        <RadioButton GroupName="crash" Content="{x:Static l:Strings.Settings_DontKeepReports}" IsChecked="{Binding DontSendCrashReports}" />
                     </StackPanel>
                 </Border>
 

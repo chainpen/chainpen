@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Views;
 
@@ -25,15 +26,17 @@ public partial class ChoiceDialog : UserControl
     {
     }
 
+    /// <param name="title">The question, as the dialog's heading.</param>
+    /// <param name="body">What happens either way, in a sentence or two.</param>
     /// <param name="mainLabel">The main button names what it does ("Save", "Restore edits"); never "OK".</param>
     /// <param name="otherLabel">A second answer on the left ("Don’t save"), or null for none.</param>
     /// <param name="focusMain">Start on the main button when it's the safe choice; otherwise on Cancel.</param>
     /// <param name="isMainDestructive">Shows the main button in red, for answers that discard something.</param>
     /// <param name="cancelLabel">Names what backing out does when "Cancel" would be unclear ("Don’t open").</param>
-    public ChoiceDialog(string title, string body, string mainLabel, string? otherLabel, bool focusMain, bool isMainDestructive = false, string cancelLabel = "Cancel")
+    public ChoiceDialog(string title, string body, string mainLabel, string? otherLabel, bool focusMain, bool isMainDestructive = false, string? cancelLabel = null)
     {
         InitializeComponent();
-        CancelButton.Content = cancelLabel;
+        CancelButton.Content = cancelLabel ?? Strings.Common_Cancel;
         Heading.Text = title;
         Body.Text = body;
         MainButton.Content = mainLabel;

@@ -50,13 +50,20 @@ public sealed class SmallWindowTests
         }
     }
 
-    [AvaloniaFact]
-    public async Task Toolbar_buttons_never_overlap_at_any_window_width()
+    [AvaloniaTheory]
+    [InlineData("en")]
+    [InlineData("de")]
+    [InlineData("ja")]
+    public async Task Toolbar_buttons_never_overlap_at_any_window_width(string language)
     {
-        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1024, Height = 720 };
-        window.Show();
+        // German labels are longer than English and Japanese ones shorter, so the toolbar collapses at other widths.
+        MainWindow? window = null;
         try
         {
+            Localization.Languages.Apply(language);
+            await Pump(() => true);
+            window = new MainWindow(isFirstLaunch: false, []) { Width = 1024, Height = 720 };
+            window.Show();
             await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
             await Pump(() => window.DataContext is MainWindowViewModel { Editor: { IsLoading: false } });
             var problems = new List<string>();
@@ -67,6 +74,11 @@ public sealed class SmallWindowTests
                 {
                     window.Width = width;
                     await Pump(() => true);
+                    if (width <= 1024)
+                    {
+                        Save(window, $"toolbar-1024-{language}{(organising ? "-organising" : string.Empty)}");
+                    }
+
                     Control toolbar = window.GetVisualDescendants().OfType<Border>().First(border => border.Name == "ToolbarBar");
                     Rect[] buttons = [.. toolbar.GetVisualDescendants().OfType<Button>()
                         .Where(control => control.IsEffectivelyVisible && control.Bounds.Width > 0)
@@ -94,7 +106,8 @@ public sealed class SmallWindowTests
         }
         finally
         {
-            window.CloseWithoutAsking();
+            window?.CloseWithoutAsking();
+            Localization.Languages.Apply("en");
         }
     }
 

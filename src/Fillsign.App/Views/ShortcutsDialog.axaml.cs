@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Views;
 
@@ -12,7 +13,7 @@ public partial class ShortcutsDialog : UserControl
     {
         InitializeComponent();
         Panel.UseDialogHeading();
-        PlatformNote.Text = OperatingSystem.IsMacOS() ? "Shown for this Mac: ⌘ is the Command key." : "On a Mac, Ctrl is ⌘.";
+        PlatformNote.Text = OperatingSystem.IsMacOS() ? Strings.Shortcuts_ShownForThisMac : Strings.Shortcuts_OnAMacCtrlIsCommand;
         Loaded += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() => CloseButton.Focus(), Avalonia.Threading.DispatcherPriority.Loaded);
         KeyDown += (_, e) =>
         {

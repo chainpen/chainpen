@@ -16,6 +16,9 @@ public static class TestAppBuilder
     {
         // Settings, recent files and recovery copies go to a folder of the test run's own, never the person's.
         Platform.AppSettings.FolderOverride = Path.Combine(Path.GetTempPath(), "fillsign-tests", "app-data-" + Environment.ProcessId);
+
+        // Tests check English wording, whatever language the computer running them uses.
+        Localization.Languages.Apply("en");
         return AppBuilder.Configure<App>()
             .UseSkia()
             .WithInterFont()

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+using Fillsign.App.Localization;
 using Fillsign.App.Platform;
 using Fillsign.App.Views;
 
@@ -20,6 +21,24 @@ public partial class App : Application
         {
             NativeMenu.SetMenu(this, MacAppMenu(FrontWindow));
         }
+
+        // A language chosen in Settings applies straight away: every window is rebuilt in it.
+        Languages.Changed += () => Avalonia.Threading.Dispatcher.UIThread.Post(ShowInNewLanguage);
+    }
+
+    private void ShowInNewLanguage()
+    {
+        if (NativeMenu.GetMenu(this) is { } appMenu)
+        {
+            MenuText.Rename(appMenu);
+        }
+
+        foreach (MainWindow window in MainWindow.OpenWindows.ToList())
+        {
+            window.ShowInNewLanguage();
+        }
+
+        MainWindow.ShowSettingsInNewLanguage();
     }
 
     /// <summary>
@@ -52,7 +71,7 @@ public partial class App : Application
             AppSettings settings = AppSettings.Update(current => current with
             {
                 LaunchCount = current.LaunchCount + 1,
-                DateFormat = current.DateFormat ?? DateFormats.FromCulture(System.Globalization.CultureInfo.CurrentCulture),
+                DateFormat = current.DateFormat ?? DateFormats.FromCulture(Languages.SystemRegion),
             });
             bool isFirstLaunch = settings.LaunchCount == 1;
 
@@ -151,8 +170,8 @@ public partial class App : Application
         try
         {
             await window.ShowMessageAsync(
-                "Something went wrong",
-                "Fillsign hit a problem it didn’t expect, and what you were doing may not have finished. Your document is still open: save it to be safe, and check that your last change is there.").ConfigureAwait(true);
+                Strings.Main_SomethingWentWrong,
+                Strings.Main_UnexpectedErrorBody).ConfigureAwait(true);
         }
         finally
         {
@@ -168,20 +187,17 @@ public partial class App : Application
     internal static NativeMenu MacAppMenu(Func<MainWindow?> frontWindow)
     {
         var menu = new NativeMenu();
-        menu.Items.Add(new NativeMenuItem("About Fillsign")
-        {
-            Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => frontWindow()?.ShowAbout()),
-        });
+        NativeMenuItem about = MenuText.Item(() => Strings.Menu_AboutFillsign);
+        about.Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => frontWindow()?.ShowAbout());
+        menu.Items.Add(about);
         menu.Items.Add(new NativeMenuItemSeparator());
-        menu.Items.Add(new NativeMenuItem("Settings…")
-        {
-            Command = new CommunityToolkit.Mvvm.Input.RelayCommand(MainWindow.ShowSettings),
-            Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.OemComma, Avalonia.Input.KeyModifiers.Meta),
-        });
-        menu.Items.Add(new NativeMenuItem("Check for updates…")
-        {
-            Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => _ = frontWindow()?.CheckForUpdatesAsync()),
-        });
+        NativeMenuItem settings = MenuText.Item(() => Strings.Menu_Settings);
+        settings.Command = new CommunityToolkit.Mvvm.Input.RelayCommand(MainWindow.ShowSettings);
+        settings.Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.OemComma, Avalonia.Input.KeyModifiers.Meta);
+        menu.Items.Add(settings);
+        NativeMenuItem updates = MenuText.Item(() => Strings.Menu_CheckForUpdates);
+        updates.Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => _ = frontWindow()?.CheckForUpdatesAsync());
+        menu.Items.Add(updates);
         return menu;
     }
 
@@ -194,7 +210,7 @@ public partial class App : Application
                 .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
                 .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
                 .FirstOrDefault()?.InformationalVersion;
-            return version?.Split('+')[0] ?? "unknown";
+            return version?.Split('+')[0] ?? Strings.Main_UnknownVersion;
         }
     }
 

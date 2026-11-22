@@ -61,6 +61,33 @@ public sealed partial class PagesCanvas : Panel
 
     private double RenderScaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
 
+    /// <summary>
+    /// Stops following the document, for a view that's being replaced (a new document, or the interface rebuilt in
+    /// another language) while the document stays open: otherwise the old canvas would keep handling its events.
+    /// </summary>
+    public void Detach()
+    {
+        if (_editor is not { } editor)
+        {
+            return;
+        }
+
+        editor.PagesChanged -= OnPagesChanged;
+        editor.ScrollToPageRequested -= ScrollToPage;
+        editor.ScrollToAreaRequested -= ScrollToArea;
+        editor.HoverChanged -= OnHoverChanged;
+        editor.Renderer.PageRendered -= OnPageRendered;
+        DetachItems(editor);
+        _editor = null;
+    }
+
+    private void OnHoverChanged() => _hoverLayer.InvalidateVisual();
+
+    private void OnPageRendered(int sourceIndex) => InvalidateLayers();
+
+    /// <summary>Keeps the document's zoom instead of fitting the width, for a view rebuilt over an open document.</summary>
+    public void KeepZoom() => _hasFitted = true;
+
     public void Attach(EditorViewModel editor, ScrollViewer scroller)
     {
         _editor = editor;
@@ -69,8 +96,8 @@ public sealed partial class PagesCanvas : Panel
         editor.PagesChanged += OnPagesChanged;
         editor.ScrollToPageRequested += ScrollToPage;
         editor.ScrollToAreaRequested += ScrollToArea;
-        editor.HoverChanged += () => _hoverLayer.InvalidateVisual();
-        editor.Renderer.PageRendered += _ => InvalidateLayers();
+        editor.HoverChanged += OnHoverChanged;
+        editor.Renderer.PageRendered += OnPageRendered;
         AttachItems(editor);
         scroller.ScrollChanged += (_, _) =>
         {

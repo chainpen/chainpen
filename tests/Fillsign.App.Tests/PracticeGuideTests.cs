@@ -215,6 +215,34 @@ public sealed class PracticeGuideTests
         }
     }
 
+    public static TheoryData<string> Languages => [.. Localization.Languages.Supported.Select(language => language.Code)];
+
+    [AvaloniaTheory]
+    [MemberData(nameof(Languages))]
+    public async Task Every_language_has_its_practice_form_and_the_guide_starts_on_it(string language)
+    {
+        MainWindow? window = null;
+        try
+        {
+            Localization.Languages.Apply(language);
+            await Pump(() => true);
+            window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+            window.Show();
+            await window.OpenPracticeFormAsync();
+            MainWindow opened = window;
+            await Pump(() => opened.DataContext is MainWindowViewModel { Editor: { IsLoading: false, IsGuiding: true } });
+            EditorViewModel editor = Editor(opened);
+            Assert.Equal(Localization.Strings.Main_PracticeFormPdf, editor.Title);
+            Assert.Equal(GuideStep.Tick, editor.Guide);
+            Assert.Single(editor.Pages);
+        }
+        finally
+        {
+            window?.CloseWithoutAsking();
+            Localization.Languages.Apply("en");
+        }
+    }
+
     private static async Task<(MainWindow Window, EditorViewModel Editor, EditorView View, PagesCanvas Canvas)> OpenPracticeAsync()
     {
         var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
@@ -227,13 +255,17 @@ public sealed class PracticeGuideTests
         return (window, Editor(window), view, canvas);
     }
 
-    /// <summary>The arrow's tip is just below the button's middle.</summary>
+    /// <summary>
+    /// The arrow's tip is just below the button's middle. Read from where the arrow is placed, not where it's drawn,
+    /// which its bounce moves for a few seconds.
+    /// </summary>
     private static void AssertArrowUnder(EditorView view, Button button)
     {
         var arrow = view.FindControl<Avalonia.Controls.Shapes.Path>("GuideArrow")!;
+        var layer = view.FindControl<Canvas>("GuideArrowLayer")!;
         Assert.True(arrow.IsVisible);
-        Point tip = arrow.TranslatePoint(new Point(11, 0), view)!.Value;
-        Point bottom = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height), view)!.Value;
+        var tip = new Point(Canvas.GetLeft(arrow) + 11, Canvas.GetTop(arrow));
+        Point bottom = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height), layer)!.Value;
         Assert.InRange(tip.X - bottom.X, -1, 1);
         Assert.InRange(tip.Y - bottom.Y, 0, 8);
     }

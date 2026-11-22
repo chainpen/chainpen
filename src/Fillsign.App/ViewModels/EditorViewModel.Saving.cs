@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.App.Platform;
 using Fillsign.Core.Model;
 using Fillsign.Pdf.Export;
@@ -37,7 +38,7 @@ public sealed record CheckGapChoice(int GapIndex) : ExportDecision;
 public sealed record ExportedNotice(string FileName, string Folder, string Path, long Size)
 {
     /// <summary>Names the folder, not its whole path, so the notice stays on one line; the path is in its tooltip.</summary>
-    public string Text => $"{FileName} ({SaveSizes.Describe(Size)}) in the “{FolderName}” folder. This is the one to send.";
+    public string Text => Localization.Text.Format(Strings.Editor_ExportedNotice, FileName, SaveSizes.Describe(Size), FolderName);
 
     public string FolderName => System.IO.Path.GetFileName(Folder.TrimEnd(System.IO.Path.DirectorySeparatorChar)) is { Length: > 0 } name ? name : Folder;
 
@@ -55,8 +56,8 @@ public static class SaveSizes
     }
 
     public static string Describe(long bytes) => bytes < 1024 * 1024
-        ? $"{Math.Max(1, (int)Math.Round(bytes / 1024.0))} KB"
-        : (bytes / (1024.0 * 1024)).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
+        ? Text.Format(Strings.Editor_SizeKilobytes, Math.Max(1, (int)Math.Round(bytes / 1024.0)))
+        : Text.Format(Strings.Editor_SizeMegabytes, (bytes / (1024.0 * 1024)).ToString("0.0", CultureInfo.CurrentCulture));
 }
 
 /// <summary>
@@ -101,8 +102,8 @@ public sealed partial class EditorViewModel
     public bool IsChangedElsewhere => ChangedElsewhere is not null;
 
     public string ChangedElsewhereDetail => ChangedElsewhere?.SavedAt is { } saved
-        ? $"Restoring brings back your editable ticks, text and signature from {FormatWhen(saved)}, but removes the other app’s changes."
-        : "Restoring brings back your editable ticks, text and signature, but removes the other app’s changes.";
+        ? Text.Format(Strings.Editor_RestoringBringsBackFrom, FormatWhen(saved))
+        : Strings.Editor_RestoringBringsBack;
 
     [ObservableProperty]
     public partial bool IsSaving { get; private set; }
@@ -130,8 +131,8 @@ public sealed partial class EditorViewModel
         LastSavedAt = restore.SavedAt;
         CanOpenAsFinalCopy = Source.Path is not null;
         RestoredNotice = restore.SavedAt is { } saved
-            ? $"Your edits from {FormatWhen(saved)} were restored. You can move, change or delete anything you added."
-            : "Your edits were restored. You can move, change or delete anything you added.";
+            ? Text.Format(Strings.Editor_YourEditsFromWereRestored, FormatWhen(saved))
+            : Strings.Editor_YourEditsWereRestored;
         RebuildPages();
         ItemsChanged?.Invoke();
         OnPropertyChanged(nameof(HasUnsavedChanges));
@@ -165,7 +166,7 @@ public sealed partial class EditorViewModel
         CancelGesture();
         if (IsLoading)
         {
-            await _host.ShowMessageAsync("Print", $"Available when all {Source.PageCount} pages have loaded. {LoadingText}.").ConfigureAwait(true);
+            await _host.ShowMessageAsync(Strings.Common_Print, Text.Format(Strings.Editor_AvailableWhenPagesHaveLoaded, Source.PageCount, LoadingText)).ConfigureAwait(true);
             return;
         }
 
@@ -178,7 +179,7 @@ public sealed partial class EditorViewModel
         }
         catch (InvalidOperationException ex)
         {
-            await ShowSaveProblemAsync("The document couldn’t be printed", ex).ConfigureAwait(true);
+            await ShowSaveProblemAsync(Strings.Editor_DocumentCouldntBePrinted, ex).ConfigureAwait(true);
             return;
         }
         finally
@@ -196,17 +197,17 @@ public sealed partial class EditorViewModel
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             System.Diagnostics.Trace.TraceError($"The print copy couldn't be written: {ex}");
-            await _host.ShowMessageAsync("The document couldn’t be printed", "Fillsign couldn’t make a copy to print. Export a final copy and print it from your PDF viewer instead.").ConfigureAwait(true);
+            await _host.ShowMessageAsync(Strings.Editor_DocumentCouldntBePrinted, Strings.Editor_CouldntMakeACopyToPrint).ConfigureAwait(true);
             return;
         }
 
         switch (_host.PrintFile(path))
         {
             case PrintOutcome.OpenedInViewer:
-                await _host.ShowInformationAsync("Print from your PDF viewer", "The document opened in your PDF viewer, looking as it will print. Print it from there.").ConfigureAwait(true);
+                await _host.ShowInformationAsync(Strings.Editor_PrintFromYourPdfViewer, Strings.Editor_OpenedInYourPdfViewer).ConfigureAwait(true);
                 break;
             case PrintOutcome.Failed:
-                await _host.ShowMessageAsync("Printing couldn’t start", "Export a final copy and print it from your PDF viewer instead.").ConfigureAwait(true);
+                await _host.ShowMessageAsync(Strings.Editor_PrintingCouldntStart, Strings.Editor_ExportAndPrintFromViewer).ConfigureAwait(true);
                 break;
         }
     }
@@ -222,7 +223,7 @@ public sealed partial class EditorViewModel
             return false;
         }
 
-        await _host.ShowMessageAsync("This document is open to view only", "Its owner set it so it shouldn’t be changed. Choose Edit anyway in the bar above the page to fill it in, save or export it.").ConfigureAwait(true);
+        await _host.ShowMessageAsync(Strings.Editor_OpenToViewOnly, Strings.Editor_OwnerSetItSoItShouldntBeChanged).ConfigureAwait(true);
         return true;
     }
 
@@ -261,7 +262,7 @@ public sealed partial class EditorViewModel
         if (IsLoading)
         {
             // INTERACTION-PATTERNS §6: say why rather than disabling the button.
-            await _host.ShowMessageAsync("Export final copy", $"Available when all {Source.PageCount} pages have loaded. {LoadingText}.").ConfigureAwait(true);
+            await _host.ShowMessageAsync(Strings.Common_ExportFinalCopy, Text.Format(Strings.Editor_AvailableWhenPagesHaveLoaded, Source.PageCount, LoadingText)).ConfigureAwait(true);
             return;
         }
 
@@ -277,7 +278,7 @@ public sealed partial class EditorViewModel
         }
         catch (InvalidOperationException ex)
         {
-            await ShowSaveProblemAsync("The final copy couldn’t be made", ex).ConfigureAwait(true);
+            await ShowSaveProblemAsync(Strings.Editor_FinalCopyCouldntBeMade, ex).ConfigureAwait(true);
             return;
         }
         finally
@@ -323,7 +324,7 @@ public sealed partial class EditorViewModel
         Exported = new ExportedNotice(Path.GetFileName(choice.Path), Path.GetDirectoryName(choice.Path) ?? string.Empty, choice.Path, finalPdf.Length);
         if (final.HaveFormsMoved)
         {
-            await _host.ShowMessageAsync("Fillable fields may not work", FormsMovedMessage).ConfigureAwait(true);
+            await _host.ShowMessageAsync(Strings.Editor_FillableFieldsMayNotWork, Strings.Editor_FormsMovedMessage).ConfigureAwait(true);
         }
     }
 
@@ -385,7 +386,7 @@ public sealed partial class EditorViewModel
         }
         catch (InvalidOperationException ex)
         {
-            await ShowSaveProblemAsync("Your working copy couldn’t be saved", ex).ConfigureAwait(true);
+            await ShowSaveProblemAsync(Strings.Editor_WorkingCopyCouldntBeSaved, ex).ConfigureAwait(true);
             return false;
         }
         finally
@@ -412,7 +413,7 @@ public sealed partial class EditorViewModel
         OnPropertyChanged(nameof(DocumentStatus));
         if (written.HaveFormsMoved)
         {
-            await _host.ShowMessageAsync("Fillable fields may not work", FormsMovedMessage).ConfigureAwait(true);
+            await _host.ShowMessageAsync(Strings.Editor_FillableFieldsMayNotWork, Strings.Editor_FormsMovedMessage).ConfigureAwait(true);
         }
 
         return true;
@@ -432,8 +433,8 @@ public sealed partial class EditorViewModel
         {
             TryDelete(temporary);
             await _host.ShowMessageAsync(
-                $"{Path.GetFileName(path)} couldn’t be saved",
-                $"Fillsign doesn’t have permission to write there, or the disk is full or the file is open in another app. Try another folder. ({ex.Message})").ConfigureAwait(true);
+                Text.Format(Strings.Editor_FileCouldntBeSaved, Path.GetFileName(path)),
+                Text.Format(Strings.Editor_NoPermissionToWriteThere, ex.Message)).ConfigureAwait(true);
             return false;
         }
     }
@@ -453,11 +454,9 @@ public sealed partial class EditorViewModel
     private Task ShowSaveProblemAsync(string title, InvalidOperationException ex)
     {
         System.Diagnostics.Trace.TraceError($"{title}: {ex}");
-        return _host.ShowMessageAsync(title, "Fillsign couldn’t write this document. Your edits are still open here, so nothing is lost. Try again, or export the pages as they are.");
+        return _host.ShowMessageAsync(title, Strings.Editor_CouldntWriteThisDocument);
     }
 
-    private const string FormsMovedMessage =
-        "This document’s pages couldn’t be reordered in place, so they were copied in their new order. Fillable fields and links may not work in the saved file.";
 
     /// <summary>The clean source: every opened and added page, unencrypted, with nothing drawn in.</summary>
     /// <summary>

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 
 namespace Fillsign.App.Views;
@@ -43,12 +44,15 @@ public partial class DamagedPageCard : UserControl
 
     /// <summary>What the card says (D13), for any number of other pages.</summary>
     internal static string ExplanationFor(string title, int otherPages) =>
-        $"This page is damaged in {title}. " + otherPages switch
-        {
-            0 => "It’s the only page, so there’s nothing else to work on.",
-            1 => "The other page is fine and you can keep working on it.",
-            _ => $"The other {otherPages} pages are fine and you can keep working on them.",
-        };
+        Text.Format(
+            otherPages switch
+            {
+                0 => Strings.DamagedPage_ExplanationOnlyPage,
+                1 => Strings.DamagedPage_Explanation_One,
+                _ => Strings.DamagedPage_Explanation_Other,
+            },
+            title,
+            otherPages);
 
     private void OnKeep(object? sender, RoutedEventArgs e)
     {

@@ -22,7 +22,7 @@ public sealed record RecentFile(string Path, DateTimeOffset LastOpened, bool IsF
 /// <summary>
 /// App preferences kept in the OS app data folder (FR-10.1): the launch count (first-launch screen, FR-1.8), the
 /// appearance, how long recovery copies are kept, the crash-report choice and the
-/// Recent list, the last ink colour chosen (#rrggbb), the date format (null until the first start stores the system's), and whether single letters pick tools (FS-951; off unless turned on, as most people filling a form won't know the letters). Unreadable settings fall back to defaults. Changes take effect immediately and are saved straight away.
+/// Recent list, the last ink colour chosen (#rrggbb), the date format (null until the first start stores the system's), the interface language (null follows the system), and whether single letters pick tools (FS-951; off unless turned on, as most people filling a form won't know the letters). Unreadable settings fall back to defaults. Changes take effect immediately and are saved straight away.
 /// </summary>
 public sealed record AppSettings(
     int LaunchCount = 0,
@@ -34,7 +34,8 @@ public sealed record AppSettings(
     bool UseSingleKeyTools = false,
     double PagesPanelWidth = AppSettings.DefaultPagesPanelWidth,
     WindowPlacement? Window = null,
-    DateFormatChoice? DateFormat = null)
+    DateFormatChoice? DateFormat = null,
+    string? Language = null)
 {
     public const int DefaultRecoveryDays = 30;
 
@@ -143,6 +144,7 @@ public sealed record AppSettings(
         RecoveryDays = RecoveryDayChoices.Contains(RecoveryDays) ? RecoveryDays : DefaultRecoveryDays,
         Appearance = Enum.IsDefined(Appearance) ? Appearance : AppearanceChoice.MatchSystem,
         DateFormat = DateFormat is { } format && !Enum.IsDefined(format) ? null : DateFormat,
+        Language = Localization.Languages.IsSupported(Language) ? Language : null,
         PagesPanelWidth = double.IsFinite(PagesPanelWidth) ? Math.Clamp(PagesPanelWidth, MinPagesPanelWidth, MaxPagesPanelWidth) : DefaultPagesPanelWidth,
         RecentFiles = [.. Recent.Where(recent => !string.IsNullOrWhiteSpace(recent.Path)).Take(MaxRecentFiles)],
     };

@@ -34,6 +34,8 @@ internal static class Program
             System.Diagnostics.Trace.AutoFlush = true;
         }
 
+        // The interface language is set before any window or text exists; Settings can change it later.
+        Localization.Languages.Apply(Platform.AppSettings.Load().Language);
         Platform.FileAssociations.KeepLinuxDesktopEntry();
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

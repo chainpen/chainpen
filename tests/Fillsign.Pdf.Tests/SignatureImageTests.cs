@@ -169,4 +169,39 @@ public sealed class SignatureImageTests
         Directory.CreateDirectory(s_output);
         File.WriteAllBytes(Path.Combine(s_output, name + ".png"), image.Png.AsSpan().ToArray());
     }
+
+    [Fact]
+    public void A_name_the_handwriting_styles_cant_draw_is_drawn_in_a_font_that_can()
+    {
+        // Needs an installed Japanese font (macOS and Windows have them; a bare Linux machine may not).
+        using SKTypeface? japanese = SKFontManager.Default.MatchCharacter('山');
+        Assert.SkipWhen(japanese is null, "No Japanese font is installed.");
+        SignatureImage image = SignatureImageMaker.FromText("やまだ 太郎", HandwritingStyle.Caveat, InkColor.Black) ?? throw new InvalidOperationException("no image");
+        using SKBitmap bitmap = SKBitmap.Decode(image.Png.ToArray());
+        Directory.CreateDirectory(Path.Combine(TestFiles.RepoRoot, "artifacts", "screenshots"));
+        using (FileStream file = File.Create(Path.Combine(TestFiles.RepoRoot, "artifacts", "screenshots", "typed-signature-japanese.png")))
+        {
+            bitmap.Encode(file, SKEncodedImageFormat.Png, 100);
+        }
+
+        // Drawn in one font that has every character, so none comes out as an empty box.
+        (byte[] fontFile, int faceIndex) = SignatureImageMaker.FontWithAll("やまだ太郎", 'や') ?? throw new InvalidOperationException("no font has the name");
+        using (var data = SKData.CreateCopy(fontFile))
+        using (SKTypeface typeface = SKTypeface.FromData(data, faceIndex)!)
+        {
+            Assert.All("やまだ太郎", character => Assert.True(typeface.ContainsGlyph(character), $"{typeface.FamilyName} has no {character}"));
+        }
+
+        // The strokes cover a fair share of the picture.
+        int inked = 0;
+        for (int y = 0; y < bitmap.Height; y++)
+        {
+            for (int x = 0; x < bitmap.Width; x++)
+            {
+                inked += bitmap.GetPixel(x, y).Alpha > 128 ? 1 : 0;
+            }
+        }
+
+        Assert.InRange(inked / (double)(bitmap.Width * bitmap.Height), 0.08, 0.8);
+    }
 }

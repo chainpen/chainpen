@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 
 namespace Fillsign.App.Views;
@@ -24,8 +25,8 @@ public partial class ExportDialog : UserControl
         InitializeComponent();
         _folder = request.Folder;
         FileName.Text = request.SuggestedName;
-        FolderText.Text = ShortFolder(_folder);
-        SizeText.Text = $"Final copy {SaveSizes.Describe(request.Size)}";
+        ShowFolder(ShortFolder(_folder));
+        SizeText.Text = Text.Format(Strings.Export_FinalCopySize, SaveSizes.Describe(request.Size));
         AlsoSave.IsVisible = request.CanSaveWorkingCopy;
         LockFields.IsVisible = request.HasFormFields;
         if (request.HasFormFields)
@@ -35,8 +36,8 @@ public partial class ExportDialog : UserControl
             UpdateLede();
         }
         AlsoSaveDetail.Text = request.ContainsSignature
-            ? "Keeps your edits so you can change them. It contains your signature, so keep it private and send only the final copy."
-            : "Keeps your edits so you can change them. Save it somewhere private, and send only the final copy.";
+            ? Strings.Export_AlsoSaveContainsSignature
+            : Strings.Export_AlsoSaveSomewherePrivate;
         FileName.TextChanged += (_, _) => UpdateNotes();
         UpdateNotes();
         ShowGaps(request.Gaps, request.PageCount);
@@ -65,8 +66,8 @@ public partial class ExportDialog : UserControl
     private const int MaxGapRows = 5;
 
     private void UpdateLede() => Lede.Text = LockFields.IsChecked == true
-        ? "Makes a copy to send. It looks the same in any PDF reader, and your answers can’t be changed. Your working copy stays as it is."
-        : "Makes a copy to send. It looks the same in any PDF reader, and the form’s fields stay editable. Your working copy stays as it is.";
+        ? Strings.Export_LedeLocked
+        : Strings.Export_LedeEditable;
 
     /// <summary>
     /// Focusing the name box scrolls it into view, which nudged the dialog down a few points and cut off the top of the
@@ -98,8 +99,8 @@ public partial class ExportDialog : UserControl
 
         GapsSection.IsVisible = true;
         GapsNote.Text = report.PagesChecked < pageCount
-            ? "Fillsign can’t check everything, and only looked at pages you’ve added to. Look over each page before you send it."
-            : "Fillsign can’t check everything. Look over each page before you send it.";
+            ? Strings.Export_GapsNoteSomePages
+            : Strings.Export_GapsNote;
 
         var rows = new List<(string Title, string? Detail, int GapIndex)>();
         var boxPagesDone = new HashSet<Fillsign.Core.Model.PageId>();
@@ -116,7 +117,7 @@ public partial class ExportDialog : UserControl
             // summed up per page instead.
             if (gap.IsField)
             {
-                string? options = gap.Question.Length > 0 && gap.Label.Length > 0 ? $"Options: {gap.Label}. Fine to leave if that’s intended." : "Fine to leave if that’s intended.";
+                string options = gap.Question.Length > 0 && gap.Label.Length > 0 ? Text.Format(Strings.Export_OptionsFineToLeave, gap.Label) : Strings.Export_FineToLeave;
                 rows.Add((EditorViewModel.DescribeForExport(gap), options, i));
                 continue;
             }
@@ -128,9 +129,9 @@ public partial class ExportDialog : UserControl
 
             Core.Gaps.PageBoxes? boxes = report.Boxes.FirstOrDefault(page => page.Page == gap.Page);
             string title = boxes is { } counted
-                ? $"{counted.Ticked} of {counted.Total} boxes ticked on page {gap.PageNumber}"
+                ? Text.Format(Strings.Export_BoxesTickedOnPage, counted.Ticked, counted.Total, gap.PageNumber)
                 : EditorViewModel.DescribeForExport(gap);
-            string? detail = gap.Label.Length > 0 ? $"Not ticked: “{gap.Label}”. Fine to leave if that’s intended." : "Fine to leave if that’s intended.";
+            string detail = gap.Label.Length > 0 ? Text.Format(Strings.Export_NotTickedFineToLeave, gap.Label) : Strings.Export_FineToLeave;
             rows.Add((title, detail, i));
         }
 
@@ -151,7 +152,7 @@ public partial class ExportDialog : UserControl
                     Classes = { "muted" },
                     FontSize = 13,
                     TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                    Text = $"And {rows.Count - MaxGapRows} more. Show me steps through them all.",
+                    Text = Text.Format(Strings.Export_AndMoreShowMeStepsThrough, rows.Count - MaxGapRows),
                 },
             });
         }
@@ -166,8 +167,8 @@ public partial class ExportDialog : UserControl
             text.Children.Add(new TextBlock { Text = detail, Classes = { "muted" }, FontSize = 13, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
         }
 
-        var show = new Button { Content = "Show me", Classes = { "small" }, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
-        Avalonia.Automation.AutomationProperties.SetName(show, $"Show me: {title}");
+        var show = new Button { Content = Strings.Export_ShowMe, Classes = { "small" }, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        Avalonia.Automation.AutomationProperties.SetName(show, Text.Format(Strings.Export_ShowMeName, title));
         show.Click += (_, _) => _result.TrySetResult(new CheckGapChoice(gapIndex));
 
         var icon = new Fillsign.App.Controls.StrokeIcon { Size = 18, Foreground = Brush("Warning"), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Margin = new Avalonia.Thickness(0, 2, 0, 0) };
@@ -219,7 +220,7 @@ public partial class ExportDialog : UserControl
     internal void UseFolder(string folder)
     {
         _folder = folder;
-        FolderText.Text = ShortFolder(folder);
+        ShowFolder(ShortFolder(folder));
         UpdateNotes();
     }
 
@@ -263,16 +264,25 @@ public partial class ExportDialog : UserControl
         IStorageFolder? start = await storage.TryGetFolderFromPathAsync(_folder).ConfigureAwait(true);
         IReadOnlyList<IStorageFolder> folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Choose where to save the final copy",
+            Title = Strings.Export_ChooseWhereToSaveTheFinal,
             SuggestedStartLocation = start,
         }).ConfigureAwait(true);
         if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } chosen)
         {
             _folder = chosen;
-            FolderText.Text = ShortFolder(chosen);
+            ShowFolder(ShortFolder(chosen));
             UpdateNotes();
         }
     }
 
     private static string ShortFolder(string folder) => SaveSizes.ShortFolder(folder);
+
+    /// <summary>"Saves to Documents": the folder in bold, wherever the language puts it in the sentence.</summary>
+    private void ShowFolder(string folder)
+    {
+        string[] around = Strings.Export_SavesToFolder.Split("{0}");
+        var name = new Avalonia.Controls.Documents.Run(folder) { FontWeight = Avalonia.Media.FontWeight.SemiBold };
+        name.Bind(Avalonia.Controls.Documents.TextElement.ForegroundProperty, this.GetResourceObservable("Text"));
+        SavesTo.Inlines = [new Avalonia.Controls.Documents.Run(around[0]), name, new Avalonia.Controls.Documents.Run(around.Length > 1 ? around[1] : string.Empty)];
+    }
 }

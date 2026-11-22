@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.App.Platform;
 using Fillsign.App.Platform.Signatures;
 using Fillsign.Core.Model;
@@ -28,6 +29,39 @@ public sealed partial class SettingsViewModel : ObservableObject
         _sendCrashReports = settings.SendCrashReports == true;
         _singleKeyToolShortcuts = settings.UseSingleKeyTools;
         _dateFormat = DateFormats.Current;
+        LanguageOptions =
+        [
+            new LanguageOption(null, Text.Format(Strings.Settings_LanguageSystem, Languages.FromSystem().Name)),
+            .. Languages.Supported.Select(language => new LanguageOption(language.Code, language.Name)),
+        ];
+        _language = LanguageOptions.FirstOrDefault(option => option.Code == settings.Language) ?? LanguageOptions[0];
+    }
+
+    // ----- Language -----
+
+    /// <summary>"Match system (English)", then each language in its own name.</summary>
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; }
+
+    private LanguageOption _language;
+
+    public LanguageOption SelectedLanguage
+    {
+        get => _language;
+        set
+        {
+            // The list reports no selection (null) while it's being rebuilt.
+            if (value is null || value == _language)
+            {
+                return;
+            }
+
+            _language = value;
+            AppSettings.Update(settings => settings with { Language = value.Code });
+            OnPropertyChanged();
+
+            // After this change has finished, so the list closes before the windows are rebuilt in the new language.
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Languages.Apply(value.Code));
+        }
     }
 
     // ----- Date format -----
@@ -52,6 +86,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         set => SetDateFormat(value, DateFormatChoice.YearMonthDay);
     }
 
+    public bool IsYearMonthDaySlashes
+    {
+        get => _dateFormat == DateFormatChoice.YearMonthDaySlashes;
+        set => SetDateFormat(value, DateFormatChoice.YearMonthDaySlashes);
+    }
+
     public bool IsDayMonthYearDots
     {
         get => _dateFormat == DateFormatChoice.DayMonthYearDots;
@@ -59,7 +99,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     /// <summary>"Today is 21/11/2026 in this format."</summary>
-    public string DateExample => $"Today is {DateFormats.Format(DateTime.Today, _dateFormat)} in this format.";
+    public string DateExample => Text.Format(Strings.Settings_TodayIsInThisFormat, DateFormats.Format(DateTime.Today, _dateFormat));
 
     private void SetDateFormat(bool isChosen, DateFormatChoice format)
     {
@@ -73,6 +113,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDayMonthYear));
         OnPropertyChanged(nameof(IsMonthDayYear));
         OnPropertyChanged(nameof(IsYearMonthDay));
+        OnPropertyChanged(nameof(IsYearMonthDaySlashes));
         OnPropertyChanged(nameof(IsDayMonthYearDots));
         OnPropertyChanged(nameof(DateExample));
     }
@@ -174,18 +215,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         int count = RecoveryStore.List().Count;
         if (count == 0)
         {
-            Message = "There are no recovery copies to delete.";
+            Message = Strings.Settings_NoRecoveryCopiesToDelete;
             return;
         }
 
-        string what = count == 1 ? "the recovery copy" : $"all {count} recovery copies";
         if (await _confirm(
-                "Delete all recovery copies?",
-                $"Unsaved changes in {what} will be removed from this computer and can’t be brought back. Documents you’ve saved aren’t affected, and documents open now keep a fresh copy while they’re open.",
-                "Delete recovery copies").ConfigureAwait(true))
+                Strings.Settings_DeleteAllRecoveryCopiesTitle,
+                Text.Plural(count, Strings.Settings_DeleteRecoveryCopiesBody_One, Strings.Settings_DeleteRecoveryCopiesBody_Other),
+                Strings.Settings_DeleteRecoveryCopies).ConfigureAwait(true))
         {
             RecoveryStore.DeleteAll();
-            Message = "Recovery copies deleted.";
+            Message = Strings.Settings_RecoveryCopiesDeleted;
         }
     }
 
@@ -249,9 +289,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task StartSignaturesAgainAsync()
     {
         if (!await _confirm(
-                "Start again without your saved signatures?",
-                "Fillsign can’t open the ones saved now, so you won’t be able to use them. New signatures and initials you keep will be saved from now on. Documents you’ve already saved or exported keep theirs.",
-                "Start again").ConfigureAwait(true))
+                Strings.Settings_StartAgainTitle,
+                Strings.Settings_StartAgainBody,
+                Strings.Settings_StartAgain).ConfigureAwait(true))
         {
             return;
         }
@@ -260,11 +300,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             _signatures.StartAgain();
             LoadSignatures();
-            Message = "You can keep new signatures and initials again.";
+            Message = Strings.Settings_CanKeepAgain;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Message = "Fillsign couldn’t set the old ones aside. Try again in a moment.";
+            Message = Strings.Settings_CouldntSetAside;
             System.Diagnostics.Trace.TraceWarning($"Saved signatures could not be set aside. {ex.Message}");
         }
     }
@@ -273,11 +313,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task RemoveSignatureAsync(SavedRowViewModel row)
     {
-        string noun = row.Saved.Kind == SignatureKind.Initials ? "these initials" : "this signature";
+        bool isInitials = row.Saved.Kind == SignatureKind.Initials;
         if (!await _confirm(
-                $"Remove {noun}?",
-                "It will be removed from this computer and can’t be brought back. Documents you’ve already saved or exported keep it.",
-                row.Saved.Kind == SignatureKind.Initials ? "Remove initials" : "Remove signature").ConfigureAwait(true))
+                isInitials ? Strings.Signature_RemoveTheseInitialsTitle : Strings.Signature_RemoveThisSignatureTitle,
+                Strings.Signature_ItWillBeRemovedFromThis,
+                isInitials ? Strings.Signature_RemoveInitials : Strings.Signature_RemoveSignature).ConfigureAwait(true))
         {
             return;
         }
@@ -291,7 +331,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or SignatureKeyUnavailableException)
         {
-            Message = "Fillsign couldn’t remove it. Try again in a moment.";
+            Message = Strings.Signature_CouldntRemove;
             System.Diagnostics.Trace.TraceWarning($"A saved signature could not be removed. {ex.Message}");
         }
     }
@@ -304,6 +344,18 @@ public sealed class SavedRowViewModel(SavedSignature saved)
 
     public Bitmap Thumbnail { get; } = SignatureDialogViewModel.ToBitmap(saved.Image.Png.AsSpan());
 
-    public string Description =>
-        $"{(Saved.Kind == SignatureKind.Initials ? "Initials" : "Signature")}{(Saved.Method == SignatureMethod.Drawn ? string.Empty : $" ({Saved.Method.ToString().ToLowerInvariant()})")} · last used {DateFormats.Format(Saved.LastUsed.ToLocalTime().DateTime)}";
+    public string Description => Text.Format(
+        (Saved.Kind, Saved.Method) switch
+        {
+            (SignatureKind.Initials, SignatureMethod.Typed) => Strings.Settings_SavedInitialsTyped,
+            (SignatureKind.Initials, SignatureMethod.Photo) => Strings.Settings_SavedInitialsPhoto,
+            (SignatureKind.Initials, _) => Strings.Settings_SavedInitialsDrawn,
+            (_, SignatureMethod.Typed) => Strings.Settings_SavedSignatureTyped,
+            (_, SignatureMethod.Photo) => Strings.Settings_SavedSignaturePhoto,
+            _ => Strings.Settings_SavedSignatureDrawn,
+        },
+        DateFormats.Format(Saved.LastUsed.ToLocalTime().DateTime));
 }
+
+/// <summary>A row in Settings → Language: a language code, or null to follow the computer.</summary>
+public sealed record LanguageOption(string? Code, string Name);

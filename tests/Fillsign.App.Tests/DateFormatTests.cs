@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
-using Avalonia.VisualTree;
 using Fillsign.App.Platform;
 using Fillsign.App.ViewModels;
 using Fillsign.App.Views;
@@ -21,7 +20,7 @@ public sealed class DateFormatTests
     [InlineData("fr-FR", DateFormatChoice.DayMonthYear)]
     [InlineData("en-US", DateFormatChoice.MonthDayYear)]
     [InlineData("sv-SE", DateFormatChoice.YearMonthDay)]
-    [InlineData("ja-JP", DateFormatChoice.YearMonthDay)]
+    [InlineData("ja-JP", DateFormatChoice.YearMonthDaySlashes)]
     [InlineData("de-DE", DateFormatChoice.DayMonthYearDots)]
     [InlineData("", DateFormatChoice.MonthDayYear)]
     public void The_starting_format_follows_the_system_order_and_separator(string culture, DateFormatChoice expected) =>
@@ -35,6 +34,7 @@ public sealed class DateFormatTests
         Assert.Equal("03/07/2026", DateFormats.Format(date, DateFormatChoice.MonthDayYear));
         Assert.Equal("2026-03-07", DateFormats.Format(date, DateFormatChoice.YearMonthDay));
         Assert.Equal("07.03.2026", DateFormats.Format(date, DateFormatChoice.DayMonthYearDots));
+        Assert.Equal("2026/03/07", DateFormats.Format(date, DateFormatChoice.YearMonthDaySlashes));
     }
 
     [AvaloniaFact]
@@ -46,7 +46,7 @@ public sealed class DateFormatTests
         try
         {
             var choices = settingsWindow.FindControl<StackPanel>("DateFormatChoices")!.Children.OfType<RadioButton>().ToList();
-            Assert.Equal(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD", "DD.MM.YYYY"], choices.Select(choice => (string)choice.Content!));
+            Assert.Equal(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], choices.Select(choice => (string)choice.Content!));
             Assert.True(choices[0].IsChecked);
 
             RadioButton iso = choices[2];

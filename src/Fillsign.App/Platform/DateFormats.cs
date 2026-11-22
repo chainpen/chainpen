@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Platform;
 
@@ -10,6 +11,7 @@ public enum DateFormatChoice
     MonthDayYear,
     YearMonthDay,
     DayMonthYearDots,
+    YearMonthDaySlashes,
 }
 
 /// <summary>
@@ -20,14 +22,14 @@ public enum DateFormatChoice
 public static class DateFormats
 {
     public static readonly ImmutableArray<DateFormatChoice> Choices =
-        [DateFormatChoice.DayMonthYear, DateFormatChoice.MonthDayYear, DateFormatChoice.YearMonthDay, DateFormatChoice.DayMonthYearDots];
+        [DateFormatChoice.DayMonthYear, DateFormatChoice.MonthDayYear, DateFormatChoice.YearMonthDay, DateFormatChoice.YearMonthDaySlashes, DateFormatChoice.DayMonthYearDots];
 
     private static DateFormatChoice? s_current;
 
     static DateFormats() => AppSettings.Changed += changed => s_current = changed.DateFormat;
 
     /// <summary>The chosen format, or the system's before one has been stored.</summary>
-    public static DateFormatChoice Current => s_current ??= AppSettings.Load().DateFormat ?? FromCulture(CultureInfo.CurrentCulture);
+    public static DateFormatChoice Current => s_current ??= AppSettings.Load().DateFormat ?? FromCulture(Languages.SystemRegion);
 
     /// <summary>The format closest to a culture's short date: its order of day, month and year, and dots if it uses them.</summary>
     public static DateFormatChoice FromCulture(CultureInfo culture)
@@ -44,7 +46,7 @@ public static class DateFormats
 
         if (year < month && month < day)
         {
-            return DateFormatChoice.YearMonthDay;
+            return culture.DateTimeFormat.DateSeparator == "/" ? DateFormatChoice.YearMonthDaySlashes : DateFormatChoice.YearMonthDay;
         }
 
         if (month < day)
@@ -58,10 +60,11 @@ public static class DateFormats
     /// <summary>"DD/MM/YYYY": how the format is named in Settings and hints.</summary>
     public static string Label(DateFormatChoice choice) => choice switch
     {
-        DateFormatChoice.MonthDayYear => "MM/DD/YYYY",
-        DateFormatChoice.YearMonthDay => "YYYY-MM-DD",
-        DateFormatChoice.DayMonthYearDots => "DD.MM.YYYY",
-        _ => "DD/MM/YYYY",
+        DateFormatChoice.MonthDayYear => Strings.Settings_MMDDYYYY,
+        DateFormatChoice.YearMonthDay => Strings.Settings_YYYYMMDD,
+        DateFormatChoice.DayMonthYearDots => Strings.Settings_DDMMYYYYDots,
+        DateFormatChoice.YearMonthDaySlashes => Strings.Settings_YYYYMMDDSlashes,
+        _ => Strings.Settings_DDMMYYYY,
     };
 
     public static string Format(DateTime date, DateFormatChoice choice) => date.ToString(Pattern(choice), CultureInfo.InvariantCulture);
@@ -81,6 +84,7 @@ public static class DateFormats
         DateFormatChoice.MonthDayYear => "MM/dd/yyyy",
         DateFormatChoice.YearMonthDay => "yyyy-MM-dd",
         DateFormatChoice.DayMonthYearDots => "dd.MM.yyyy",
+        DateFormatChoice.YearMonthDaySlashes => "yyyy/MM/dd",
         _ => "dd/MM/yyyy",
     };
 }

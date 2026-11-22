@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Fillsign.App.Localization;
 
 namespace Fillsign.App.Views;
 
@@ -9,29 +10,31 @@ namespace Fillsign.App.Views;
 /// </summary>
 public partial class ShortcutsPanel : UserControl
 {
-    /// <summary>(group, keys, what it does). "Mod" becomes ⌘ or Ctrl.</summary>
-    public static readonly IReadOnlyList<(string Group, string[] Keys, string Action)> Shortcuts =
+    /// <summary>
+    /// (group, keys, what it does). "Mod" becomes ⌘ or Ctrl. Built when asked for, so it's in the interface language.
+    /// </summary>
+    public static IReadOnlyList<(string Group, string[] Keys, string Action)> Shortcuts =>
     [
-        ("Editing", ["Mod C", "Mod X"], "Copy, cut items or pages"),
-        ("Editing", ["Mod V"], "Paste (also text from other apps)"),
-        ("Editing", ["Mod D"], "Duplicate"),
-        ("Editing", ["Mod B"], "Bold text"),
-        ("Editing", ["Delete"], "Delete the selection"),
-        ("Editing", ["Mod Z", "Mod Shift Z"], "Undo, redo"),
-        ("Selecting", ["Mod A"], "Select everything on this page (all pages when organising)"),
-        ("Selecting", ["Shift or Mod + click"], "Add to or remove from the selection"),
-        ("Selecting", ["← → ↑ ↓"], "Nudge (hold Shift for bigger steps)"),
-        ("Selecting", ["Esc"], "Clear the selection, or stop what you’re doing"),
-        ("Tools", ["V", "T", "C", "X"], "Select, text, tick (C for check), cross"),
-        ("Tools", ["D", "S", "R", "P"], "Date, sign, shapes, draw. All eight are off until turned on in Settings → Keyboard"),
-        ("Document", ["Mod O"], "Open"),
-        ("Document", ["Mod S", "Mod Shift S"], "Save working copy, save as"),
-        ("Document", ["Mod E"], "Export final copy"),
-        ("Document", ["Mod P"], "Print"),
-        ("Document", ["Mod +", "Mod −", "Mod 0"], "Zoom in, out, fit width"),
-        ("Document", ["Page Up", "Page Down"], "Previous, next page"),
-        ("Document", ["F6"], "Move between toolbar, page list, page and status bar"),
-        ("Document", ["Mod ,"], "Settings"),
+        (Strings.Shortcuts_Editing, ["Mod C", "Mod X"], Strings.Shortcuts_CopyCutItemsOrPages),
+        (Strings.Shortcuts_Editing, ["Mod V"], Strings.Shortcuts_PasteAlsoTextFromOtherApps),
+        (Strings.Shortcuts_Editing, ["Mod D"], Strings.Editor_Duplicate),
+        (Strings.Shortcuts_Editing, ["Mod B"], Strings.Shortcuts_BoldText),
+        (Strings.Shortcuts_Editing, [Strings.Keys_Delete], Strings.Shortcuts_DeleteTheSelection),
+        (Strings.Shortcuts_Editing, ["Mod Z", "Mod Shift Z"], Strings.Shortcuts_UndoRedo),
+        (Strings.Shortcuts_Selecting, ["Mod A"], Strings.Shortcuts_SelectEverythingOnThisPage),
+        (Strings.Shortcuts_Selecting, [Strings.Shortcuts_ShiftOrModClick], Strings.Shortcuts_AddToOrRemoveFromTheSelection),
+        (Strings.Shortcuts_Selecting, ["← → ↑ ↓"], Strings.Shortcuts_NudgeHoldShiftForBiggerSteps),
+        (Strings.Shortcuts_Selecting, ["Esc"], Strings.Shortcuts_ClearTheSelectionOrStop),
+        (Strings.Editor_Tools, ["V", "T", "C", "X"], Strings.Shortcuts_SelectTextTickCross),
+        (Strings.Editor_Tools, ["D", "S", "R", "P"], Strings.Shortcuts_DateSignShapesDraw),
+        (Strings.Editor_Document, ["Mod O"], Strings.Common_Open),
+        (Strings.Editor_Document, ["Mod S", "Mod Shift S"], Strings.Shortcuts_SaveWorkingCopySaveAs),
+        (Strings.Editor_Document, ["Mod E"], Strings.Common_ExportFinalCopy),
+        (Strings.Editor_Document, ["Mod P"], Strings.Common_Print),
+        (Strings.Editor_Document, ["Mod +", "Mod −", "Mod 0"], Strings.Shortcuts_ZoomInOutFitWidth),
+        (Strings.Editor_Document, [Strings.Keys_PageUp, Strings.Keys_PageDown], Strings.Shortcuts_PreviousNextPage),
+        (Strings.Editor_Document, ["F6"], Strings.Shortcuts_MoveBetweenToolbarPageListPage),
+        (Strings.Editor_Document, ["Mod ,"], Strings.Start_Settings),
     ];
 
     /// <summary>In the Help → Keyboard shortcuts dialog the title matches other dialogs' (UX review 9).</summary>
@@ -68,12 +71,11 @@ public partial class ShortcutsPanel : UserControl
             var action = new TextBlock { Text = shortcut.Action, FontSize = 13, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(action, 1);
             row.Children.Add(action);
-            Avalonia.Automation.AutomationProperties.SetName(row, $"{string.Join(", ", shortcut.Keys.Select(ForThisComputer))}: {shortcut.Action}");
+            Avalonia.Automation.AutomationProperties.SetName(row, Text.Format(Strings.Shortcuts_RowName, string.Join(Strings.Editor_ListSeparator, shortcut.Keys.Select(ForThisComputer)), shortcut.Action));
             Rows.Children.Add(row);
         }
     }
 
-    /// <summary>"Mod S" → "⌘ S" on a Mac, "Ctrl S" elsewhere.</summary>
-    public static string ForThisComputer(string keys) =>
-        keys.Replace("Mod", OperatingSystem.IsMacOS() ? "⌘" : "Ctrl", StringComparison.Ordinal);
+    /// <summary>"Mod S" → "⌘ S" on a Mac, "Ctrl S" elsewhere ("Strg S" in German), as tooltips and menus write them.</summary>
+    public static string ForThisComputer(string keys) => Controls.KeysExtension.ForThisComputer(keys, OperatingSystem.IsMacOS());
 }

@@ -4,11 +4,22 @@
     <IsAotCompatible>true</IsAotCompatible>
     <RootNamespace>Fillsign.Pdf</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NeutralLanguage>en</NeutralLanguage>
+    <SatelliteResourceLanguages>en;de;ja</SatelliteResourceLanguages>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Text the app shows from here (why a file can't be opened, field labels), translated beside it. -->
+    <EmbeddedResource Update="Localization\Strings.resx" ClassName="Fillsign.Pdf.Localization.Strings" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fillsign.Core\Fillsign.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Fillsign.Pdf.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Generates the Strings class from Strings.resx while compiling, so editors see it too (build-time only). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
     <PackageReference Include="bblanchon.PDFium.Win32" />
     <PackageReference Include="bblanchon.PDFium.macOS" />
     <PackageReference Include="bblanchon.PDFium.Linux" />

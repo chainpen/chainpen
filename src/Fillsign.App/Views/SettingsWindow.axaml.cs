@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Fillsign.App.Platform.Signatures;
 using Fillsign.App.ViewModels;
 
 namespace Fillsign.App.Views;
@@ -23,6 +22,10 @@ public partial class SettingsWindow : Window
     }
 
     internal SettingsViewModel ViewModel => (SettingsViewModel)DataContext!;
+
+    /// <summary>Puts focus back on the language list, where it was when the language changed.</summary>
+    internal void FocusLanguage() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => LanguageChoice.Focus(Avalonia.Input.NavigationMethod.Tab), Avalonia.Threading.DispatcherPriority.Background);
 
     /// <summary>A red-button confirmation over the window, starting on Cancel (INTERACTION-PATTERNS §5).</summary>
     private async Task<bool> ConfirmAsync(string title, string body, string destructiveLabel)

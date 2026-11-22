@@ -2,9 +2,9 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Fillsign.App.Localization;
 using Fillsign.App.Rendering;
 using Fillsign.App.ViewModels;
 using Fillsign.Core.Geometry;
@@ -38,25 +38,36 @@ public sealed partial class PagesCanvas
     // The page a drag started on: the drag stays on that page (FR-5.3) even when the pointer leaves it.
     private int _dragPage = -1;
 
+    private void DetachItems(EditorViewModel editor)
+    {
+        editor.ItemsChanged -= OnItemsChanged;
+        editor.PropertyChanged -= OnItemsPropertyChanged;
+        DetachFields(editor);
+    }
+
+    private void OnItemsChanged()
+    {
+        SyncTypingBox();
+        InvalidateLayers();
+    }
+
+    private void OnItemsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(EditorViewModel.Tool) or nameof(EditorViewModel.PlacingSignature))
+        {
+            UpdatePointerCursor(null);
+        }
+
+        if (args.PropertyName == nameof(EditorViewModel.GuideTarget))
+        {
+            InvalidateLayers();
+        }
+    }
+
     private void AttachItems(EditorViewModel editor)
     {
-        editor.ItemsChanged += () =>
-        {
-            SyncTypingBox();
-            InvalidateLayers();
-        };
-        editor.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName is nameof(EditorViewModel.Tool) or nameof(EditorViewModel.PlacingSignature))
-            {
-                UpdatePointerCursor(null);
-            }
-
-            if (args.PropertyName == nameof(EditorViewModel.GuideTarget))
-            {
-                InvalidateLayers();
-            }
-        };
+        editor.ItemsChanged += OnItemsChanged;
+        editor.PropertyChanged += OnItemsPropertyChanged;
         AttachFields(editor);
         PointerPressed += OnPointerPressed;
         PointerMoved += OnPointerMoved;
@@ -152,7 +163,7 @@ public sealed partial class PagesCanvas
         {
             var box = new Rect(rect.X + (unsigned.Box.X * Zoom), rect.Y + (unsigned.Box.Y * Zoom), unsigned.Box.Width * Zoom, unsigned.Box.Height * Zoom);
             context.DrawRectangle(tint, new Pen(blue, 1.5, s_signHereDash), box, 3, 3);
-            var signHere = new FormattedText("Sign here", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), blue);
+            var signHere = new FormattedText(Strings.Editor_SignHere, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), blue);
             if (signHere.Width + 16 <= box.Width && signHere.Height <= box.Height)
             {
                 context.DrawText(signHere, new Point(box.X + 8, box.Y + ((box.Height - signHere.Height) / 2)));
@@ -557,7 +568,7 @@ public sealed partial class PagesCanvas
                 FontFeatures = ItemPainter.NoKerning,
                 Classes = { "onPage" },
             };
-            AutomationProperties.SetName(_typingBox, "Text on the page");
+            AutomationProperties.SetName(_typingBox, Strings.Editor_TextOnThePage);
             _typingBox.TextChanged += (_, _) =>
             {
                 if (_typingBoxItem is not null)

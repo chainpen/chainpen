@@ -34,6 +34,11 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
+
+        // The command speaks English whatever the computer's language: scripts and assistants read its output.
+        System.Globalization.CultureInfo english = System.Globalization.CultureInfo.GetCultureInfo("en");
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = english;
+        System.Globalization.CultureInfo.CurrentUICulture = english;
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
             Console.Out.WriteLine(Usage);

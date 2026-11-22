@@ -7,6 +7,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Icon\fillsign.ico</ApplicationIcon>
     <Product>Fillsign</Product>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Ship only Fillsign's own languages, not every language a library has satellite resources for. -->
+    <SatelliteResourceLanguages>en;de;ja</SatelliteResourceLanguages>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- The render service writes PDFium output straight into bitmap memory. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -16,6 +19,8 @@
     <ProjectReference Include="..\Fillsign.Pdf\Fillsign.Pdf.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Generates the Strings class from Strings.resx while compiling, so editors see it too (build-time only). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
@@ -30,7 +35,13 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\practice-form.pdf" />
+    <AvaloniaResource Include="Assets\practice-form.de.pdf" />
+    <AvaloniaResource Include="Assets\practice-form.ja.pdf" />
     <AvaloniaResource Include="Assets\Icon\fillsign-256.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Text people see (English), with a generated Strings class; translations sit beside it as Strings.<lang>.resx. -->
+    <EmbeddedResource Update="Localization\Strings.resx" ClassName="Fillsign.App.Localization.Strings" Public="true" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Fillsign.App.Tests" />

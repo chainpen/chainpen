@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Fillsign.App.Localization;
 using Fillsign.App.ViewModels;
 
 namespace Fillsign.App.Views;
@@ -10,7 +11,7 @@ public partial class OpenOrAddDialog : UserControl
     private readonly TaskCompletionSource<OpenChoice> _result = new();
 
     public OpenOrAddDialog()
-        : this("Open", "this document", 0)
+        : this(Strings.Common_Open, Strings.OpenOrAdd_ThisDocument, 0)
     {
     }
 
@@ -18,13 +19,10 @@ public partial class OpenOrAddDialog : UserControl
     {
         InitializeComponent();
         Heading.Text = title;
-        Body.Text = $"{documentName} stays open either way.";
-        AddDetail.Text = pageCount switch
-        {
-            1 => "1 page goes at the end. You can move it afterwards.",
-            > 1 => $"{pageCount} pages go at the end. You can move them afterwards.",
-            _ => "The pages go at the end. You can move them afterwards.",
-        };
+        Body.Text = Text.Format(Strings.OpenOrAdd_StaysOpenEitherWay, documentName);
+        AddDetail.Text = pageCount > 0
+            ? Text.Plural(pageCount, Strings.OpenOrAdd_PagesGoAtTheEnd_One, Strings.OpenOrAdd_PagesGoAtTheEnd_Other)
+            : Strings.OpenOrAdd_ThePagesGoAtTheEnd;
         AttachedToVisualTree += (_, _) => OpenButton.Focus();
         KeyDown += (_, e) =>
         {

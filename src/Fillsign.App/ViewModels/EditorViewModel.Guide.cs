@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fillsign.App.Localization;
 using Fillsign.Core.Model;
 
 namespace Fillsign.App.ViewModels;
@@ -67,39 +68,39 @@ public sealed partial class EditorViewModel
         }
     }
 
-    public string GuideProgress => Guide is GuideStep.Done or null ? "Practice done" : $"Step {(int)Guide + 1} of {GuideSteps}";
+    public string GuideProgress => Guide is GuideStep.Done or null ? Strings.Editor_PracticeDone : Text.Format(Strings.Editor_StepOfSteps, (int)Guide + 1, GuideSteps);
 
     public string GuideTitle => Guide switch
     {
-        GuideStep.Tick => "Tick a box",
-        GuideStep.Name => "Write your name",
-        GuideStep.Sign => "Sign the form",
-        GuideStep.Export => "Export a final copy",
-        GuideStep.Done => "That’s it",
+        GuideStep.Tick => Strings.Editor_GuideTickABox,
+        GuideStep.Name => Strings.Editor_GuideWriteYourName,
+        GuideStep.Sign => Strings.Editor_GuideSignTheForm,
+        GuideStep.Export => Strings.Common_ExportAFinalCopy,
+        GuideStep.Done => Strings.Editor_GuideThatsIt,
         _ => string.Empty,
     };
 
     public string GuideText => Guide switch
     {
         GuideStep.Tick when Tool != EditorTool.Tick =>
-            "This form is a scan, so its boxes are only part of the picture and clicking them does nothing. Choose Tick in the toolbar first.",
-        GuideStep.Tick => "Now click the box beside “I agree to the volunteer guidelines”.",
-        GuideStep.Name when TypingItem is not null => "Type your name, then press Esc or click outside the text to finish.",
-        GuideStep.Name when Tool != EditorTool.Text => "Choose Text in the toolbar.",
-        GuideStep.Name => "Click on the Name line, then type your name.",
-        GuideStep.Sign when PlacingSignature is not null => "Click on the Signature line to put your signature there.",
-        GuideStep.Sign => "Choose Sign in the toolbar, then draw, type or choose your signature.",
+            Strings.Editor_GuideTickChooseTool,
+        GuideStep.Tick => Strings.Editor_GuideTickClickTheBox,
+        GuideStep.Name when TypingItem is not null => Strings.Editor_GuideNameTypeYourName,
+        GuideStep.Name when Tool != EditorTool.Text => Strings.Editor_GuideNameChooseText,
+        GuideStep.Name => Strings.Editor_GuideNameClickTheLine,
+        GuideStep.Sign when PlacingSignature is not null => Strings.Editor_GuideSignClickTheLine,
+        GuideStep.Sign => Strings.Editor_GuideSignChooseSign,
         GuideStep.Export =>
-            "Choose Export at the top right. It makes the file you send: it looks the same for everyone and can’t be changed.",
+            Strings.Editor_GuideExportChooseExport,
         GuideStep.Done =>
-            "You’ve filled in a form. Open your own from the start screen. Help → Try the practice form brings this guide back.",
+            Strings.Editor_GuideDone,
         _ => string.Empty,
     };
 
     /// <summary>What screen readers hear as the step changes: where they are, the step and what to do.</summary>
-    public string GuideAnnouncement => IsGuiding ? $"{GuideProgress}. {GuideTitle}. {GuideText}" : string.Empty;
+    public string GuideAnnouncement => IsGuiding ? Text.Format(Strings.Editor_GuideAnnouncement, GuideProgress, GuideTitle, GuideText) : string.Empty;
 
-    public string GuideCloseLabel => Guide == GuideStep.Done ? "Close guide" : "Skip guide";
+    public string GuideCloseLabel => Guide == GuideStep.Done ? Strings.Editor_CloseGuide : Strings.Editor_SkipGuide;
 
     // Which toolbar button the step wants, lit up until it's chosen; or, after a nudge, the tools for filling in.
     public bool GuideLightsTick => (Guide == GuideStep.Tick && Tool != EditorTool.Tick) || IsNudgingWithoutGuide;
@@ -127,7 +128,7 @@ public sealed partial class EditorViewModel
             return;
         }
 
-        Tell("To fill in this page, choose a tool first: Tick for boxes, Text for lines, Sign for your signature.");
+        Tell(Strings.Editor_ChooseAToolFirst);
         IsNudgingTools = true;
     }
 
@@ -143,9 +144,9 @@ public sealed partial class EditorViewModel
 
             return Guide switch
             {
-                GuideStep.Tick when Tool == EditorTool.Tick => (page, s_practiceBox, "Click here"),
-                GuideStep.Name when Tool == EditorTool.Text && TypingItem is null => (page, s_practiceName, "Click here"),
-                GuideStep.Sign when PlacingSignature is not null => (page, s_practiceSignature, "Sign here"),
+                GuideStep.Tick when Tool == EditorTool.Tick => (page, s_practiceBox, Strings.Editor_ClickHere),
+                GuideStep.Name when Tool == EditorTool.Text && TypingItem is null => (page, s_practiceName, Strings.Editor_ClickHere),
+                GuideStep.Sign when PlacingSignature is not null => (page, s_practiceSignature, Strings.Editor_SignHere),
                 _ => null,
             };
         }
