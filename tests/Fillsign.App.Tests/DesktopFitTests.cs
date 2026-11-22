@@ -62,13 +62,14 @@ public sealed class DesktopFitTests : IDisposable
     [AvaloniaFact]
     public async Task Unsaved_work_left_by_a_crash_is_offered_back_with_every_item()
     {
-        // A window autosaves, then "crashes": it's never closed, so its recovery copy stays.
+        // A window autosaves, then "crashes": it's never closed, so its recovery copy stays, and nothing has it open.
         var crashed = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf"));
         crashed.AddTick();
         await crashed.Editor.AutosaveAsync();
         Assert.True(crashed.Editor.HasRecoveryStatus);
         Assert.StartsWith("Recovery copy kept ", crashed.Editor.RecoveryStatus, StringComparison.Ordinal);
         RecoveryCopy kept = Assert.Single(RecoveryStore.List());
+        RecoveryStore.Release(kept.Id);
 
         using var s = await Session.StartAsync();
         Assert.True(s.Start.HasRecovery);
@@ -95,6 +96,7 @@ public sealed class DesktopFitTests : IDisposable
         var crashed = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf"));
         crashed.AddTick();
         await crashed.Editor.AutosaveAsync();
+        RecoveryStore.Release(crashed.Editor.RecoveryId);
 
         using var s = await Session.StartAsync();
         s.Start.PutOffRecovery();
@@ -102,6 +104,72 @@ public sealed class DesktopFitTests : IDisposable
         Assert.Equal("Changes not saved · open to recover", s.Start.Recent[0].Status);
         Assert.True(Assert.Single(RecoveryStore.List()).IsDismissed);
         crashed.Window.CloseWithoutAsking();
+    }
+
+    [AvaloniaFact]
+    public async Task A_recovery_copy_that_belongs_to_an_open_document_isnt_offered_or_recovered()
+    {
+        // One window has unsaved work and its recovery copy; a second window opens on the start screen.
+        using var working = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf"));
+        working.AddTick();
+        await working.Editor.AutosaveAsync();
+        RecoveryCopy copy = Assert.Single(RecoveryStore.List());
+        Assert.Equal(Environment.ProcessId, copy.OwnerProcessId);
+        Assert.True(RecoveryStore.IsInUse(copy));
+
+        using var s = await Session.StartAsync();
+        Assert.False(s.Start.HasRecovery);
+        Assert.DoesNotContain(s.Start.Recent, item => item.Recovery is not null);
+
+        // Asked to recover it anyway (a list made before it was taken), nothing opens and the copy stays the first window's.
+        await s.Window.RecoverAsync(copy);
+        Assert.Null(((MainWindowViewModel)s.Window.DataContext!).Editor);
+        Assert.Single(RecoveryStore.List());
+    }
+
+    [AvaloniaFact]
+    public async Task A_recovery_copy_held_by_another_running_Fillsign_is_left_alone_until_that_one_has_gone()
+    {
+        // A copy written by "another Fillsign": any other process that's running now stands in for it.
+        using System.Diagnostics.Process other = System.Diagnostics.Process.GetProcesses().First(process =>
+        {
+            try
+            {
+                return process.Id != Environment.ProcessId && !process.HasExited && process.StartTime > DateTime.MinValue;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+            {
+                return false;
+            }
+        });
+        var written = new RecoveryCopy(Guid.NewGuid(), "theirs.pdf", null, null, DateTimeOffset.Now.AddDays(-40));
+        Assert.True(RecoveryStore.Write(written, File.ReadAllBytes(TestFiles.Sample("sample-form.pdf"))));
+        string info = Path.Combine(RecoveryStore.Folder, $"{written.Id:N}.json");
+        void SetOwner(int processId, DateTimeOffset started)
+        {
+            var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(info))!;
+            json["OwnerProcessId"] = processId;
+            json["OwnerStartedAt"] = started;
+            File.WriteAllText(info, json.ToJsonString());
+        }
+
+        SetOwner(other.Id, other.StartTime.ToUniversalTime());
+        RecoveryCopy theirs = Assert.Single(RecoveryStore.List());
+        Assert.True(RecoveryStore.IsInUse(theirs));
+
+        // Not offered here, and the clean-up of old copies doesn't take a live document's only copy.
+        using var s = await Session.StartAsync();
+        Assert.False(s.Start.HasRecovery);
+        Assert.Empty(s.Start.Recent);
+        RecoveryStore.DeleteOlderThan(TimeSpan.FromDays(30), DateTimeOffset.Now);
+        Assert.Single(RecoveryStore.List());
+
+        // The same process number with another start time is some other program: that Fillsign has gone, so its work
+        // is offered back.
+        SetOwner(other.Id, other.StartTime.ToUniversalTime().AddHours(-3));
+        Assert.False(RecoveryStore.IsInUse(Assert.Single(RecoveryStore.List())));
+        s.Start.Refresh();
+        Assert.True(s.Start.HasRecovery);
     }
 
     [AvaloniaFact]

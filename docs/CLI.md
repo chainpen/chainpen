@@ -5,7 +5,8 @@ this computer. Both use the same code as the app: values are checked against eac
 filled so they keep working, and the copies made are the same as the app's.
 
 What they never do: sign (signing happens in the app, with your saved signatures), overwrite a file unless asked,
-change a file whose owner forbids changes unless asked (`--edit-anyway`, command line only), or reach the network.
+fill or copy a file whose owner forbids changes unless asked (`--edit-anyway`, command line only), or reach the
+network. Every copy Fillsign writes is free of the owner's restriction, so `fill` and `export` both ask.
 
 ## Where it is
 
@@ -24,7 +25,7 @@ fillsign info <file> [--json]
 fillsign fields <file> [--json]
 fillsign fill <file> --out <file> [--set NAME=VALUE]... [--values <file.json>]
               [--working-copy] [--unlocked] [--overwrite] [--edit-anyway]
-fillsign export <working-copy> --out <file> [--unlocked] [--overwrite]
+fillsign export <working-copy> --out <file> [--unlocked] [--overwrite] [--edit-anyway]
 fillsign mcp
 ```
 
@@ -64,4 +65,4 @@ Tools (paths must be absolute and on this computer, not on a network share; `out
 | `export_final_copy` | `path`, `output_path`, optional `lock_fields`, `overwrite` |
 
 A wrong value, a missing file or a relative path comes back as a tool error the assistant can correct. Files whose
-owner forbids changes are never changed through MCP.
+owner forbids changes are never filled or exported through MCP.

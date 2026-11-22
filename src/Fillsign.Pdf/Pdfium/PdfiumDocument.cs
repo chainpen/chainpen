@@ -50,7 +50,7 @@ public sealed class PdfPageException(int pageIndex) : Exception($"Page {pageInde
 /// <param name="Width">Displayed width (crop box with /Rotate applied).</param>
 /// <param name="Height">Displayed height.</param>
 /// <param name="Rotation">The page's own /Rotate in quarter turns clockwise (0–3).</param>
-/// <param name="CropBox">Crop box in unrotated PDF user space: left, bottom, right, top.</param>
+/// <param name="CropBox">The crop box cut to the media box, in unrotated PDF user space: left, bottom, right, top.</param>
 public readonly record struct PdfPageInfo(float Width, float Height, int Rotation, (float Left, float Bottom, float Right, float Top) CropBox);
 
 /// <summary>An open PDF, loaded from a private copy of the file bytes (the original file is never touched).</summary>
@@ -110,8 +110,19 @@ public sealed partial class PdfiumDocument : IDisposable
             nint page = LoadPage(pageIndex);
             try
             {
-                if (!FPDFPage_GetCropBox(page, out float l, out float b, out float r, out float t)
-                    && !FPDFPage_GetMediaBox(page, out l, out b, out r, out t))
+                // The box PDFium shows the page in, so what's added lands where it was put. Many files set the page
+                // size once on the page tree, which the page's own boxes below don't see.
+                float l, b, r, t;
+                if (FPDF_GetPageBoundingBox(page, out FsRectF box) && box.Right > box.Left && box.Top > box.Bottom)
+                {
+                    (l, b, r, t) = (box.Left, box.Bottom, box.Right, box.Top);
+                }
+                else if (FPDFPage_GetCropBox(page, out l, out b, out r, out t) || FPDFPage_GetMediaBox(page, out l, out b, out r, out t))
+                {
+                    // Boxes that don't overlap leave nothing to show; fall back to the page's own, the right way round.
+                    (l, b, r, t) = (Math.Min(l, r), Math.Min(b, t), Math.Max(l, r), Math.Max(b, t));
+                }
+                else
                 {
                     // PDFium defaults a missing MediaBox to US Letter.
                     (l, b, r, t) = (0, 0, 612, 792);

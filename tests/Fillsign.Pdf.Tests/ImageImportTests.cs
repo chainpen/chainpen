@@ -79,4 +79,33 @@ public sealed class ImageImportTests
 
         return ~crc;
     }
+
+    [Fact]
+    public void A_pasted_photo_too_detailed_for_a_working_copy_is_made_smaller_and_reads_back()
+    {
+        // Noise is the worst case for PNG: this is about 17 MB as stored, over twice what the working copy reads back.
+        using var noisy = new SKBitmap(new SKImageInfo(2400, 1800, SKColorType.Bgra8888, SKAlphaType.Opaque));
+        var random = new Random(7);
+        random.NextBytes(noisy.GetPixelSpan());
+        using SKData file = noisy.Encode(SKEncodedImageFormat.Png, 100);
+        Assert.True(file.Size > Core.Session.SessionJson.MaxImageBytes);
+
+        Core.Model.SignatureImage picture = PictureImport.FromImageFile(file.AsSpan());
+        Assert.True(picture.Png.Length <= Core.Session.SessionJson.MaxImageBytes, $"{picture.Png.Length} bytes");
+        Assert.True(picture.PixelWidth < 2400);
+        Assert.Equal(2400.0 / 1800, (double)picture.PixelWidth / picture.PixelHeight, 2);
+
+        // Saved in a working copy's record, it comes back: before, the record was written and then refused.
+        Core.Model.DocumentState document = Core.Model.DocumentState.ForSourcePages(1);
+        Assert.True(Core.Session.SessionJson.HasRoomFor(document, picture));
+        document = Core.Editing.ItemEdits.Add(document, new Core.Model.PictureItem(Core.Model.ItemId.New(), document.Pages[0].Id, 10, 10, picture, 200, 150));
+        byte[] json = Core.Session.SessionJson.Write(new Core.Session.SessionRecord(Core.Session.ByteStamp.Of("a"u8), Core.Session.ByteStamp.Of("b"u8), 1, document));
+        Assert.Single(Core.Session.SessionJson.Read(json).Document.Items);
+
+        // An ordinary picture is kept at its own size.
+        using var plain = new SKBitmap(new SKImageInfo(800, 400, SKColorType.Bgra8888, SKAlphaType.Opaque));
+        plain.Erase(SKColors.Teal);
+        using SKData small = plain.Encode(SKEncodedImageFormat.Png, 100);
+        Assert.Equal(800, PictureImport.FromImageFile(small.AsSpan()).PixelWidth);
+    }
 }

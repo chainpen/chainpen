@@ -238,6 +238,111 @@ public sealed class EditingTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task Once_focus_leaves_the_page_Space_and_arrows_no_longer_change_the_form_field_left_behind()
+    {
+        using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+        var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+        Pdf.Pdfium.FormField box = e.Editor.Source.FormFields(0).Single(field => field.Name == "ContactEmail");
+        PagePoint at = transform.ToDisplay((box.Rect.Left + box.Rect.Right) / 2, (box.Rect.Bottom + box.Rect.Top) / 2);
+        e.FocusPage();
+        e.Editor.PointerPressed(0, at, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+        e.Editor.PointerReleased(at);
+        Assert.Equal("Yes", e.Editor.State.Fields["ContactEmail"]);
+        Assert.Equal("ContactEmail", e.Editor.FocusedField?.Field.Name);
+
+        // Shift+F6 goes to the page list. The check box keeps its outline, but the keys are the list's now.
+        e.Key(Key.F6, RawInputModifiers.Shift);
+        await Pump(() => true);
+        Assert.False(e.View.IsPageFocused(e.Window.FocusManager?.GetFocusedElement()));
+        e.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        e.Window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+        Assert.Equal("Yes", e.Editor.State.Fields["ContactEmail"]);
+
+        // Back on the page, Space works on the field again.
+        e.Key(Key.F6, RawInputModifiers.None);
+        await Pump(() => e.View.IsPageFocused(e.Window.FocusManager?.GetFocusedElement()));
+        e.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        Assert.Equal(Pdf.Pdfium.PdfiumDocument.FieldOff, e.Editor.State.Fields["ContactEmail"]);
+    }
+
+    [AvaloniaFact]
+    public async Task A_check_box_field_with_a_Yes_box_and_a_No_box_has_one_ticked_at_a_time()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"fillsign-yes-no-{Guid.NewGuid():N}.pdf");
+        File.WriteAllBytes(path, YesNoForm());
+        try
+        {
+            using var e = await EditorSession.OpenAsync(file: path);
+            var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+            Pdf.Pdfium.FormField yes = e.Editor.Source.FormFields(0).Single(box => box.OnValue == "Yes");
+            Pdf.Pdfium.FormField no = e.Editor.Source.FormFields(0).Single(box => box.OnValue == "No");
+            void ClickBox(Pdf.Pdfium.FormField box)
+            {
+                PagePoint at = transform.ToDisplay((box.Rect.Left + box.Rect.Right) / 2, (box.Rect.Bottom + box.Rect.Top) / 2);
+                e.Editor.PointerPressed(0, at, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+                e.Editor.PointerReleased(at);
+            }
+
+            ClickBox(yes);
+            Assert.Equal("Yes", e.Editor.State.Fields["Citizen"]);
+            Assert.True(e.Editor.IsTicked(yes));
+            Assert.False(e.Editor.IsTicked(no));
+            Assert.EndsWith("check box, ticked", e.Editor.FieldAnnouncement, StringComparison.Ordinal);
+
+            // One click on the other box moves the tick, as in a PDF reader, and each box says its own state.
+            ClickBox(no);
+            Assert.Equal("No", e.Editor.State.Fields["Citizen"]);
+            Assert.True(e.Editor.IsTicked(no));
+            Assert.False(e.Editor.IsTicked(yes));
+            Assert.EndsWith("check box, ticked", e.Editor.FieldAnnouncement, StringComparison.Ordinal);
+            e.Editor.MoveFieldFocus(backwards: true);
+            Assert.Equal("Yes", e.Editor.FocusedField?.Field.OnValue);
+            Assert.EndsWith("check box, not ticked", e.Editor.FieldAnnouncement, StringComparison.Ordinal);
+
+            ClickBox(no);
+            Assert.Equal(Pdf.Pdfium.PdfiumDocument.FieldOff, e.Editor.State.Fields["Citizen"]);
+            Assert.False(e.Editor.IsTicked(no));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>A one-page PDF with a check box field, "Citizen", drawn as two boxes with the on-values Yes and No.</summary>
+    private static byte[] YesNoForm()
+    {
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] >> >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 300 200] >>",
+            "<< /Type /Page /Parent 2 0 R /Annots [5 0 R 6 0 R] >>",
+            "<< /FT /Btn /T (Citizen) /V /Off /Kids [5 0 R 6 0 R] >>",
+            "<< /Type /Annot /Subtype /Widget /Parent 4 0 R /P 3 0 R /Rect [20 150 40 170] /F 4 /AS /Off /AP << /N << /Yes 7 0 R /Off 8 0 R >> >> >>",
+            "<< /Type /Annot /Subtype /Widget /Parent 4 0 R /P 3 0 R /Rect [60 150 80 170] /F 4 /AS /Off /AP << /N << /No 7 0 R /Off 8 0 R >> >> >>",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 14 >>\nstream\n0 0 20 20 re f\nendstream",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 0 >>\nstream\n\nendstream",
+        ];
+        var text = new System.Text.StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int>();
+        for (int i = 0; i < objects.Length; i++)
+        {
+            offsets.Add(text.Length);
+            text.Append(System.Globalization.CultureInfo.InvariantCulture, $"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
+        }
+
+        int xref = text.Length;
+        text.Append(System.Globalization.CultureInfo.InvariantCulture, $"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
+        foreach (int offset in offsets)
+        {
+            text.Append(System.Globalization.CultureInfo.InvariantCulture, $"{offset:D10} 00000 n \n");
+        }
+
+        text.Append(System.Globalization.CultureInfo.InvariantCulture, $"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        return System.Text.Encoding.Latin1.GetBytes(text.ToString());
+    }
+
+    [AvaloniaFact]
     public async Task Tab_in_a_form_field_keeps_it_and_moves_to_the_next_field()
     {
         using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");

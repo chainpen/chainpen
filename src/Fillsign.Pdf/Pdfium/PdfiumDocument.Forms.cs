@@ -130,7 +130,8 @@ public sealed partial class PdfiumDocument
 
     /// <summary>
     /// Fills fields by name (FS-950) as a person would in a PDF reader, so PDFium writes their appearance too and the
-    /// fields keep working. Text and choices take the value; a check box is ticked unless the value is "Off"; a radio
+    /// fields keep working. Text and choices take the value; a check box is ticked by any value but "Off", and when
+    /// its field has several boxes with their own on-values, the box the value names is the one ticked; a radio
     /// button is chosen when the value is its on-value. Names the document doesn't have, and read-only fields, are
     /// skipped.
     /// </summary>
@@ -151,28 +152,57 @@ public sealed partial class PdfiumDocument
             }
 
             var filled = new HashSet<string>(StringComparer.Ordinal);
+            var boxes = new CheckBoxes();
             int pages = FPDF_GetPageCount(_document);
             for (int pageIndex = 0; pageIndex < pages; pageIndex++)
             {
-                nint page = FPDF_LoadPage(_document, pageIndex);
-                if (page == 0)
-                {
-                    continue;
-                }
+                FillLoadedPage(form, pageIndex, page => FillPage(form, page, pageIndex, values, filled, boxes));
+            }
 
-                FORM_OnAfterLoadPage(page, form);
-                try
+            // A value none of a field's boxes has (a script's "Yes" for a box the form calls "On") ticks its first box,
+            // which is only known once every page has been looked at. A box that's ticked already is left alone.
+            foreach ((string name, (int pageIndex, (double, double, double, double) rect)) in boxes.First)
+            {
+                if (!boxes.Named.Contains(name) && !boxes.Ticked.Contains(name))
                 {
-                    FillPage(form, page, values, filled);
-                }
-                finally
-                {
-                    FORM_ForceToKillFocus(form);
-                    FORM_OnBeforeClosePage(page, form);
-                    FPDF_ClosePage(page);
+                    FillLoadedPage(form, pageIndex, page => Click(form, page, rect));
                 }
             }
         }
+    }
+
+    private void FillLoadedPage(nint form, int pageIndex, Action<nint> fill)
+    {
+        nint page = FPDF_LoadPage(_document, pageIndex);
+        if (page == 0)
+        {
+            return;
+        }
+
+        FORM_OnAfterLoadPage(page, form);
+        try
+        {
+            fill(page);
+        }
+        finally
+        {
+            FORM_ForceToKillFocus(form);
+            FORM_OnBeforeClosePage(page, form);
+            FPDF_ClosePage(page);
+        }
+    }
+
+    /// <summary>What filling has seen of the check box fields being ticked, by field name.</summary>
+    private sealed class CheckBoxes
+    {
+        /// <summary>Fields with a box whose on-value is the value given: that box is the one ticked.</summary>
+        public HashSet<string> Named { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Fields with a box that was ticked before filling.</summary>
+        public HashSet<string> Ticked { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Each field's first box: its page and where it is.</summary>
+        public Dictionary<string, (int Page, (double Left, double Bottom, double Right, double Top) Rect)> First { get; } = new(StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -298,7 +328,7 @@ public sealed partial class PdfiumDocument
         }
     }
 
-    private static void FillPage(nint form, nint page, IReadOnlyDictionary<string, string> values, HashSet<string> filled)
+    private static void FillPage(nint form, nint page, int pageIndex, IReadOnlyDictionary<string, string> values, HashSet<string> filled, CheckBoxes boxes)
     {
         int count = FPDFPage_GetAnnotCount(page);
         for (int index = 0; index < count; index++)
@@ -362,7 +392,37 @@ public sealed partial class PdfiumDocument
 
                     // Buttons are clicked: checked state is read again each time, since a click on one widget
                     // changes the others in its field.
-                    case FormFieldKind.CheckBox when FPDFAnnot_IsChecked(form, annotation) != (value != FieldOff):
+                    case FormFieldKind.CheckBox:
+                        bool isTicked = FPDFAnnot_IsChecked(form, annotation);
+                        if (value.Length == 0 || value == FieldOff)
+                        {
+                            if (isTicked)
+                            {
+                                Click(form, page, field.Rect);
+                            }
+                        }
+                        else if (value == field.OnValue)
+                        {
+                            // One field can have several boxes, each with its own on-value ("Yes" and "No"), and
+                            // ticking one unticks the rest. Only the box the value names is clicked: clicking them
+                            // all left whichever came last.
+                            boxes.Named.Add(field.Name);
+                            if (!isTicked)
+                            {
+                                Click(form, page, field.Rect);
+                            }
+                        }
+                        else
+                        {
+                            boxes.First.TryAdd(field.Name, (pageIndex, field.Rect));
+                            if (isTicked)
+                            {
+                                boxes.Ticked.Add(field.Name);
+                            }
+                        }
+
+                        break;
+
                     case FormFieldKind.Radio when value == field.OnValue && !FPDFAnnot_IsChecked(form, annotation):
                         Click(form, page, field.Rect);
                         break;

@@ -15,7 +15,7 @@ Not sure which Mac you have? Choose  → About This Mac: "Chip: Apple M…" mean
 
 ## Why your computer warns you, and what to do
 
-Fillsign isn't signed with a paid developer certificate yet, so Windows and macOS don't recognise who made it and ask you to confirm the first time. This is expected for small open-source apps. Only do this for files you downloaded from the Fillsign releases page above.
+Fillsign isn't signed with a paid developer certificate yet, so Windows and macOS don't recognise who made it and ask you to confirm the first time. This is expected for apps from small developers. Only do this for files you downloaded from the Fillsign releases page above.
 
 ### Windows: "Windows protected your PC"
 
@@ -43,7 +43,7 @@ Saved signatures are encrypted with your desktop's keyring (GNOME Keyring or KWa
 
 ## Updates
 
-Installed copies check GitHub for a new version a few seconds after starting. When one has downloaded, **Update ready** appears in the status bar: choose **Restart and update**, or **When I close Fillsign**. Your unsaved changes come back after the restart. Only the list of releases is fetched; nothing about you or your documents is sent.
+Installed copies check GitHub for a new version a few seconds after starting. When one has downloaded, **Update ready** appears in the status bar: choose **Restart and update**, or **When I close Fillsign**. Your unsaved changes come back after the restart. The only things fetched are the list of releases and, when there's a newer version, the update itself; nothing about you or your documents is sent.
 
 ## Uninstalling
 

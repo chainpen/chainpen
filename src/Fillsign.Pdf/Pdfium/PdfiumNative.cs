@@ -80,6 +80,15 @@ internal static partial class PdfiumNative
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial int FPDFPage_GetRotation(nint page);
 
+    /// <summary>
+    /// The box the page is laid out in: its crop box cut to its media box, whether they're on the page or inherited
+    /// from the page tree. The two calls below read only the page's own dictionary.
+    /// </summary>
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool FPDF_GetPageBoundingBox(nint page, out FsRectF rect);
+
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     [return: MarshalAs(UnmanagedType.Bool)]

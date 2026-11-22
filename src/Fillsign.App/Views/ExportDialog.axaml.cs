@@ -12,6 +12,7 @@ namespace Fillsign.App.Views;
 public partial class ExportDialog : UserControl
 {
     private readonly TaskCompletionSource<ExportDecision?> _result = new();
+    private readonly ExportRequest _request;
     private string _folder;
 
     public ExportDialog()
@@ -23,6 +24,7 @@ public partial class ExportDialog : UserControl
     {
         ArgumentNullException.ThrowIfNull(request);
         InitializeComponent();
+        _request = request;
         _folder = request.Folder;
         FileName.Text = request.SuggestedName;
         ShowFolder(ShortFolder(_folder));
@@ -238,13 +240,17 @@ public partial class ExportDialog : UserControl
 
     private void UpdateNotes()
     {
-        NameProblem.IsVisible = false;
-        ReplaceNote.IsVisible = ChosenPath is { } path && File.Exists(path);
+        // The document's own file is said straight away, in place of the note that exporting replaces a file: this
+        // one it won't replace.
+        bool isOwnFile = ChosenPath is { } own && _request.IsOwnFile(own);
+        NameProblemText.Text = isOwnFile ? Strings.Export_ThatNameIsThisDocumentsOwnFile : Strings.Export_TypeANameForTheFinal;
+        NameProblem.IsVisible = isOwnFile;
+        ReplaceNote.IsVisible = !isOwnFile && ChosenPath is { } path && File.Exists(path);
     }
 
     private void OnExport(object? sender, RoutedEventArgs e)
     {
-        if (ChosenPath is not { } path)
+        if (ChosenPath is not { } path || _request.IsOwnFile(path))
         {
             // Keep the button working and say what's needed (INTERACTION-PATTERNS §6).
             NameProblem.IsVisible = true;

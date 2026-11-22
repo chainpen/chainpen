@@ -137,6 +137,14 @@ public sealed partial class PagesCanvas
                 e.Handled = true;
             }
         };
+        box.TextChanged += (_, _) =>
+        {
+            // The editor keeps up with the box, so a keyboard Save or Export while it has focus includes its text.
+            if (ReferenceEquals(box, _fieldBox) && _fieldBoxEdit is not null)
+            {
+                _editor?.UpdateFieldEdit(box.Text ?? string.Empty);
+            }
+        };
         box.LostFocus += (_, _) =>
         {
             // Only the box in use: the other one losing focus has already been committed.

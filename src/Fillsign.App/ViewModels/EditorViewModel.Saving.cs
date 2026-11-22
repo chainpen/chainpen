@@ -22,6 +22,21 @@ public sealed record ExportRequest(string SuggestedName, string Folder, long Siz
 
     /// <summary>The document has fields to fill (FS-950), so the dialog offers to lock them.</summary>
     public bool HasFormFields { get; init; }
+
+    /// <summary>
+    /// The document's own files: the one it was opened from and its working copy. The final copy can't take either
+    /// name, or exporting would replace the copy that can still be edited with one that can't.
+    /// </summary>
+    public IReadOnlyList<string> OwnFiles { get; init; } = [];
+
+    /// <summary>Whether a path is one of <see cref="OwnFiles"/>, by the rules of this computer's file names.</summary>
+    public bool IsOwnFile(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        StringComparison comparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        string full = Path.GetFullPath(path);
+        return OwnFiles.Any(own => string.Equals(Path.GetFullPath(own), full, comparison));
+    }
 }
 
 /// <summary>What the person chose in the export dialog.</summary>
@@ -291,6 +306,7 @@ public sealed partial class EditorViewModel
             Gaps = gaps,
             PageCount = State.Pages.Length,
             HasFormFields = HasFormFields(),
+            OwnFiles = [.. new[] { Source.Path, WorkingCopyPath }.OfType<string>()],
         };
         ExportDecision? decision = await _host.AskExportAsync(request).ConfigureAwait(true);
         if (decision is CheckGapChoice check)
@@ -301,6 +317,13 @@ public sealed partial class EditorViewModel
 
         if (decision is not ExportChoice choice)
         {
+            return;
+        }
+
+        // The dialog doesn't take these names; this is for any other way a choice arrives.
+        if (request.IsOwnFile(choice.Path))
+        {
+            await _host.ShowMessageAsync(Strings.Editor_FinalCopyCouldntBeMade, Strings.Export_ThatNameIsThisDocumentsOwnFile).ConfigureAwait(true);
             return;
         }
 
@@ -362,8 +385,11 @@ public sealed partial class EditorViewModel
             return;
         }
 
-        ChangedElsewhere = null;
-        await _host.RestoreEditsAsync(restore).ConfigureAwait(true);
+        // The offer stays if the person backs out when asked about changes made since opening.
+        if (await _host.RestoreEditsAsync(restore).ConfigureAwait(true))
+        {
+            ChangedElsewhere = null;
+        }
     }
 
     [RelayCommand]

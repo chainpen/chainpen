@@ -22,7 +22,7 @@ public static class Program
               Fills fields and writes a final copy with its fields locked (--unlocked leaves them editable),
               or a working copy that opens editable in Fillsign. For a list that takes several answers, give
               --set NAME=VALUE once for each. --values reads {"Name": "Jordan", "Heard": ["Friend", "Search"]}.
-          fillsign export <working-copy> --out <file> [--unlocked] [--overwrite]
+          fillsign export <working-copy> --out <file> [--unlocked] [--overwrite] [--edit-anyway]
               Makes the final copy to send from a Fillsign working copy.
           fillsign mcp
               Runs an MCP server on standard input and output, for AI assistants.
@@ -177,16 +177,17 @@ public static class Program
         }
 
         using FormFile form = await FormFile.OpenAsync(arguments.File).ConfigureAwait(false);
-        form.Fill(values, editAnyway: arguments.Has("--edit-anyway"));
+        bool editAnyway = arguments.Has("--edit-anyway");
+        form.Fill(values, editAnyway);
         bool overwrite = arguments.Has("--overwrite");
         if (arguments.Has("--working-copy"))
         {
-            form.WriteWorkingCopy(output, overwrite);
+            form.WriteWorkingCopy(output, overwrite, editAnyway);
             Console.Out.WriteLine($"Filled {values.Count} {(values.Count == 1 ? "field" : "fields")}. Working copy saved to {Path.GetFullPath(output)}");
         }
         else
         {
-            form.WriteFinalCopy(output, lockFields: !arguments.Has("--unlocked"), overwrite);
+            form.WriteFinalCopy(output, lockFields: !arguments.Has("--unlocked"), overwrite, editAnyway);
             Console.Out.WriteLine($"Filled {values.Count} {(values.Count == 1 ? "field" : "fields")}. Final copy saved to {Path.GetFullPath(output)}");
         }
 
@@ -197,7 +198,7 @@ public static class Program
     {
         string output = arguments.Required("--out");
         using FormFile form = await FormFile.OpenAsync(arguments.File).ConfigureAwait(false);
-        form.WriteFinalCopy(output, lockFields: !arguments.Has("--unlocked"), arguments.Has("--overwrite"));
+        form.WriteFinalCopy(output, lockFields: !arguments.Has("--unlocked"), arguments.Has("--overwrite"), arguments.Has("--edit-anyway"));
         Console.Out.WriteLine($"Final copy saved to {Path.GetFullPath(output)}");
         return 0;
     }
@@ -213,13 +214,22 @@ public static class Program
 
         try
         {
-            return FromJson(JsonNode.Parse(File.ReadAllText(full)) as JsonObject ?? throw new FormException($"{full} should hold a JSON object of field names to values."));
+            return FromJson(ParseJson(File.ReadAllText(full)) as JsonObject ?? throw new FormException($"{full} should hold a JSON object of field names to values."));
         }
         catch (JsonException ex)
         {
             throw new FormException($"{full} isn't valid JSON: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Parses JSON from outside (a values file, an MCP message), refusing a name given twice in one object: which
+    /// value was meant can't be known, and a parsed object with one throws when it's first looked into, well away
+    /// from where bad JSON is answered.
+    /// </summary>
+    /// <exception cref="JsonException">The text isn't JSON, or repeats a name.</exception>
+    internal static JsonNode? ParseJson(string text) =>
+        JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { AllowDuplicateProperties = false });
 
     internal static Dictionary<string, IReadOnlyList<string>> FromJson(JsonObject values)
     {
@@ -290,7 +300,7 @@ internal sealed class Arguments
 
     public string? Value(string name) => _options.FindLast(option => option.Name == name).Value;
 
-    public string Required(string name) => Value(name) ?? throw new UsageException($"{name} is needed.");
+    public string Required(string name) => Value(name) is { Length: > 0 } value ? value : throw new UsageException($"{name} is needed.");
 
     public IEnumerable<string> All(string name) => _options.Where(option => option.Name == name && option.Value is not null).Select(option => option.Value!);
 }

@@ -41,7 +41,38 @@ public sealed partial class EditorViewModel
     private ImmutableSortedDictionary<string, string>? _fieldsShown;
 
     /// <summary>The text field being typed into, if any. The view shows a text box over it.</summary>
-    public FieldEdit? EditingField { get; private set; }
+    public FieldEdit? EditingField
+    {
+        get;
+        private set
+        {
+            field = value;
+            _fieldEditText = null;
+        }
+    }
+
+    // What's in the field's text box so far. The view reports each change, so Save, Export, Print and Close keep it
+    // without waiting for the box to lose focus.
+    private string? _fieldEditText;
+
+    /// <summary>The view calls this as the person types into a form field, with everything in its box.</summary>
+    public void UpdateFieldEdit(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (EditingField is not null)
+        {
+            _fieldEditText = text;
+        }
+    }
+
+    /// <summary>Keeps what's been typed into a form field so far, if one is being typed into.</summary>
+    public void FinishFieldEdit()
+    {
+        if (EditingField is { } editing)
+        {
+            CommitFieldEdit(_fieldEditText ?? editing.Value);
+        }
+    }
 
     /// <summary>Raised when a list or drop-down field was clicked: the view offers its options next to it.</summary>
     public event Action<FieldHit, string>? FieldChoiceRequested;
@@ -97,6 +128,36 @@ public sealed partial class EditorViewModel
     {
         ArgumentNullException.ThrowIfNull(field);
         return State.Fields.TryGetValue(field.Name, out string? value) ? value : field.Value;
+    }
+
+    /// <summary>
+    /// Whether a check box is ticked. One field can have several boxes with their own on-values ("Yes" and "No"); then
+    /// only the box the field's value names is. A value that names none of them (the command line's "Yes" for a box
+    /// the form calls "On") stands for the box the file already ticks, or else the field's first, as when it's filled.
+    /// </summary>
+    public bool IsTicked(FormField box) => IsTicked(box, State);
+
+    private bool IsTicked(FormField box, DocumentState state)
+    {
+        ArgumentNullException.ThrowIfNull(box);
+        string value = state.Fields.TryGetValue(box.Name, out string? filled) ? filled : box.Value;
+        if (value.Length == 0 || value == PdfiumDocument.FieldOff)
+        {
+            return false;
+        }
+
+        if (value == box.OnValue)
+        {
+            return true;
+        }
+
+        FormField[] boxes = [.. FieldsNamed(box.Name).Where(other => other.Kind == FormFieldKind.CheckBox)];
+        if (boxes.Any(other => other.OnValue == value))
+        {
+            return false;
+        }
+
+        return boxes.Any(other => other.IsChecked) ? box.IsChecked : boxes.Length == 0 || boxes[0].OnValue == box.OnValue;
     }
 
     /// <summary>
@@ -239,7 +300,7 @@ public sealed partial class EditorViewModel
         {
             case FormFieldKind.CheckBox:
                 string on = field.OnValue.Length > 0 ? field.OnValue : "Yes";
-                SetField(field.Name, FieldValue(field) == PdfiumDocument.FieldOff ? on : PdfiumDocument.FieldOff);
+                SetField(field.Name, IsTicked(field) ? PdfiumDocument.FieldOff : on);
                 break;
             case FormFieldKind.Radio when field.OnValue.Length > 0:
                 SetField(field.Name, field.OnValue);
@@ -341,7 +402,8 @@ public sealed partial class EditorViewModel
         bool isSame = State.Fields.TryGetValue(name, out string? current)
             ? current == value
             : FieldsNamed(name).FirstOrDefault() is { } field && FieldValue(field) == value && field.Kind != FormFieldKind.Radio;
-        if (isSame || value.Length > DocumentState.MaxFieldValueLength)
+        // A name or value longer than the working copy reads back would save, then open with nothing editable.
+        if (isSame || value.Length > DocumentState.MaxFieldValueLength || name.Length > DocumentState.MaxFieldNameLength)
         {
             return;
         }
@@ -576,7 +638,7 @@ public sealed partial class EditorViewModel
         switch (field.Kind)
         {
             case FormFieldKind.CheckBox:
-                return Text.Format(value == PdfiumDocument.FieldOff ? Strings.Editor_FieldCheckBoxNotTicked : Strings.Editor_FieldCheckBoxTicked, AccessibleName(hit));
+                return Text.Format(IsTicked(field) ? Strings.Editor_FieldCheckBoxTicked : Strings.Editor_FieldCheckBoxNotTicked, AccessibleName(hit));
             case FormFieldKind.Radio:
                 List<FieldHit> group = FieldsInDocumentOrder().FindAll(other => other.Field.Name == field.Name);
                 int position = group.FindIndex(other => other.Page == hit.Page && other.Box == hit.Box) + 1;

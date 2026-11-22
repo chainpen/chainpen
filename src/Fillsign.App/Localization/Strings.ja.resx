@@ -730,4 +730,6 @@ PDFやスキャンした用紙に記入して署名できます。書類はこ�
   <data name="Shortcuts_Finding" xml:space="preserve"><value>検索</value></data>
   <data name="Shortcuts_FindWordsInTheDocument" xml:space="preserve"><value>文書内の語句を検索</value></data>
   <data name="Shortcuts_NextPreviousMatch" xml:space="preserve"><value>次・前の一致 (検索欄ではReturnとShift+Return)</value></data>
+  <data name="Editor_NoRoomForAnotherPicture" xml:space="preserve"><value>この文書には、作業用コピーに保存できる上限まで画像があります。別の画像を追加するには、1 つ削除してください。</value></data>
+  <data name="Export_ThatNameIsThisDocumentsOwnFile" xml:space="preserve"><value>その名前はこの文書自体のファイルです。上書きされないよう、最終版には別の名前を付けてください。</value></data>
 </root>

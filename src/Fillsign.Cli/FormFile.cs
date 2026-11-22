@@ -180,10 +180,7 @@ public sealed class FormFile : IDisposable
     public void Fill(IReadOnlyDictionary<string, IReadOnlyList<string>> values, bool editAnyway = false)
     {
         ArgumentNullException.ThrowIfNull(values);
-        if (OwnerForbidsChanges && !editAnyway)
-        {
-            throw new FormException("The file's owner has set it so it can't be changed. Fillsign leaves it as it is unless you say to edit it anyway.");
-        }
+        RefuseIfOwnerForbids(editAnyway);
 
         Dictionary<string, FieldInfo> fields = Fields().ToDictionary(field => field.Name, StringComparer.Ordinal);
         DocumentState state = State;
@@ -297,16 +294,32 @@ public sealed class FormFile : IDisposable
         }
     }
 
-    /// <summary>The final copy to send, optionally with its fields locked, as the app's Export does.</summary>
-    public void WriteFinalCopy(string outputPath, bool lockFields, bool overwrite)
+    /// <summary>
+    /// Every copy Fillsign writes is without the owner's restriction, filled or not, so each way of making one asks
+    /// the same thing first.
+    /// </summary>
+    private void RefuseIfOwnerForbids(bool editAnyway)
     {
+        if (OwnerForbidsChanges && !editAnyway)
+        {
+            throw new FormException("The file's owner has set it so it can't be changed. Fillsign leaves it as it is unless you say to edit it anyway.");
+        }
+    }
+
+    /// <summary>The final copy to send, optionally with its fields locked, as the app's Export does.</summary>
+    public void WriteFinalCopy(string outputPath, bool lockFields, bool overwrite, bool editAnyway = false)
+    {
+        RefuseIfOwnerForbids(editAnyway);
         byte[] final = DocumentWriter.FinalCopy(CleanSource(), _pages, State).Pdf;
         Write(outputPath, lockFields ? DocumentWriter.WithFormFieldsLocked(final) : final, overwrite);
     }
 
     /// <summary>A working copy: opens in Fillsign with everything still editable.</summary>
-    public void WriteWorkingCopy(string outputPath, bool overwrite) =>
+    public void WriteWorkingCopy(string outputPath, bool overwrite, bool editAnyway = false)
+    {
+        RefuseIfOwnerForbids(editAnyway);
         Write(outputPath, DocumentWriter.WorkingCopy(CleanSource(), _pages, State).Pdf, overwrite);
+    }
 
     private byte[] CleanSource() => PdfCompactor.Compact(_source.Pdf.SaveCopy(removeSecurity: true));
 

@@ -104,6 +104,71 @@ public sealed class SaveTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Open_final_copy_instead_asks_about_changes_made_since_opening()
+    {
+        string saved = Path.Combine(_folder, "sample-form.pdf");
+        using (var first = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf")))
+        {
+            first.AddTick();
+            Assert.True(await first.Editor.SaveAsync());
+        }
+
+        using var s = await Session.OpenAsync(saved);
+        s.AddTick(200);
+        Assert.True(s.Editor.HasUnsavedChanges);
+
+        // Cancel keeps the document, its new tick and the button to try again.
+        Task opening = s.Editor.OpenAsFinalCopyCommand.ExecuteAsync(null);
+        await Pump(() => s.Dialog<ChoiceDialog>() is not null);
+        Assert.Equal("Save changes to sample-form.pdf before closing?", s.Dialog<ChoiceDialog>()!.FindControl<TextBlock>("Heading")!.Text);
+        Click(s.Dialog<ChoiceDialog>()!, "Cancel");
+        await opening;
+        Assert.Same(s.Editor, Editor(s.Window));
+        Assert.Equal(2, s.Editor.State.Items.Count);
+        Assert.True(s.Editor.HasUnsavedChanges);
+
+        // Save writes the working copy first, so the final copy shown has both ticks and the file still has the record.
+        opening = s.Editor.OpenAsFinalCopyCommand.ExecuteAsync(null);
+        await Pump(() => s.Dialog<ChoiceDialog>() is not null);
+        Click(s.Dialog<ChoiceDialog>()!, "Save");
+        await opening;
+        await Pump(() => !ReferenceEquals(Editor(s.Window), s.Editor));
+        Assert.Empty(Editor(s.Window).State.Items);
+        Assert.Equal(2, SessionStore.Find(File.ReadAllBytes(saved)).Record!.Document.Items.Count);
+    }
+
+    [AvaloniaFact]
+    public async Task Restoring_Fillsign_edits_asks_about_changes_made_since_opening()
+    {
+        string saved = Path.Combine(_folder, "sample-form.pdf");
+        using (var first = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf")))
+        {
+            first.AddTick();
+            Assert.True(await first.Editor.SaveAsync());
+        }
+
+        using (PdfiumDocument other = PdfiumDocument.Open(File.ReadAllBytes(saved)))
+        {
+            other.SetRotation(0, 2);
+            File.WriteAllBytes(saved, other.SaveIncremental());
+        }
+
+        using var s = await Session.OpenAsync(saved);
+        s.AddTick(200);
+        Task restoring = s.Editor.RestoreChangedEditsCommand.ExecuteAsync(null);
+        await Pump(() => s.Dialog<ChoiceDialog>() is not null);
+        Click(s.Dialog<ChoiceDialog>()!, "Restore edits");
+
+        // A second question, about the tick added since: Cancel keeps it, and the offer to restore.
+        await Pump(() => s.Dialog<ChoiceDialog>() is { } dialog && dialog.FindControl<TextBlock>("Heading")!.Text!.StartsWith("Save changes", StringComparison.Ordinal));
+        Click(s.Dialog<ChoiceDialog>()!, "Cancel");
+        await restoring;
+        Assert.Same(s.Editor, Editor(s.Window));
+        Assert.Single(s.Editor.State.Items);
+        Assert.True(s.Editor.IsChangedElsewhere);
+    }
+
+    [AvaloniaFact]
     public async Task A_working_copy_changed_in_another_app_opens_as_it_is_and_restoring_is_a_choice()
     {
         string saved = Path.Combine(_folder, "sample-form.pdf");
@@ -174,6 +239,51 @@ public sealed class SaveTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Export_wont_take_the_name_of_the_documents_own_file()
+    {
+        // Opened from the test folder, then saved as a working copy beside it.
+        string original = Path.Combine(_folder, "form.pdf");
+        File.Copy(TestFiles.Sample("sample-form.pdf"), original);
+        byte[] originalBytes = File.ReadAllBytes(original);
+        using var s = await Session.OpenAsync(original);
+        s.AddTick();
+        MainWindow.SavePathOverride = (_, _) => Path.Combine(_folder, "form-working.pdf");
+        Assert.True(await s.Editor.SaveAsync());
+        string workingCopy = Path.Combine(_folder, "form-working.pdf");
+        s.AddTick(200);
+
+        s.Key(Key.E, s_command);
+        await Pump(() => s.Dialog<ExportDialog>() is not null);
+        ExportDialog dialog = s.Dialog<ExportDialog>()!;
+        dialog.UseFolder(_folder);
+        Control problem = dialog.FindControl<Control>("NameProblem")!;
+        Assert.False(problem.IsVisible);
+
+        // Either of its own names is refused as it's typed, with or without ".pdf", and Export does nothing.
+        foreach (string name in (string[])["form-working.pdf", "form-working", "form.pdf"])
+        {
+            dialog.FindControl<TextBox>("FileName")!.Text = name;
+            await Pump(() => problem.IsVisible);
+            Assert.Contains("this document’s own file", dialog.FindControl<TextBlock>("NameProblemText")!.Text, StringComparison.Ordinal);
+            Assert.False(dialog.FindControl<Control>("ReplaceNote")!.IsVisible);
+            Click(dialog, "Export final copy");
+            await Pump(() => true);
+            Assert.Same(dialog, s.Dialog<ExportDialog>());
+        }
+
+        Assert.Equal(originalBytes, File.ReadAllBytes(original));
+        Assert.Equal(SessionStatus.Intact, SessionStore.Find(File.ReadAllBytes(workingCopy)).Status);
+
+        // Another name goes ahead, and the working copy is saved with the new tick as usual.
+        dialog.FindControl<TextBox>("FileName")!.Text = "form-to-send.pdf";
+        await Pump(() => !problem.IsVisible);
+        Click(dialog, "Export final copy");
+        await Pump(() => s.Editor.HasExportedNotice);
+        Assert.Equal(SessionStatus.None, SessionStore.Find(File.ReadAllBytes(Path.Combine(_folder, "form-to-send.pdf"))).Status);
+        Assert.Equal(2, SessionStore.Find(File.ReadAllBytes(workingCopy)).Record!.Document.Items.Count);
+    }
+
+    [AvaloniaFact]
     public async Task A_filled_form_is_exported_with_its_fields_locked()
     {
         File.Copy(TestFiles.Sample("form-fields.pdf"), Path.Combine(_folder, "form.pdf"));
@@ -200,6 +310,47 @@ public sealed class SaveTests : IDisposable
         IReadOnlyList<Pdf.Pdfium.FormField> fields = final.GetFormFields(0);
         Assert.Equal("Jordan Lee", fields.Single(field => field.Name == "Name").Value);
         Assert.All(fields, field => Assert.True(field.IsReadOnly, $"{field.Name} should be locked"));
+    }
+
+    [AvaloniaFact]
+    public async Task Save_from_the_keyboard_keeps_text_still_being_typed_in_a_form_field()
+    {
+        using var s = await Session.OpenAsync(TestFiles.Sample("form-fields.pdf"));
+        await s.TypeIntoFieldAsync("Name", "Jordan Lee");
+        s.Key(Key.S, s_command);
+        string saved = Path.Combine(_folder, "form-fields.pdf");
+        await Pump(() => File.Exists(saved) && !s.Editor.IsSaving && !s.Editor.HasUnsavedChanges);
+        Assert.Equal("Jordan Lee", s.Editor.State.Fields["Name"]);
+        Assert.Equal("Jordan Lee", SessionStore.Find(File.ReadAllBytes(saved)).Record!.Document.Fields["Name"]);
+    }
+
+    [AvaloniaFact]
+    public async Task Export_from_the_keyboard_keeps_text_still_being_typed_in_a_form_field()
+    {
+        using var s = await Session.OpenAsync(TestFiles.Sample("form-fields.pdf"));
+        await s.TypeIntoFieldAsync("Name", "Jordan Lee");
+        s.Key(Key.E, s_command);
+        await Pump(() => s.Dialog<ExportDialog>() is not null);
+        ExportDialog dialog = s.Dialog<ExportDialog>()!;
+        dialog.UseFolder(_folder);
+        Click(dialog, "Export final copy");
+        await Pump(() => s.Editor.HasExportedNotice);
+
+        using PdfiumDocument final = PdfiumDocument.Open(File.ReadAllBytes(Path.Combine(_folder, "form-fields-final.pdf")));
+        Assert.Equal("Jordan Lee", final.GetFormFields(0).Single(field => field.Name == "Name").Value);
+    }
+
+    [AvaloniaFact]
+    public async Task Closing_asks_about_text_still_being_typed_in_a_form_field()
+    {
+        var s = await Session.OpenAsync(TestFiles.Sample("form-fields.pdf"));
+        await s.TypeIntoFieldAsync("Name", "Jordan Lee");
+        s.Window.Close();
+        await Pump(() => s.Dialog<ChoiceDialog>() is not null);
+        Assert.True(s.Window.IsVisible);
+        Assert.Equal("Jordan Lee", s.Editor.State.Fields["Name"]);
+        Click(s.Dialog<ChoiceDialog>()!, "Don’t save");
+        await Pump(() => !s.Window.IsVisible);
     }
 
     [AvaloniaFact]
@@ -271,6 +422,20 @@ public sealed class SaveTests : IDisposable
         {
             Window.KeyPress(key, modifiers, PhysicalKey.None, null);
             Window.KeyRelease(key, modifiers, PhysicalKey.None, null);
+        }
+
+        /// <summary>Clicks one of the PDF's text fields and types into its box, leaving the box open with focus.</summary>
+        public async Task TypeIntoFieldAsync(string name, string text)
+        {
+            FormField field = Editor.Source.FormFields(0).Single(candidate => candidate.Name == name);
+            var transform = new Core.Geometry.PageTransform(Editor.Source.GetPage(0), Rotation.None);
+            PagePoint at = transform.ToDisplay((field.Rect.Left + field.Rect.Right) / 2, (field.Rect.Bottom + field.Rect.Top) / 2);
+            Editor.PointerPressed(0, at, isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+            Editor.PointerReleased(at);
+            await Pump(() => Window.FocusManager?.GetFocusedElement() is TextBox box && box.Classes.Contains("formField"));
+            Window.KeyTextInput(text);
+            Assert.Equal(name, Editor.EditingField?.Hit.Field.Name);
+            Assert.False(Editor.State.Fields.ContainsKey(name));
         }
 
         public void Dispose() => Window.CloseWithoutAsking();

@@ -697,9 +697,13 @@ public sealed partial class EditorViewModel
         }
     }
 
-    /// <summary>Finishes typing. Empty text is discarded (FR-3.1).</summary>
+    /// <summary>
+    /// Finishes typing, on the page or in a form field, so what follows (saving, exporting, printing, closing) has
+    /// all of it. Empty text on the page is discarded (FR-3.1).
+    /// </summary>
     public void FinishTyping()
     {
+        FinishFieldEdit();
         if (TypingItem is not { } id || _typingBefore is not { } before)
         {
             return;

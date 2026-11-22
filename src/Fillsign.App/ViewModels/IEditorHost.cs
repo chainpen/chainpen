@@ -62,11 +62,17 @@ public interface IEditorHost
     /// <summary>Prints a PDF through the system (FS-808).</summary>
     Platform.PrintOutcome PrintFile(string path);
 
-    /// <summary>"Open final copy instead" (🎨 5): reopens the working copy as other readers show it, without restoring.</summary>
+    /// <summary>
+    /// "Open final copy instead" (🎨 5): reopens the working copy as other readers show it, without restoring. Asks
+    /// about unsaved changes first, since it takes the open document's place.
+    /// </summary>
     Task OpenAsFinalCopyAsync(string path);
 
-    /// <summary>Reopens the clean original from a working copy with its Fillsign edits (FR-9.6).</summary>
-    Task RestoreEditsAsync(Fillsign.Pdf.Import.WorkingCopyRestore restore);
+    /// <summary>
+    /// Reopens the clean original from a working copy with its Fillsign edits (FR-9.6), asking about unsaved changes
+    /// first. False when the person backed out.
+    /// </summary>
+    Task<bool> RestoreEditsAsync(Fillsign.Pdf.Import.WorkingCopyRestore restore);
 
     /// <summary>Opens files in a separate window, leaving this document unchanged (FR-1.5).</summary>
     void OpenInNewWindow(IReadOnlyList<string> paths);

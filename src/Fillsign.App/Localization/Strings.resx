@@ -730,4 +730,6 @@ The full terms, and the licences for the fonts and libraries Fillsign uses, are 
   <data name="Shortcuts_Finding" xml:space="preserve"><value>Finding</value></data>
   <data name="Shortcuts_FindWordsInTheDocument" xml:space="preserve"><value>Find words in the document</value></data>
   <data name="Shortcuts_NextPreviousMatch" xml:space="preserve"><value>Next, previous match (Return and Shift+Return in the find box)</value></data>
+  <data name="Editor_NoRoomForAnotherPicture" xml:space="preserve"><value>This document has as many pictures as its working copy can hold. Remove one to add another.</value></data>
+  <data name="Export_ThatNameIsThisDocumentsOwnFile" xml:space="preserve"><value>That name is this document’s own file. Choose another name for the final copy, so it isn’t replaced.</value></data>
 </root>

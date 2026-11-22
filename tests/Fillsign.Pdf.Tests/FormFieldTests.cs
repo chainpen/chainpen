@@ -227,4 +227,77 @@ public sealed class FormFieldTests
         using PdfiumDocument plain = Open("four-pages.pdf");
         Assert.Empty(plain.GetFormFields(0));
     }
+
+    /// <summary>
+    /// One check box field drawn as several boxes, as "Citizen: Yes / No" often is: each box has its own on-value and
+    /// only one can be ticked at a time.
+    /// </summary>
+    private static byte[] CheckBoxWithBoxes(params string[] onValues)
+    {
+        const string Tick = "0 0 20 20 re f";
+        string[] kids = [.. onValues.Select((_, index) => $"{5 + index} 0 R")];
+        string[] widgets = [.. onValues.Select((on, index) =>
+            $"<< /Type /Annot /Subtype /Widget /Parent 4 0 R /P 3 0 R /Rect [{20 + (index * 40)} 150 {40 + (index * 40)} 170] /F 4 /AS /Off "
+            + $"/AP << /N << /{on} {5 + onValues.Length} 0 R /Off {6 + onValues.Length} 0 R >> >> >>")];
+        return TestFiles.ClassicPdf(
+        [
+            "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] >> >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 300 200] >>",
+            $"<< /Type /Page /Parent 2 0 R /Annots [{string.Join(' ', kids)}] >>",
+            $"<< /FT /Btn /T (Citizen) /V /Off /Kids [{string.Join(' ', kids)}] >>",
+            .. widgets,
+            $"<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length {Tick.Length} >>\nstream\n{Tick}\nendstream",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 0 >>\nstream\n\nendstream",
+        ]);
+    }
+
+    private static string[] Ticked(PdfiumDocument pdf) =>
+        [.. pdf.GetFormFields(0).Where(field => field.Kind == FormFieldKind.CheckBox && field.IsChecked).Select(field => field.OnValue)];
+
+    [Theory]
+    [InlineData("Yes")]
+    [InlineData("No")]
+    [InlineData("Maybe")]
+    public void A_check_box_field_with_several_boxes_ticks_only_the_one_its_value_names(string value)
+    {
+        using PdfiumDocument pdf = PdfiumDocument.Open(CheckBoxWithBoxes("Yes", "No", "Maybe"));
+        Assert.Equal(["Yes", "No", "Maybe"], pdf.GetFormFields(0).Select(field => field.OnValue));
+
+        pdf.FillFormFields(new Dictionary<string, string> { ["Citizen"] = value });
+        Assert.Equal([value], Ticked(pdf));
+        Assert.All(pdf.GetFormFields(0), field => Assert.Equal(value, field.Value));
+
+        // Kept through a save, and changing the answer moves the tick rather than adding one.
+        using PdfiumDocument saved = PdfiumDocument.Open(pdf.SaveCopy(removeSecurity: true));
+        Assert.Equal([value], Ticked(saved));
+        saved.FillFormFields(new Dictionary<string, string> { ["Citizen"] = "No" });
+        Assert.Equal(["No"], Ticked(saved));
+        saved.FillFormFields(new Dictionary<string, string> { ["Citizen"] = PdfiumDocument.FieldOff });
+        Assert.Empty(Ticked(saved));
+    }
+
+    [Fact]
+    public void A_ticked_value_that_names_none_of_a_fields_boxes_ticks_its_first()
+    {
+        // The command line stores "Yes" for any ticked box, whatever the form calls its on-value.
+        using PdfiumDocument several = PdfiumDocument.Open(CheckBoxWithBoxes("Citizen", "Resident"));
+        several.FillFormFields(new Dictionary<string, string> { ["Citizen"] = "Yes" });
+        Assert.Equal(["Citizen"], Ticked(several));
+
+        using PdfiumDocument one = PdfiumDocument.Open(CheckBoxWithBoxes("On"));
+        one.FillFormFields(new Dictionary<string, string> { ["Citizen"] = "Yes" });
+        Assert.Equal(["On"], Ticked(one));
+        one.FillFormFields(new Dictionary<string, string> { ["Citizen"] = "Yes" });
+        Assert.Equal(["On"], Ticked(one));
+    }
+
+    [Fact]
+    public void Boxes_that_share_an_on_value_are_ticked_together()
+    {
+        using PdfiumDocument pdf = PdfiumDocument.Open(CheckBoxWithBoxes("Yes", "Yes"));
+        pdf.FillFormFields(new Dictionary<string, string> { ["Citizen"] = "Yes" });
+        Assert.Equal(["Yes", "Yes"], Ticked(pdf));
+        pdf.FillFormFields(new Dictionary<string, string> { ["Citizen"] = PdfiumDocument.FieldOff });
+        Assert.Empty(Ticked(pdf));
+    }
 }

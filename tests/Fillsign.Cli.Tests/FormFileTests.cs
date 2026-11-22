@@ -96,6 +96,45 @@ public sealed class FormFileTests : IDisposable
     }
 
     [Fact]
+    public async Task Exporting_a_file_whose_owner_forbids_changes_needs_the_same_say_so_as_filling_it()
+    {
+        // A copy is written without the owner's restriction whether or not anything was filled in.
+        CancellationToken token = TestContext.Current.CancellationToken;
+        string path = TestFiles.Sample("corpus/empty_protected.pdf");
+        string output = Path.Combine(_folder, "unrestricted.pdf");
+        using (FormFile form = await FormFile.OpenAsync(path, token))
+        {
+            Assert.Throws<FormException>(() => form.WriteFinalCopy(output, lockFields: false, overwrite: false));
+            Assert.Throws<FormException>(() => form.WriteWorkingCopy(output, overwrite: false));
+        }
+
+        Assert.Equal(1, await Program.Main(["export", path, "--out", output, "--unlocked"]));
+        Assert.False(File.Exists(output));
+
+        // The MCP server has no way to say "edit anyway", so it never makes one.
+        var server = new McpServer(TextReader.Null, TextWriter.Null, TextWriter.Null);
+        JsonObject? reply = await server.HandleAsync(new JsonObject
+        {
+            ["jsonrpc"] = "2.0",
+            ["id"] = 1,
+            ["method"] = "tools/call",
+            ["params"] = new JsonObject
+            {
+                ["name"] = "export_final_copy",
+                ["arguments"] = new JsonObject { ["path"] = path, ["output_path"] = output, ["lock_fields"] = false },
+            },
+        }.ToJsonString(), token);
+        Assert.True(reply!["result"]!["isError"]!.GetValue<bool>());
+        Assert.Contains("owner", reply["result"]!["content"]![0]!["text"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.False(File.Exists(output));
+
+        // Asked for on the command line, it's made, and the copy has no restriction left.
+        Assert.Equal(0, await Program.Main(["export", path, "--out", output, "--edit-anyway"]));
+        using FormFile copy = await FormFile.OpenAsync(output, token);
+        Assert.False(copy.Info().OwnerForbidsChanges);
+    }
+
+    [Fact]
     public async Task Missing_files_and_non_pdfs_are_explained()
     {
         await Assert.ThrowsAsync<FormException>(() => FormFile.OpenAsync(Path.Combine(_folder, "nowhere.pdf"), TestContext.Current.CancellationToken));
@@ -120,6 +159,13 @@ public sealed class FormFileTests : IDisposable
         Assert.Equal(1, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--out", output, "--set", "Name=Again"]));
         Assert.Equal(2, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--set", "Name=x"]));
         Assert.Equal(2, await Program.Main(["frobnicate"]));
+
+        // A values file that names a field twice, and an empty --out: explained, not a stack trace.
+        string twice = Path.Combine(_folder, "twice.json");
+        File.WriteAllText(twice, """{ "Name": "Ada", "Name": "Grace" }""");
+        Assert.Equal(1, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--out", Path.Combine(_folder, "twice.pdf"), "--values", twice]));
+        Assert.False(File.Exists(Path.Combine(_folder, "twice.pdf")));
+        Assert.Equal(2, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--out", "", "--set", "Name=x"]));
 
         // A values "file" that's a folder can't be read: an error and exit code 1, not a crash.
         Assert.Equal(1, await Program.Main(["fill", TestFiles.Sample("form-fields.pdf"), "--out", Path.Combine(_folder, "other.pdf"), "--values", _folder]));
@@ -178,6 +224,14 @@ public sealed class FormFileTests : IDisposable
 
         JsonObject? ping = await server.HandleAsync("""{"jsonrpc":"2.0","id":3,"method":"ping"}""", token);
         Assert.NotNull(ping!["result"]);
+
+        // A name given twice, at the top or deep inside: an error for that message, where it used to end the server.
+        JsonObject? twoIds = await server.HandleAsync("""{"jsonrpc":"2.0","id":1,"id":2,"method":"ping"}""", token);
+        Assert.Equal(-32700, twoIds!["error"]!["code"]!.GetValue<int>());
+        JsonObject? twoValues = await server.HandleAsync(
+            """{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"fill_form","arguments":{"path":"/a.pdf","output_path":"/b.pdf","values":{"Name":"a","Name":"b"}}}}""", token);
+        Assert.Equal(-32700, twoValues!["error"]!["code"]!.GetValue<int>());
+        Assert.NotNull((await server.HandleAsync("""{"jsonrpc":"2.0","id":5,"method":"ping"}""", token))!["result"]);
     }
 
     [Fact]

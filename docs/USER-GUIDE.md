@@ -62,7 +62,7 @@ Switch to **Organise pages** at the top left. Click pages to select them (Shift-
 ## Save and send
 
 - **Save** (⌘S / Ctrl+S) keeps your **working copy**. Reopen it in Fillsign later and everything you added can still be changed. Other PDF readers show the finished pages.
-- **Export final copy…** (⌘E / Ctrl+E) makes the **file to send**. It looks the same in every PDF reader and can't be changed. This is the one to email or upload, especially when it contains your signature.
+- **Export final copy…** (⌘E / Ctrl+E) makes the **file to send**. It looks the same in every PDF reader and can't be changed. This is the one to email or upload, especially when it contains your signature. It needs a name of its own: Fillsign won't let it replace the file you opened or your working copy.
 - After exporting on a Mac, **Share…** on the notice sends the final copy with Mail, Messages, AirDrop and more.
 - **Print…** (⌘P / Ctrl+P) prints the document as the final copy looks, through your computer's print dialog (on Linux it opens in your PDF viewer to print from there).
 - Before exporting, Fillsign lists **possible gaps** on the pages you've added to: boxes with none ticked, and blanks after labels like "Name:" or "Date:" or along a line, with nothing in them. **Show me** takes you to each one with the right tool ready; **Next gap** moves on and **Back to export** returns. They're hints: Fillsign can't tell what's meant to be filled, and it doesn't look at pages you haven't touched or at boxes and blanks drawn only as table cells.

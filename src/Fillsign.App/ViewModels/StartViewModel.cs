@@ -90,7 +90,9 @@ public sealed partial class StartViewModel : ObservableObject
         AsksAboutCrashReports = !IsFirstLaunch && current.LaunchCount >= 2 && current.SendCrashReports is null;
         HasCrashReport = current.SendCrashReports == true && CrashReports.Pending().Count > 0;
 
-        IReadOnlyList<RecoveryCopy> copies = RecoveryStore.List();
+        // Only work left behind: a copy that belongs to a document open now, in another window or another running
+        // Fillsign, isn't lost and isn't this window's to recover.
+        IReadOnlyList<RecoveryCopy> copies = [.. RecoveryStore.List().Where(copy => !RecoveryStore.IsInUse(copy))];
         Recovery = copies.FirstOrDefault(copy => !copy.IsDismissed);
 
         Recent.Clear();

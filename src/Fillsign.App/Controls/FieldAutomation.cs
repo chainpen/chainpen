@@ -121,7 +121,7 @@ internal sealed class TextFieldPeer(PagesCanvas canvas, EditorViewModel editor, 
 
 internal sealed class CheckBoxFieldPeer(PagesCanvas canvas, EditorViewModel editor, FieldHit hit) : FieldAutomationPeer(canvas, editor, hit), IToggleProvider
 {
-    public ToggleState ToggleState => Value == PdfiumDocument.FieldOff ? ToggleState.Off : ToggleState.On;
+    public ToggleState ToggleState => Editor.IsTicked(Field) ? ToggleState.On : ToggleState.Off;
 
     public void Toggle() => Editor.Activate(Hit);
 

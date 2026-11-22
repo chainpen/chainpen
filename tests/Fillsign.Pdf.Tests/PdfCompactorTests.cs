@@ -183,7 +183,7 @@ public sealed class PdfCompactorTests
         // A file this small doesn't get smaller packed, so its clean source keeps PDFium's classic table and its PDF
         // 1.4 header. A cross-reference stream (PDF 1.5) in its update would be a feature the header says isn't used.
         byte[] clean;
-        using (PdfiumDocument pdf = PdfiumDocument.Open(ClassicPdf(
+        using (PdfiumDocument pdf = PdfiumDocument.Open(TestFiles.ClassicPdf(
             "<< /Type /Catalog /Pages 2 0 R >>",
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R >>",
@@ -216,29 +216,7 @@ public sealed class PdfCompactorTests
 
     /// <summary>A minimal PDF with a plain cross-reference table, as PDFium writes, holding one extra object.</summary>
     private static byte[] ClassicPdf(string extraObject) =>
-        ClassicPdf("<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>", extraObject);
-
-    /// <summary>A minimal PDF 1.4 file with a plain cross-reference table, the objects numbered from 1.</summary>
-    private static byte[] ClassicPdf(params string[] objects)
-    {
-        var text = new System.Text.StringBuilder("%PDF-1.4\n");
-        var offsets = new List<int>();
-        for (int i = 0; i < objects.Length; i++)
-        {
-            offsets.Add(text.Length);
-            text.Append(System.Globalization.CultureInfo.InvariantCulture, $"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
-        }
-
-        int xref = text.Length;
-        text.Append(System.Globalization.CultureInfo.InvariantCulture, $"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
-        foreach (int offset in offsets)
-        {
-            text.Append(System.Globalization.CultureInfo.InvariantCulture, $"{offset:D10} 00000 n \n");
-        }
-
-        text.Append(System.Globalization.CultureInfo.InvariantCulture, $"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
-        return System.Text.Encoding.Latin1.GetBytes(text.ToString());
-    }
+        TestFiles.ClassicPdf("<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>", extraObject);
 
     [Fact]
     public void A_file_with_no_update_after_the_original_is_left_as_it_is()

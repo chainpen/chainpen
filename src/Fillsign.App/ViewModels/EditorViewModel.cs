@@ -302,6 +302,9 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     {
         _recoveryGeneration++;
         Platform.RecoveryStore.CopiesDeleted -= OnRecoveryCopiesDeleted;
+
+        // A copy still there (kept for an update) is no longer an open document's.
+        Platform.RecoveryStore.Release(RecoveryId);
         _loading.Cancel();
         _search?.Cancel();
         _search?.Dispose();

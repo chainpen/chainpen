@@ -145,6 +145,35 @@ public sealed class ViewerTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task A_locked_pdf_asks_for_its_password_again_after_a_wrong_one_and_Cancel_leaves_nothing_open()
+    {
+        string? path = TestFiles.CorpusFiles().FirstOrDefault(f => f.EndsWith("crypt_filters.pdf", StringComparison.Ordinal));
+        Assert.SkipWhen(path is null, "Run build/fetch-corpus.sh first.");
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+        window.Show();
+
+        // The loader finds the file locked on a background thread; the dialog still has to appear in the window.
+        Task open = window.OpenPathsAsync([path!]);
+        ContentControl host = window.FindControl<ContentControl>("DialogHost")!;
+        await Pump(() => host.Content is PasswordDialog || open.IsCompleted);
+        PasswordDialog first = Assert.IsType<PasswordDialog>(host.Content);
+        Assert.False(first.FindControl<Control>("Error")!.IsVisible);
+
+        first.FindControl<TextBox>("Password")!.Text = "not the password";
+        Click(first, "Open");
+        await Pump(() => (host.Content is PasswordDialog next && !ReferenceEquals(next, first)) || open.IsCompleted);
+        PasswordDialog second = Assert.IsType<PasswordDialog>(host.Content);
+        Assert.True(second.FindControl<Control>("Error")!.IsVisible);
+
+        Click(second, "Cancel");
+        await Pump(() => open.IsCompleted);
+        await open;
+        Assert.Null(((MainWindowViewModel)window.DataContext!).Editor);
+        Assert.Null(host.Content);
+        window.CloseWithoutAsking();
+    }
+
+    [AvaloniaFact]
     public async Task Password_and_open_choice_dialogs_answer_and_close()
     {
         var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };

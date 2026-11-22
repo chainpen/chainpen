@@ -120,7 +120,7 @@ public sealed partial class EditorViewModel
                         row = rows.Count - 1;
                     }
 
-                    spots.Add(new CheckBoxSpot(box, field.DisplayName, CheckBoxRows + row, ValueOf(field) != Pdf.Pdfium.PdfiumDocument.FieldOff) { IsField = true });
+                    spots.Add(new CheckBoxSpot(box, field.DisplayName, CheckBoxRows + row, IsTicked(field, state)) { IsField = true });
                     break;
             }
         }

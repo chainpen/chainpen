@@ -267,6 +267,15 @@ public partial class MainWindow : Window, IEditorHost
     public async Task RecoverAsync(RecoveryCopy copy)
     {
         ArgumentNullException.ThrowIfNull(copy);
+
+        // The list this came from may be old: another window or another running Fillsign can have recovered it since.
+        RecoveryCopy current = RecoveryStore.List().FirstOrDefault(listed => listed.Id == copy.Id) ?? copy;
+        if (RecoveryStore.IsInUse(current))
+        {
+            _viewModel.Start.Refresh();
+            return;
+        }
+
         byte[] bytes;
         try
         {
@@ -425,7 +434,14 @@ public partial class MainWindow : Window, IEditorHost
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        if (_isCloseConfirmed || _viewModel.Editor is not { HasUnsavedChanges: true } editor)
+        if (_isCloseConfirmed || _viewModel.Editor is not { } editor)
+        {
+            return;
+        }
+
+        // Text still in a box on the page or in a form field is a change too: keep it before asking.
+        editor.FinishTyping();
+        if (!editor.HasUnsavedChanges)
         {
             return;
         }
@@ -434,8 +450,28 @@ public partial class MainWindow : Window, IEditorHost
         _ = AskBeforeClosingAsync(editor);
     }
 
-    /// <summary>D4: Save is the default and has focus; Don't save is never the default (FR-8.11).</summary>
     private async Task AskBeforeClosingAsync(EditorViewModel editor)
+    {
+        if (await AskToSaveAsync(editor).ConfigureAwait(true))
+        {
+            CloseWithoutAsking();
+        }
+    }
+
+    /// <summary>
+    /// Before a document with unsaved changes goes away, because its window closes or another document takes its
+    /// place: asks whether to save them. True when it can go: nothing was unsaved, they were saved, or the person
+    /// chose not to keep them.
+    /// </summary>
+    private async Task<bool> CanLeaveAsync(EditorViewModel editor)
+    {
+        // Text still in a box on the page or in a form field is a change too: keep it before asking.
+        editor.FinishTyping();
+        return !editor.HasUnsavedChanges || await AskToSaveAsync(editor).ConfigureAwait(true);
+    }
+
+    /// <summary>D4: Save is the default and has focus; Don't save is never the default (FR-8.11).</summary>
+    private async Task<bool> AskToSaveAsync(EditorViewModel editor)
     {
         string unsaved = editor.LastSavedAt is { } saved
             ? Text.Format(Strings.Main_UnsavedChangesSince, saved.ToLocalTime())
@@ -448,16 +484,12 @@ public partial class MainWindow : Window, IEditorHost
                 Strings.Main_DontSave,
                 focusMain: true),
             dialog => dialog.Result).ConfigureAwait(true);
-        bool canClose = choice switch
+        return choice switch
         {
             Choice.Main => await editor.SaveAsync().ConfigureAwait(true),
             Choice.Other => true,
             _ => false,
         };
-        if (canClose)
-        {
-            CloseWithoutAsking();
-        }
     }
 
     /// <summary>
@@ -802,8 +834,10 @@ public partial class MainWindow : Window, IEditorHost
     /// </summary>
     private void OnFieldKeys(object? sender, KeyEventArgs e)
     {
+        // Only while focus is on the page: after F6 or a click elsewhere the field keeps its outline, but Space and the
+        // arrow keys belong to the button or list that has focus.
         if (DialogLayer.IsVisible || _viewModel.Editor is not { FocusedField: { } focused } editor
-            || FocusManager?.GetFocusedElement() is TextBox)
+            || FocusManager?.GetFocusedElement() is TextBox || !IsOnPage(editor, isTyping: false))
         {
             return;
         }
@@ -845,8 +879,14 @@ public partial class MainWindow : Window, IEditorHost
         return [.. files.Select(file => file.TryGetLocalPath()).OfType<string>()];
     }
 
-    public Task<string?> AskPasswordAsync(string fileName, bool wasWrong) =>
-        ShowDialogAsync(new PasswordDialog(fileName, wasWrong), dialog => dialog.Result);
+    /// <summary>
+    /// The loader asks from whichever thread found the file locked, so the dialog is shown from the window's own.
+    /// </summary>
+    public Task<string?> AskPasswordAsync(string fileName, bool wasWrong)
+    {
+        Task<string?> Ask() => ShowDialogAsync(new PasswordDialog(fileName, wasWrong), dialog => dialog.Result);
+        return Avalonia.Threading.Dispatcher.UIThread.CheckAccess() ? Ask() : Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(Ask);
+    }
 
     public Task<OpenChoice> AskOpenOrAddAsync(string title, string documentName, int pageCount) =>
         ShowDialogAsync(new OpenOrAddDialog(title, documentName, pageCount), dialog => dialog.Result);
@@ -1013,22 +1053,30 @@ public partial class MainWindow : Window, IEditorHost
 
     public async Task OpenAsFinalCopyAsync(string path)
     {
+        // The final copy takes this document's place, so edits made since it was opened are asked about first; the
+        // file is read after that, with them in it if they were saved.
+        if (_viewModel.Editor is { } current && !await CanLeaveAsync(current).ConfigureAwait(true))
+        {
+            return;
+        }
+
         InputFile file = await InputFile.ReadAsync(path, CancellationToken.None).ConfigureAwait(true);
         await OpenFilesAsync([file], restoreRecord: false).ConfigureAwait(true);
     }
 
-    public Task RestoreEditsAsync(WorkingCopyRestore restore)
+    public async Task<bool> RestoreEditsAsync(WorkingCopyRestore restore)
     {
-        if (_viewModel.Editor is not { } current)
+        // The restored edits take this document's place: anything added since it was opened is asked about first.
+        if (_viewModel.Editor is not { } current || !await CanLeaveAsync(current).ConfigureAwait(true))
         {
-            return Task.CompletedTask;
+            return false;
         }
 
         SourceDocument clean = DocumentLoader.OpenCleanSource(current.Source.Name, current.Source.Path, restore.CleanSource);
         var editor = new EditorViewModel(clean, this);
         editor.RestoreEditsOver(restore);
         ReplaceEditor(editor);
-        return Task.CompletedTask;
+        return true;
     }
 
     public Task<int?> AskMovePositionAsync(int count, int pageCount) =>

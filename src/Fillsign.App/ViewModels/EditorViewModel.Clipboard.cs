@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
+using Fillsign.App.Localization;
 using Fillsign.Core.Editing;
 using Fillsign.Core.Geometry;
 using Fillsign.Core.Model;
@@ -122,7 +123,8 @@ public sealed partial class EditorViewModel
 
     /// <summary>
     /// A picture from another app (FR-7.14, FS-715) goes in the middle of the page in view at up to 300 pt wide,
-    /// keeping its shape, then is selected to move or resize. Returns false when it can't be read.
+    /// keeping its shape, then is selected to move or resize. Returns false when it can't be read. When the document
+    /// has no room for another picture it says so instead, and returns true.
     /// </summary>
     public bool PastePicture(byte[] imageFile)
     {
@@ -141,6 +143,13 @@ public sealed partial class EditorViewModel
         {
             System.Diagnostics.Trace.TraceWarning($"The pasted picture couldn't be read. {ex.Message}");
             return false;
+        }
+
+        if (!SessionJson.HasRoomFor(State, image))
+        {
+            // Saved with more pictures than a working copy reads back, the file would open with nothing editable.
+            Tell(Strings.Editor_NoRoomForAnotherPicture);
+            return true;
         }
 
         PageId target = Pages[CurrentPageIndex].Id;

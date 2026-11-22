@@ -730,4 +730,6 @@ Die vollständigen Bedingungen und die Lizenzen der Schriften und Bibliotheken, 
   <data name="Shortcuts_Finding" xml:space="preserve"><value>Suchen</value></data>
   <data name="Shortcuts_FindWordsInTheDocument" xml:space="preserve"><value>Wörter im Dokument suchen</value></data>
   <data name="Shortcuts_NextPreviousMatch" xml:space="preserve"><value>Nächster, vorheriger Treffer (Eingabe und Umschalt+Eingabe im Suchfeld)</value></data>
+  <data name="Editor_NoRoomForAnotherPicture" xml:space="preserve"><value>Dieses Dokument enthält so viele Bilder, wie seine Arbeitskopie aufnehmen kann. Entfernen Sie eines, um ein weiteres hinzuzufügen.</value></data>
+  <data name="Export_ThatNameIsThisDocumentsOwnFile" xml:space="preserve"><value>Dieser Name gehört zur Datei dieses Dokuments. Wählen Sie für die Endfassung einen anderen Namen, damit sie nicht ersetzt wird.</value></data>
 </root>

@@ -39,7 +39,7 @@ public sealed class McpServer(TextReader input, TextWriter output, TextWriter lo
         JsonObject request;
         try
         {
-            request = JsonNode.Parse(line) as JsonObject ?? throw new JsonException("Not an object.");
+            request = Program.ParseJson(line) as JsonObject ?? throw new JsonException("Not an object.");
         }
         catch (JsonException)
         {

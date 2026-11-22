@@ -19,6 +19,38 @@ public sealed class SessionJsonTests
         return new SessionRecord(ByteStamp.Of("original"u8), ByteStamp.Of("original plus edits"u8), 4, document);
     }
 
+    /// <summary>A picture whose PNG is exactly <paramref name="bytes"/> long: a real header, then padding.</summary>
+    private static SignatureImage PictureOf(int bytes)
+    {
+        SignatureImage start = TestData.PngOfSize(2000, 1500);
+        return start with { Png = [.. start.Png, .. new byte[bytes - start.Png.Length]] };
+    }
+
+    [Fact]
+    public void A_document_only_has_room_for_pictures_its_working_copy_can_be_read_back_with()
+    {
+        DocumentState document = DocumentState.ForSourcePages(1);
+        Assert.True(SessionJson.HasRoomFor(document, PictureOf(SessionJson.MaxImageBytes)));
+        Assert.False(SessionJson.HasRoomFor(document, PictureOf(SessionJson.MaxImageBytes + 1)), "the reader refuses a picture this large");
+
+        // Pictures are added while there's room; the last one that fits still leaves a record the reader takes.
+        int added = 0;
+        for (SignatureImage next = PictureOf(SessionJson.MaxImageBytes); SessionJson.HasRoomFor(document, next); next = PictureOf(SessionJson.MaxImageBytes))
+        {
+            document = ItemEdits.Add(document, new PictureItem(ItemId.New(), document.Pages[0].Id, 10, 10, next, 100, 75));
+            added++;
+        }
+
+        Assert.InRange(added, 2, 5);
+        byte[] json = SessionJson.Write(new SessionRecord(ByteStamp.Of("a"u8), ByteStamp.Of("b"u8), 1, document));
+        Assert.True(json.Length <= SessionJson.MaxRecordBytes);
+        Assert.Equal(added, SessionJson.Read(json).Document.Items.Count);
+
+        // A picture already in the document takes no more room when it's placed again.
+        var placed = (PictureItem)document.Items[0];
+        Assert.True(SessionJson.HasRoomFor(document, placed.Image));
+    }
+
     [Fact]
     public void A_picture_whose_own_header_is_huge_is_refused()
     {

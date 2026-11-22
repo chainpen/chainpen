@@ -23,7 +23,7 @@ public sealed record InputFile(string Name, string? Path, byte[]? Bytes, Excepti
 
 /// <summary>
 /// Asks the person for a file's password (D12). <paramref name="wasWrong"/> is true after a wrong try. Return null to
-/// skip the file. The password is never stored.
+/// skip the file. The password is never stored. It can be called from any thread.
 /// </summary>
 public delegate Task<string?> PasswordPrompt(string fileName, bool wasWrong);
 

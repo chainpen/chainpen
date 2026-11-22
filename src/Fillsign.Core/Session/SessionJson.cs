@@ -52,6 +52,42 @@ public static class SessionJson
         }
     }
 
+    // Room kept in a record for everything that isn't a picture: pages, text, drawings and field values.
+    private const long ReservedForTheRest = 8 * 1024 * 1024;
+
+    /// <summary>
+    /// Whether a document could take this picture and still be read back from its working copy. The reader turns away
+    /// a picture over <see cref="MaxImageBytes"/> and a record over <see cref="MaxRecordBytes"/>, and pictures (stored
+    /// as base64, a third larger than their PNG) are nearly all of a record; so a picture that doesn't fit has to be
+    /// refused when it's added, not found out about when the saved file won't open for editing.
+    /// </summary>
+    public static bool HasRoomFor(DocumentState document, SignatureImage picture)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(picture);
+        if (picture.Png.Length > MaxImageBytes)
+        {
+            return false;
+        }
+
+        long pngBytes = picture.Png.Length;
+        foreach (SignatureImage image in ImagesOf(document))
+        {
+            pngBytes += image == picture ? 0 : image.Png.Length;
+        }
+
+        return (pngBytes + 2) / 3 * 4 <= MaxRecordBytes - ReservedForTheRest;
+    }
+
+    /// <summary>Each signature and picture in the document once, however many times it's placed.</summary>
+    private static List<SignatureImage> ImagesOf(DocumentState document) =>
+    [
+        .. document.Items
+            .Select(item => item switch { SignatureItem signature => signature.Image, PictureItem picture => picture.Image, _ => null })
+            .OfType<SignatureImage>()
+            .Distinct(),
+    ];
+
     private static readonly byte[] s_pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
     public static byte[] Write(SessionRecord record)
@@ -79,11 +115,7 @@ public static class SessionJson
 
             json.WriteEndArray();
 
-            var images = record.Document.Items
-                .Select(item => item switch { SignatureItem signature => signature.Image, PictureItem picture => picture.Image, _ => null })
-                .OfType<SignatureImage>()
-                .Distinct()
-                .ToList();
+            List<SignatureImage> images = ImagesOf(record.Document);
             json.WriteStartArray("images");
             foreach (SignatureImage image in images)
             {

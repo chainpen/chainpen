@@ -98,6 +98,7 @@ public sealed partial class EditorViewModel
                 return false;
             }
 
+            RecoveryStore.Hold(RecoveryId);
             _autosavedState = state;
             RecoveryKeptAt = now;
             return true;
@@ -140,6 +141,7 @@ public sealed partial class EditorViewModel
     {
         ArgumentNullException.ThrowIfNull(copy);
         RecoveryId = copy.Id;
+        RecoveryStore.Claim(copy);
         WorkingCopyPath = copy.WorkingCopyPath;
         LastSavedAt = null;
         _savedState = null;
