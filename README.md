@@ -4,6 +4,19 @@ Fill in and sign documents, especially scanned paper forms with no fillable fiel
 
 > Status: beta. Bug reports and ideas are welcome in Issues; outside code contributions aren't accepted yet ([CONTRIBUTING](CONTRIBUTING.md)).
 
+<!-- GitHub shows the dark screenshot to people browsing in dark mode, the light one otherwise. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/scanned-form-dark.png">
+  <img src="docs/images/scanned-form.png" alt="A consent form with no fillable fields, ticked, named and signed in Fillsign">
+</picture>
+
+| | |
+|---|---|
+| ![A PDF's own form fields filled in, and signed in its signature field](docs/images/fill-a-form.png) | ![Export final copy, pointing out a box left unticked and a space that may need a signature](docs/images/export.png) |
+| Fill in a PDF's own form fields, and sign in its signature field. | Export a final copy to send. Fillsign points out what may still be missing. |
+| ![Organise pages: three files opened as one document, with one page selected](docs/images/organise-pages.png) | ![Find: the words highlighted on the page, and each page's matches counted](docs/images/find.png) |
+| Rotate, reorder, duplicate and delete pages, and add pages from other files. | Find words on the pages and in what you've added (⌘F / Ctrl+F). |
+
 ## Docs
 
 - [User guide](docs/USER-GUIDE.md) and [installing](docs/INSTALL.md) (including first-run warnings on unsigned builds)
@@ -18,6 +31,8 @@ dotnet build
 dotnet test
 dotnet run --project src/Fillsign.App
 ```
+
+On macOS, `build/run-mac.sh [file ...]` builds and runs it as an app bundle (`artifacts/Fillsign Dev.app`) instead: run as a bare program, macOS won't let you choose files in its Open panel.
 
 ## Release builds
 

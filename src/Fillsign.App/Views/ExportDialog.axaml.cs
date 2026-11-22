@@ -45,7 +45,7 @@ public partial class ExportDialog : UserControl
             () =>
             {
                 FileName.Focus();
-                FileName.SelectAll();
+                SelectNameWithoutExtension();
                 Avalonia.Threading.Dispatcher.UIThread.Post(ShowFromTheTop, Avalonia.Threading.DispatcherPriority.Background);
             },
             Avalonia.Threading.DispatcherPriority.Loaded);
@@ -195,6 +195,18 @@ public partial class ExportDialog : UserControl
     // The dialog isn't on screen yet while its rows are built, so the app's resources are looked up directly.
     private static Avalonia.Media.IBrush? Brush(string key) =>
         Avalonia.Application.Current?.TryGetResource(key, Avalonia.Application.Current.ActualThemeVariant, out object? value) == true ? value as Avalonia.Media.IBrush : null;
+
+    /// <summary>
+    /// Selects the name but not ".pdf", as the system's save dialogs do: typing replaces the name and the extension
+    /// stays in view, so it doesn't look as if it will be lost.
+    /// </summary>
+    private void SelectNameWithoutExtension()
+    {
+        string name = FileName.Text ?? string.Empty;
+        int end = name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? name.Length - ".pdf".Length : name.Length;
+        FileName.SelectionStart = 0;
+        FileName.SelectionEnd = end;
+    }
 
     /// <summary>The full path the current name and folder make: ".pdf" is added when missing.</summary>
     public string? ChosenPath

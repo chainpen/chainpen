@@ -703,4 +703,31 @@ PDFやスキャンした用紙に記入して署名できます。書類はこ�
   <data name="Editor_OrganiseHint_One" xml:space="preserve"><value>{0}ページ · ページをドラッグして並べ替えるか、ページの間にファイルをドロップして挿入します。Shift+クリックで範囲を選択、Mod+クリックでページを追加します。ダブルクリックでページを開きます。</value></data>
   <data name="Editor_OrganiseHint_Other" xml:space="preserve"><value>{0}ページ · ページをドラッグして並べ替えるか、ページの間にファイルをドロップして挿入します。Shift+クリックで範囲を選択、Mod+クリックでページを追加します。ダブルクリックでページを開きます。</value></data>
   <data name="Keys_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Find_Find" xml:space="preserve"><value>検索</value></data>
+  <data name="Find_FindInTheDocumentModF" xml:space="preserve"><value>文書内を検索 (Mod+F)</value></data>
+  <data name="Find_FindModF" xml:space="preserve"><value>検索… (Mod+F)</value></data>
+  <data name="Find_CloseFind" xml:space="preserve"><value>検索を閉じる</value></data>
+  <data name="Find_CloseFindEsc" xml:space="preserve"><value>検索を閉じる (Esc)</value></data>
+  <data name="Find_KeysHint" xml:space="preserve"><value>Return：次へ · Shift+Return：前へ · Esc：閉じる</value></data>
+  <data name="Find_FindInDocument" xml:space="preserve"><value>文書内を検索</value></data>
+  <data name="Find_PreviousMatch" xml:space="preserve"><value>前の一致</value></data>
+  <data name="Find_PreviousMatchKeys" xml:space="preserve"><value>前の一致 (Shift+Return、Mod+Shift+G)</value></data>
+  <data name="Find_Previous" xml:space="preserve"><value>前へ</value></data>
+  <data name="Find_NextMatch" xml:space="preserve"><value>次の一致</value></data>
+  <data name="Find_NextMatchKeys" xml:space="preserve"><value>次の一致 (Return、Mod+G)</value></data>
+  <data name="Find_Next" xml:space="preserve"><value>次へ</value></data>
+  <data name="Find_Searching" xml:space="preserve"><value>検索中…</value></data>
+  <data name="Find_NoMatches" xml:space="preserve"><value>一致なし</value></data>
+  <data name="Find_MatchOfCount" xml:space="preserve"><value>{1}件中{0}件目</value></data>
+  <data name="Find_PageIsAScan" xml:space="preserve"><value>{0}ページはスキャンまたは画像のため、検索できるテキストがありません。</value></data>
+  <data name="Find_AllPagesAreScans" xml:space="preserve"><value>これらのページはスキャンまたは画像のため、検索できるテキストがありません。</value></data>
+  <data name="Find_SomePagesAreScans" xml:space="preserve"><value>{0}ページはスキャンまたは画像のため、検索できるテキストがありません。</value></data>
+  <data name="Find_Badge_One" xml:space="preserve"><value>{0}件</value></data>
+  <data name="Find_Badge_Other" xml:space="preserve"><value>{0}件</value></data>
+  <data name="Menu_Find" xml:space="preserve"><value>検索…</value></data>
+  <data name="Menu_FindNext" xml:space="preserve"><value>次を検索</value></data>
+  <data name="Menu_FindPrevious" xml:space="preserve"><value>前を検索</value></data>
+  <data name="Shortcuts_Finding" xml:space="preserve"><value>検索</value></data>
+  <data name="Shortcuts_FindWordsInTheDocument" xml:space="preserve"><value>文書内の語句を検索</value></data>
+  <data name="Shortcuts_NextPreviousMatch" xml:space="preserve"><value>次・前の一致 (検索欄ではReturnとShift+Return)</value></data>
 </root>

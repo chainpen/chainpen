@@ -247,6 +247,13 @@
         <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
     </Style>
 
+    <!-- Selected text keeps the text colour on a pale highlight, as in the system's own fields; the theme's strong
+         accent left dark text at about 3:1. -->
+    <Style Selector="TextBox">
+        <Setter Property="SelectionBrush" Value="{DynamicResource TextSelection}" />
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource Text}" />
+    </Style>
+
     <!-- Text typed straight onto the page (E2): no chrome, so it sits exactly where it will be drawn. -->
     <Style Selector="TextBox.onPage">
         <Setter Property="MinHeight" Value="0" />

@@ -27,6 +27,8 @@ public partial class ShortcutsPanel : UserControl
         (Strings.Shortcuts_Selecting, ["Esc"], Strings.Shortcuts_ClearTheSelectionOrStop),
         (Strings.Editor_Tools, ["V", "T", "C", "X"], Strings.Shortcuts_SelectTextTickCross),
         (Strings.Editor_Tools, ["D", "S", "R", "P"], Strings.Shortcuts_DateSignShapesDraw),
+        (Strings.Shortcuts_Finding, ["Mod F"], Strings.Shortcuts_FindWordsInTheDocument),
+        (Strings.Shortcuts_Finding, ["Mod G", "Mod Shift G"], Strings.Shortcuts_NextPreviousMatch),
         (Strings.Editor_Document, ["Mod O"], Strings.Common_Open),
         (Strings.Editor_Document, ["Mod S", "Mod Shift S"], Strings.Shortcuts_SaveWorkingCopySaveAs),
         (Strings.Editor_Document, ["Mod E"], Strings.Common_ExportFinalCopy),

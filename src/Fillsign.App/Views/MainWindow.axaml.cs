@@ -578,6 +578,18 @@ public partial class MainWindow : Window, IEditorHost
             case Key.O when hasCommand:
                 _ = ChooseAndOpenAsync();
                 break;
+            // Find (FS-974): works from anywhere, including while typing on the page or in the find box.
+            case Key.F when hasCommand && editor is not null:
+                editor.OpenFindCommand.Execute(null);
+                break;
+            case Key.G when hasCommand && hasShift && editor is not null:
+            case Key.F3 when hasShift && editor is not null:
+                editor.PreviousMatchCommand.Execute(null);
+                break;
+            case Key.G when hasCommand && editor is not null:
+            case Key.F3 when editor is not null:
+                editor.NextMatchCommand.Execute(null);
+                break;
             case Key.S when hasCommand && hasShift && editor is not null:
                 RunOnce(editor.SaveAsCommand);
                 break;

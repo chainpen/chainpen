@@ -13,6 +13,15 @@ The first time you open Fillsign, the start screen offers **Try it with a practi
 - If a document is already open, Fillsign asks whether to add the pages to it or open them in a new window. It never replaces what you're working on.
 - If the file's owner protected it against changes, Fillsign says so and asks: **View only**, **Edit anyway** (if you're allowed to fill it in), or **Don't open**. In View only, nothing can be added or saved until you choose **Edit anyway** in the bar above the page.
 
+## Find words
+
+- **Find** (⌘F / Ctrl+F), the magnifying glass on the toolbar, or Edit → **Find…** opens a find bar above the page. Type the words you're looking for.
+- Every match is highlighted on the pages, the current one in a deeper colour with an outline, and the Pages panel and **Organise pages** show how many matches each page has. The bar says which match you're on, such as "2 of 5".
+- **Return** or **Next** (⌘G / Ctrl+G, or F3) goes to the next match; **Shift+Return** or **Previous** (⇧⌘G / Ctrl+Shift+G, or Shift+F3) goes back. Find starts from the page you're on.
+- Capital letters and accents don't matter, and words that wrap onto the next line are still found. Text you've typed in Fillsign is searched as well as the document's own.
+- Scans and photos are pictures of paper, so they have no text to search yet. The bar says which pages it couldn't search.
+- **Esc** or **Close find** closes the bar and takes you back to the page. Your words are kept for the next time.
+
 ## Fill it in
 
 Choose a tool on the toolbar, then click on the page:
@@ -30,7 +39,7 @@ Each tool also has a letter: **V** Select, **T** Text, **C** Tick, **X** Cross, 
 
 **Forms with fillable fields**: fields are tinted blue, and a note says how many there are when the form opens. With Select or Text, click one to fill it (Tick and Cross tick the form's own boxes too): type into a text field (Enter finishes), click a check box or radio button, or pick from a list (in a list that allows several answers, each click adds or removes one). The keyboard works as in a web browser. Tab moves from field to field in the order the form sets (a group of radio buttons is one stop), and selects a text field's contents so typing replaces them. Space or Enter ticks a box, chooses a radio button or opens a list. The arrow keys move round a question's radio buttons and change a list's or drop-down's choice. In a list that allows several answers, the arrows move the dotted outline, Space ticks or unticks that row, and Shift+arrows choose a run of rows. Filled fields are kept in the working copy and the final copy, where they still work in other PDF apps. Read-only fields, such as totals a form works out, can't be changed, and form buttons such as Reset or Submit don't run in Fillsign. Click a signature field to sign straight into it. Some drop-downs also take an answer of your own: choose **Type an answer…**. Empty fields show up in the gap hints before you export. When you export, **Lock the form's fields** (ticked unless you untick it) makes the answers read-only in the final copy, so the person you send it to can't change them. With a screen reader, each field is read out as you reach it, with its answer, and the fields near the page in view can be explored and filled with the screen reader's own commands. The bar above the page shows the field in use and the keys that work in it.
 
-On a scan or a PDF without fillable fields, clicking an empty part of the page with **Select** does nothing to the page itself, so Fillsign says to choose a tool first and lights up **Tick**, **Text** and **Sign**.
+On the practice form, clicking an empty part of the page with **Select** does nothing to the page itself, so Fillsign says to choose a tool first and lights up **Tick**, **Text** and **Sign**. On your own documents that click just clears the selection.
 
 With **Select**, click anything you added to move, resize, recolour or delete it. Shift- or ⌘/Ctrl-click adds to the selection; drag on empty paper to select several. On the page, Tab steps through what you've added; arrow keys nudge (Shift for bigger steps). Every change can be undone (⌘Z / Ctrl+Z), and right after deleting, a note at the bottom offers **Undo** too.
 

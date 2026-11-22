@@ -36,6 +36,10 @@
                             ToolTip.Tip="{c:Keys {x:Static l:Strings.Editor_RedoModShiftZ}}" ToolTip.ShowOnDisabled="True">
                         <c:StrokeIcon Data="{StaticResource IconRedo}" />
                     </Button>
+                    <Button x:Name="FindButton" Classes="tool icon" Classes.on="{Binding IsFinding}" Command="{Binding OpenFindCommand}"
+                            AutomationProperties.Name="{x:Static l:Strings.Find_Find}" ToolTip.Tip="{c:Keys {x:Static l:Strings.Find_FindInTheDocumentModF}}">
+                        <c:StrokeIcon Data="{StaticResource IconSearch}" />
+                    </Button>
                     <Button x:Name="ShortcutsButton" Classes="tool icon" AutomationProperties.Name="{x:Static l:Strings.Common_KeyboardShortcuts}" ToolTip.Tip="{x:Static l:Strings.Common_KeyboardShortcuts}">
                         <c:StrokeIcon Data="{StaticResource IconKeyboard}" />
                         <Button.Flyout>
@@ -275,6 +279,7 @@
                                 <Separator />
                                 <MenuItem Header="{x:Static l:Strings.Common_Draw}" Command="{Binding SelectToolCommand}" CommandParameter="{x:Static vm:EditorTool.Draw}" />
                                 <MenuItem x:Name="MoreDateItem" IsVisible="False" Header="{x:Static l:Strings.Editor_TodaysDate}" Command="{Binding SelectToolCommand}" CommandParameter="{x:Static vm:EditorTool.Date}" />
+                                <MenuItem x:Name="MoreFindItem" IsVisible="False" Header="{c:Keys {x:Static l:Strings.Find_FindModF}}" Command="{Binding OpenFindCommand}" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -306,9 +311,60 @@
                                Text="{Binding CheckingText}" ToolTip.Tip="{Binding CheckingText}" AutomationProperties.Name="{Binding CheckingText}" />
                 </Grid>
             </DockPanel>
+            <!-- Find (FS-974, 🎨 F1–F4): the words, how many matches, and the way between them, in this bar's place.
+                 In a small window the buttons keep their icons and names but lose their words. -->
+            <DockPanel x:Name="FindBar" IsVisible="{Binding IsFinding}" VerticalAlignment="Center">
+                <Button DockPanel.Dock="Right" Classes="chip" Margin="10,0,0,0" Command="{Binding CloseFindCommand}"
+                        AutomationProperties.Name="{x:Static l:Strings.Find_CloseFind}" ToolTip.Tip="{x:Static l:Strings.Find_CloseFindEsc}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:StrokeIcon Data="{StaticResource IconCross}" />
+                        <TextBlock Classes="collapsible" Text="{x:Static l:Strings.Find_CloseFind}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Panel DockPanel.Dock="Right" IsVisible="{Binding !HasFindNote}" Margin="12,0,0,0">
+                    <TextBlock Classes="muted collapsible" FontSize="13" VerticalAlignment="Center"
+                               Text="{x:Static l:Strings.Find_KeysHint}" />
+                </Panel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBox x:Name="FindBox" Classes="find" Width="300" Text="{Binding FindQuery}" Watermark="{x:Static l:Strings.Find_FindInDocument}"
+                             AutomationProperties.Name="{x:Static l:Strings.Find_FindInDocument}" KeyDown="OnFindBoxKeyDown">
+                        <TextBox.InnerLeftContent>
+                            <c:StrokeIcon Data="{StaticResource IconSearch}" Size="16" Margin="10,0,0,0" Foreground="{DynamicResource TextMuted}" />
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+                    <TextBlock x:Name="FindStatusText" FontSize="13" FontWeight="SemiBold" MinWidth="84" VerticalAlignment="Center" Margin="4,0,0,0"
+                               Text="{Binding FindStatus}" AutomationProperties.LiveSetting="Polite" />
+                    <Button Classes="chip" Command="{Binding PreviousMatchCommand}" AutomationProperties.Name="{x:Static l:Strings.Find_PreviousMatch}"
+                            ToolTip.Tip="{c:Keys {x:Static l:Strings.Find_PreviousMatchKeys}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconArrowUp}" />
+                            <TextBlock Classes="collapsible" Text="{x:Static l:Strings.Find_Previous}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="chip" Command="{Binding NextMatchCommand}" AutomationProperties.Name="{x:Static l:Strings.Find_NextMatch}"
+                            ToolTip.Tip="{c:Keys {x:Static l:Strings.Find_NextMatchKeys}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:StrokeIcon Data="{StaticResource IconArrowDown}" />
+                            <TextBlock Classes="collapsible" Text="{x:Static l:Strings.Find_Next}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <!-- F2: scans have no text to search until it's read (FS-953), so say so rather than find nothing silently. -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="14,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasFindNote}">
+                    <c:StrokeIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource Accent}" Size="16" />
+                    <TextBlock Grid.Column="1" Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               Text="{Binding FindNote}" ToolTip.Tip="{Binding FindNote}" AutomationProperties.Name="{Binding FindNote}" />
+                </Grid>
+            </DockPanel>
             <!-- One control's height whatever is shown (the Bold button is 2 points taller than the size stepper), so
                  switching tools or modes never nudges the bar's contents up or down. -->
-            <Panel VerticalAlignment="Center" Height="{StaticResource ControlHeight}" IsVisible="{Binding !IsCheckingGaps}">
+            <Panel VerticalAlignment="Center" Height="{StaticResource ControlHeight}">
+                <Panel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsCheckingGaps" />
+                        <Binding Path="!IsFinding" />
+                    </MultiBinding>
+                </Panel.IsVisible>
             <!-- Organise pages: the selection and its actions (🎨 4, D9), or a hint. -->
             <Panel IsVisible="{Binding IsOrganising}">
                 <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
@@ -588,6 +644,9 @@
                                             <TextBlock Classes="caption" Classes.current="{Binding IsCurrent}" Text="{Binding NumberLabel}" />
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center"
                                                      IsVisible="{Binding HasEdits}" />
+                                            <Border Classes="findBadge" IsVisible="{Binding HasFindMatches}">
+                                                <TextBlock Text="{Binding FindBadge}" />
+                                            </Border>
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
@@ -639,6 +698,10 @@
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
                                     <TextBlock Classes="caption" Classes.selected="{Binding IsSelected}" FontSize="13" Text="{Binding NumberLabel}" />
                                     <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center" IsVisible="{Binding HasEdits}" />
+                                    <!-- Matches stay marked while organising, so pages with the words can be found and moved. -->
+                                    <Border Classes="findBadge" IsVisible="{Binding HasFindMatches}">
+                                        <TextBlock Text="{Binding FindBadge}" />
+                                    </Border>
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
@@ -828,6 +891,22 @@
                     </KeyFrame>
                 </Animation>
             </Style.Animations>
+        </Style>
+        <Style Selector="Border.findBadge">
+            <Setter Property="Background" Value="{DynamicResource WarningTint}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.findBadge > TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Warning}" />
+        </Style>
+        <Style Selector=":is(UserControl).iconsOnly TextBox.find">
+            <Setter Property="Width" Value="220" />
         </Style>
         <Style Selector=":is(UserControl).iconsOnly TextBlock.collapsible">
             <Setter Property="IsVisible" Value="False" />

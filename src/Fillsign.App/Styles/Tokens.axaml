@@ -43,6 +43,8 @@
             <SolidColorBrush x:Key="OnPrimary" Color="#ffffff" />
             <Color x:Key="FocusRingColor">#173c96</Color>
             <SolidColorBrush x:Key="FocusRing" Color="#173c96" />
+            <!-- Selected text in boxes: a pale accent, so the text on it keeps its own colour and full contrast (WCAG 1.4.3). -->
+            <SolidColorBrush x:Key="TextSelection" Color="#bcd0fb" />
             <Color x:Key="SelectionOnPageColor">#1f4fc4</Color>
             <SolidColorBrush x:Key="SelectionOnPage" Color="#1f4fc4" />
             <!-- The practice guide's "do this next": orange, so it never reads as a tool that's on or selected (blue). -->
@@ -127,6 +129,7 @@
             <SolidColorBrush x:Key="OnPrimary" Color="#ffffff" />
             <Color x:Key="FocusRingColor">#a9c1ff</Color>
             <SolidColorBrush x:Key="FocusRing" Color="#a9c1ff" />
+            <SolidColorBrush x:Key="TextSelection" Color="#2f4a8a" />
             <Color x:Key="SelectionOnPageColor">#1f4fc4</Color>
             <SolidColorBrush x:Key="SelectionOnPage" Color="#1f4fc4" />
             <SolidColorBrush x:Key="Guide" Color="#fb923c" />

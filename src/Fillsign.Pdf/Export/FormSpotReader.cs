@@ -78,7 +78,7 @@ public static class FormSpotReader
     }
 
     /// <summary>The extra turn that makes most of the page's text run left to right.</summary>
-    private static Rotation ReadingTurn(IReadOnlyList<PdfCharacter> characters, SourcePage source)
+    internal static Rotation ReadingTurn(IReadOnlyList<PdfCharacter> characters, SourcePage source)
     {
         Rotation best = Rotation.None;
         double bestScore = double.MinValue;

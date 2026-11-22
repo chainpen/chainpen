@@ -205,6 +205,10 @@ public partial class EditorView : UserControl
         bool isDateInMore = stage >= 4;
         DateButton.IsVisible = !isDateInMore;
         MoreDateItem.IsVisible = isDateInMore;
+
+        // Find goes there too, so More doesn't run into Undo; Mod+F and Edit → Find… work at every width.
+        FindButton.IsVisible = !isDateInMore;
+        MoreFindItem.IsVisible = isDateInMore;
     }
 
     private readonly Dictionary<Control, (string Plain, string Letter)> _toolTips = [];
@@ -287,6 +291,8 @@ public partial class EditorView : UserControl
         Canvas.DamagedCardFactory = page => new DamagedPageCard(editor) { DataContext = page };
         Canvas.Attach(editor, Scroller);
         editor.PropertyChanged += OnEditorPropertyChanged;
+        editor.FindFocusRequested += OnFindFocusRequested;
+        editor.FindClosed += OnFindClosed;
         editor.PageSelectionChanged += SyncListSelection;
         editor.PagesChanged += SyncListSelection;
     }
@@ -304,11 +310,28 @@ public partial class EditorView : UserControl
         }
 
         editor.PropertyChanged -= OnEditorPropertyChanged;
+        editor.FindFocusRequested -= OnFindFocusRequested;
+        editor.FindClosed -= OnFindClosed;
         editor.PageSelectionChanged -= SyncListSelection;
         editor.PagesChanged -= SyncListSelection;
         Canvas.Detach();
         _toastTimer.Stop();
         _editor = null;
+    }
+
+    private void OnFindFocusRequested()
+    {
+        FindBox.Focus(NavigationMethod.Tab);
+        FindBox.SelectAll();
+    }
+
+    private void OnFindClosed()
+    {
+        // Focus was in the find bar, which has gone: back to the page, where it was before.
+        if (FindBar.IsKeyboardFocusWithin || TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is null)
+        {
+            Scroller.Focus(NavigationMethod.Tab);
+        }
     }
 
     private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
@@ -323,10 +346,20 @@ public partial class EditorView : UserControl
             PageList.ScrollIntoView(editor.CurrentPageIndex);
         }
 
-        // Organise pages has a different toolbar, so it's fitted again.
+        // Organise pages has a different toolbar, so it's fitted again. Going in, it's fitted while the editing tools are
+        // still showing, so it collapses as far as they need and the mode switch keeps its shape either way. Coming
+        // back, it waits until they show again: measured now, it would see Organise's shorter toolbar and leave every
+        // label showing, overlapping.
         if (args.PropertyName == nameof(EditorViewModel.IsOrganising))
         {
-            CollapseToolbar(Bounds.Width);
+            if (editor.IsOrganising)
+            {
+                CollapseToolbar(Bounds.Width);
+            }
+            else
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => CollapseToolbar(Bounds.Width), Avalonia.Threading.DispatcherPriority.Loaded);
+            }
         }
 
         // Switching to Organise pages hides the tools, so the arrow moves or goes with them.
@@ -384,6 +417,26 @@ public partial class EditorView : UserControl
         {
             PageBox.Text = _editor?.CurrentPageNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
             Scroller.Focus();
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>In the find box: Return for the next match, Shift+Return for the previous one, Esc to close (F1).</summary>
+    private void OnFindBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_editor is null)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            (e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? _editor.PreviousMatchCommand : _editor.NextMatchCommand).Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            _editor.CloseFindCommand.Execute(null);
             e.Handled = true;
         }
     }

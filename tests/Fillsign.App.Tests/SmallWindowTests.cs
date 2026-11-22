@@ -79,26 +79,7 @@ public sealed class SmallWindowTests
                         Save(window, $"toolbar-1024-{language}{(organising ? "-organising" : string.Empty)}");
                     }
 
-                    Control toolbar = window.GetVisualDescendants().OfType<Border>().First(border => border.Name == "ToolbarBar");
-                    Rect[] buttons = [.. toolbar.GetVisualDescendants().OfType<Button>()
-                        .Where(control => control.IsEffectivelyVisible && control.Bounds.Width > 0)
-                        .Select(control => new Rect(control.TranslatePoint(default, window)!.Value, control.Bounds.Size))];
-                    for (int i = 0; i < buttons.Length; i++)
-                    {
-                        if (buttons[i].Right > width + 0.5)
-                        {
-                            problems.Add($"{width}px{(organising ? " organising" : string.Empty)}: a button runs off the window");
-                        }
-
-                        for (int j = i + 1; j < buttons.Length; j++)
-                        {
-                            Rect overlap = buttons[i].Intersect(buttons[j]);
-                            if (overlap.Width > 0.5 && overlap.Height > 0.5)
-                            {
-                                problems.Add($"{width}px{(organising ? " organising" : string.Empty)}: buttons at x {buttons[i].X:0} and {buttons[j].X:0} overlap");
-                            }
-                        }
-                    }
+                    problems.AddRange(ToolbarProblems(window, $"{width}px{(organising ? " organising" : string.Empty)}"));
                 }
             }
 
@@ -146,6 +127,59 @@ public sealed class SmallWindowTests
             }
 
             Save(window, "selection-hint-1600");
+            Assert.True(problems.Count == 0, string.Join("; ", problems));
+        }
+        finally
+        {
+            window.CloseWithoutAsking();
+        }
+    }
+
+    /// <summary>Toolbar buttons that run off the window or overlap another, described with this label.</summary>
+    private static IEnumerable<string> ToolbarProblems(Window window, string label)
+    {
+        Control toolbar = window.GetVisualDescendants().OfType<Border>().First(border => border.Name == "ToolbarBar");
+        Rect[] buttons = [.. toolbar.GetVisualDescendants().OfType<Button>()
+            .Where(control => control.IsEffectivelyVisible && control.Bounds.Width > 0)
+            .Select(control => new Rect(control.TranslatePoint(default, window)!.Value, control.Bounds.Size))];
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            if (buttons[i].Right > window.Width + 0.5)
+            {
+                yield return $"{label}: a button runs off the window";
+            }
+
+            for (int j = i + 1; j < buttons.Length; j++)
+            {
+                Rect overlap = buttons[i].Intersect(buttons[j]);
+                if (overlap.Width > 0.5 && overlap.Height > 0.5)
+                {
+                    yield return $"{label}: buttons at x {buttons[i].X:0} and {buttons[j].X:0} overlap";
+                }
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Toolbar_still_fits_after_switching_to_Organise_pages_and_back()
+    {
+        // Switching modes refits the toolbar without the window changing size, so it must measure the tools that are
+        // about to show, not the ones that are going.
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+        window.Show();
+        try
+        {
+            await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
+            await Pump(() => window.DataContext is MainWindowViewModel { Editor: { IsLoading: false } });
+            EditorViewModel editor = Editor(window);
+            var problems = new List<string>(ToolbarProblems(window, "before switching"));
+            editor.ShowOrganiseCommand.Execute(null);
+            await Pump(() => true);
+            problems.AddRange(ToolbarProblems(window, "organising"));
+            editor.ShowEditContentCommand.Execute(null);
+            await Pump(() => true);
+            problems.AddRange(ToolbarProblems(window, "back to editing"));
+            Save(window, "toolbar-after-organise-and-back");
             Assert.True(problems.Count == 0, string.Join("; ", problems));
         }
         finally

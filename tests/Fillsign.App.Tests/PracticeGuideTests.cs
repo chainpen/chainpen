@@ -231,6 +231,28 @@ public sealed class PracticeGuideTests
     }
 
     [AvaloniaFact]
+    public async Task Select_click_on_your_own_document_without_fields_does_not_nudge()
+    {
+        var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+        window.Show();
+        try
+        {
+            await window.OpenPathsAsync([TestFiles.Sample("four-pages.pdf")]);
+            await Pump(() => window.DataContext is MainWindowViewModel { Editor: { IsLoading: false } });
+            EditorViewModel editor = Editor(window);
+            Assert.False(editor.HasFillableFields);
+            editor.PointerPressed(0, new PagePoint(5, 5), isShift: false, isCommand: false, clickCount: 1, tolerance: 4);
+            editor.PointerReleased(new PagePoint(5, 5));
+            Assert.False(editor.IsNudgingTools);
+            Assert.False(editor.GuideLightsTick);
+        }
+        finally
+        {
+            window.CloseWithoutAsking();
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Select_click_on_a_form_with_fields_does_not_nudge()
     {
         var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };

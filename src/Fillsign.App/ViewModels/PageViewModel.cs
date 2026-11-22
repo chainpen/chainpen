@@ -45,6 +45,16 @@ public sealed partial class PageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     public partial bool IsSelected { get; set; }
 
+    /// <summary>How many find matches are on this page (FS-974); 0 when not finding.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName), nameof(FindBadge), nameof(HasFindMatches))]
+    public partial int FindMatchCount { get; set; }
+
+    public bool HasFindMatches => FindMatchCount > 0;
+
+    /// <summary>"1 match", "3 matches": beside the page number in the Pages panel (🎨 F1).</summary>
+    public string FindBadge => Text.Plural(FindMatchCount, Strings.Find_Badge_One, Strings.Find_Badge_Other);
+
     public bool IsRotated => Entry.Rotation != Rotation.None;
 
     /// <summary>"3", "3 · rotated" or "3 · can't show".</summary>
@@ -81,6 +91,11 @@ public sealed partial class PageViewModel : ObservableObject
             if (IsDamaged)
             {
                 parts.Add(Strings.Editor_PageStateCantBeShown);
+            }
+
+            if (HasFindMatches)
+            {
+                parts.Add(FindBadge);
             }
 
             return string.Join(Strings.Editor_ListSeparator, parts);

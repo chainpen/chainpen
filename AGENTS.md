@@ -14,6 +14,9 @@ dotnet test
 dotnet run --project src/Fillsign.App
 ```
 
+- On macOS, run the app with `build/run-mac.sh [file ...]` rather than `dotnet run`: it builds and opens it as
+  `artifacts/Fillsign Dev.app`. Run as a bare program, macOS won't let anything be chosen in the Open panel (Open…,
+  Add pages…) and computer-use tools can't reach the window.
 - Tests use xUnit v3 on Microsoft.Testing.Platform. Run one project, class or test with
   `dotnet test --project tests/Fillsign.Pdf.Tests --filter-class Fillsign.Pdf.Tests.PdfCompactorTests` or
   `--filter-method "*Some_test_name*"`.
@@ -24,6 +27,8 @@ dotnet run --project src/Fillsign.App
 - Golden-file tests compare exported pages with the images in `tests/Fillsign.Pdf.Tests/Golden`. After a deliberate
   change, run them with `FILLSIGN_UPDATE_GOLDEN=1`, look at every changed image, and commit the ones that are right.
 - Keychain tests only run on macOS with `FILLSIGN_KEYCHAIN_TESTS=1`.
+- The README's screenshots in `docs/images/` are made by `ReadmeScreenshots` in `Fillsign.App.Tests` at 1440×900.
+  After a change people see, run it with `FILLSIGN_README_SCREENSHOTS=1`, look at every image, and commit the right ones.
 
 ## Rules the build enforces
 

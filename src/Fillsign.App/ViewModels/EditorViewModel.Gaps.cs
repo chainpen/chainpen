@@ -178,6 +178,8 @@ public sealed partial class EditorViewModel
             return;
         }
 
+        // The checking bar takes the find bar's place.
+        CloseFind();
         _isCheckingDone = false;
         CheckingReport = report;
         ShowGap(report.Gaps[gapIndex]);

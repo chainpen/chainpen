@@ -112,8 +112,9 @@ public sealed partial class EditorViewModel
     public bool GuideLightsExport => Guide == GuideStep.Export;
 
     /// <summary>
-    /// A click with Select on an empty part of a page that has no form fields of its own: lit up Tick, Text and Sign
-    /// until the next click or tool. On a scan or a flat PDF that click is usually someone trying to tick a printed box.
+    /// A click with Select on an empty part of the practice form: lit up Tick, Text and Sign until the next click or
+    /// tool. There that click is usually someone trying to tick a printed box; on their own documents, after the
+    /// practice, it's more often a click to clear the selection, so it isn't answered.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GuideLightsTick), nameof(GuideLightsText), nameof(GuideLightsSign))]
@@ -123,7 +124,7 @@ public sealed partial class EditorViewModel
 
     private void NudgeTowardsTools()
     {
-        if (IsViewOnly || HasFillableFields)
+        if (!IsPracticeForm || IsViewOnly || HasFillableFields)
         {
             return;
         }
@@ -131,6 +132,9 @@ public sealed partial class EditorViewModel
         Tell(Strings.Editor_ChooseAToolFirst);
         IsNudgingTools = true;
     }
+
+    /// <summary>Whether this is the practice form, opened with its guide (even if the guide has since been closed).</summary>
+    private bool IsPracticeForm => _guidePage is not null;
 
     /// <summary>The place on the practice page to click once the right tool is chosen, with a label for it.</summary>
     public (PageId Page, PageRect Area, string Label)? GuideTarget

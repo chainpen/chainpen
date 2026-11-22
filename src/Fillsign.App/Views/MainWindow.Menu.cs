@@ -85,7 +85,11 @@ public partial class MainWindow
             Item(Strings.Editor_Duplicate, Duplicate, Keys(Key.D), requiresDocument: true),
             Item(Strings.Common_Delete, () => InTextBoxOr(DeleteForward, Delete), new KeyGesture(Key.Delete), requiresDocument: true),
             new NativeMenuItemSeparator(),
-            Item(Strings.Menu_SelectAll, () => InTextBoxOr(box => box.SelectAll(), SelectAll), Keys(Key.A), requiresDocument: true));
+            Item(Strings.Menu_SelectAll, () => InTextBoxOr(box => box.SelectAll(), SelectAll), Keys(Key.A), requiresDocument: true),
+            new NativeMenuItemSeparator(),
+            Item(Strings.Menu_Find, () => Editor?.OpenFindCommand.Execute(null), Keys(Key.F), requiresDocument: true),
+            Item(Strings.Menu_FindNext, () => Editor?.NextMatchCommand.Execute(null), Keys(Key.G), requiresDocument: true),
+            Item(Strings.Menu_FindPrevious, () => Editor?.PreviousMatchCommand.Execute(null), Keys(Key.G, KeyModifiers.Shift), requiresDocument: true));
 
         var view = Menu(Strings.Editor_View,
             Item(Strings.Editor_EditContent, () => Editor?.ShowEditContentCommand.Execute(null), requiresDocument: true),

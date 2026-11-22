@@ -703,4 +703,31 @@ The full terms, and the licences for the fonts and libraries Fillsign uses, are 
   <data name="Editor_OrganiseHint_One" xml:space="preserve"><value>{0} page · Drag pages to reorder, or drop files between pages to insert them. Shift-click selects a range, Mod-click adds a page. Double-click opens a page.</value><comment>{0} is the number of pages. "Mod" becomes ⌘ or Ctrl.</comment></data>
   <data name="Editor_OrganiseHint_Other" xml:space="preserve"><value>{0} pages · Drag pages to reorder, or drop files between pages to insert them. Shift-click selects a range, Mod-click adds a page. Double-click opens a page.</value></data>
   <data name="Keys_Delete" xml:space="preserve"><value>Delete</value><comment>The Delete key as printed on keyboards.</comment></data>
+  <data name="Find_Find" xml:space="preserve"><value>Find</value></data>
+  <data name="Find_FindInTheDocumentModF" xml:space="preserve"><value>Find in the document (Mod+F)</value></data>
+  <data name="Find_FindModF" xml:space="preserve"><value>Find… (Mod+F)</value></data>
+  <data name="Find_CloseFind" xml:space="preserve"><value>Close find</value></data>
+  <data name="Find_CloseFindEsc" xml:space="preserve"><value>Close find (Esc)</value></data>
+  <data name="Find_KeysHint" xml:space="preserve"><value>Return for next · Shift+Return for previous · Esc closes</value></data>
+  <data name="Find_FindInDocument" xml:space="preserve"><value>Find in document</value></data>
+  <data name="Find_PreviousMatch" xml:space="preserve"><value>Previous match</value></data>
+  <data name="Find_PreviousMatchKeys" xml:space="preserve"><value>Previous match (Shift+Return, Mod+Shift+G)</value></data>
+  <data name="Find_Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Find_NextMatch" xml:space="preserve"><value>Next match</value></data>
+  <data name="Find_NextMatchKeys" xml:space="preserve"><value>Next match (Return, Mod+G)</value></data>
+  <data name="Find_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Find_Searching" xml:space="preserve"><value>Searching…</value></data>
+  <data name="Find_NoMatches" xml:space="preserve"><value>No matches</value></data>
+  <data name="Find_MatchOfCount" xml:space="preserve"><value>{0} of {1}</value></data>
+  <data name="Find_PageIsAScan" xml:space="preserve"><value>Page {0} is a scan or picture, so it has no text to search.</value></data>
+  <data name="Find_AllPagesAreScans" xml:space="preserve"><value>These pages are scans or pictures, so they have no text to search.</value></data>
+  <data name="Find_SomePagesAreScans" xml:space="preserve"><value>{0} pages are scans or pictures, so they have no text to search.</value></data>
+  <data name="Find_Badge_One" xml:space="preserve"><value>{0} match</value></data>
+  <data name="Find_Badge_Other" xml:space="preserve"><value>{0} matches</value></data>
+  <data name="Menu_Find" xml:space="preserve"><value>Find…</value></data>
+  <data name="Menu_FindNext" xml:space="preserve"><value>Find next</value></data>
+  <data name="Menu_FindPrevious" xml:space="preserve"><value>Find previous</value></data>
+  <data name="Shortcuts_Finding" xml:space="preserve"><value>Finding</value></data>
+  <data name="Shortcuts_FindWordsInTheDocument" xml:space="preserve"><value>Find words in the document</value></data>
+  <data name="Shortcuts_NextPreviousMatch" xml:space="preserve"><value>Next, previous match (Return and Shift+Return in the find box)</value></data>
 </root>

@@ -147,7 +147,12 @@ public sealed class SaveTests : IDisposable
         s.Key(Key.E, s_command);
         await Pump(() => s.Dialog<ExportDialog>() is not null);
         ExportDialog dialog = s.Dialog<ExportDialog>()!;
-        Assert.Equal("sample-form-final.pdf", dialog.FindControl<TextBox>("FileName")!.Text);
+        TextBox name = dialog.FindControl<TextBox>("FileName")!;
+        Assert.Equal("sample-form-final.pdf", name.Text);
+
+        // The name has focus with just the name selected, as in the system's save dialogs: typing keeps ".pdf".
+        await Pump(() => name.IsFocused && name.SelectedText.Length > 0);
+        Assert.Equal("sample-form-final", name.SelectedText);
         Assert.StartsWith("Final copy ", dialog.FindControl<TextBlock>("SizeText")!.Text, StringComparison.Ordinal);
         dialog.UseFolder(_folder);
         await Pump(() => true);

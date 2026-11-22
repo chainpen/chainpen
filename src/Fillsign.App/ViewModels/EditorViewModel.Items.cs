@@ -340,6 +340,10 @@ public sealed partial class EditorViewModel
         {
             StopChecking();
         }
+        else if (IsFinding)
+        {
+            CloseFind();
+        }
         else
         {
             return false;

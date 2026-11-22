@@ -136,6 +136,24 @@ public sealed partial class PagesCanvas
         context.DrawText(text, new Point(pill.X + 8, pill.Y + 2));
     }
 
+    // Find (🎨 F1): every match amber, the current one deeper with an outline, so it isn't told by colour alone. The
+    // page is never themed, so these are the same in dark mode; see-through, so the words stay readable.
+    private static readonly IBrush s_findMatch = new SolidColorBrush(Color.FromRgb(0xfa, 0xcc, 0x15), 0.4);
+    private static readonly IBrush s_findCurrent = new SolidColorBrush(Color.FromRgb(0xf5, 0x9e, 0x0b), 0.5);
+    private static readonly Pen s_findCurrentPen = new(new SolidColorBrush(Color.FromRgb(0x92, 0x40, 0x0e)), 2);
+
+    private void DrawFindHits(DrawingContext context, PageViewModel page, Rect pageRect)
+    {
+        foreach ((Fillsign.Core.Finding.TextMatch match, bool isCurrent) in _editor!.FindHitsOn(page.Id))
+        {
+            foreach (Fillsign.Core.Model.PageRect box in match.Boxes)
+            {
+                var area = new Rect(pageRect.X + (box.X * Zoom), pageRect.Y + (box.Y * Zoom), box.Width * Zoom, box.Height * Zoom).Inflate(1);
+                context.DrawRectangle(isCurrent ? s_findCurrent : s_findMatch, isCurrent ? s_findCurrentPen : null, area, 2, 2);
+            }
+        }
+    }
+
     private static readonly DashStyle s_signHereDash = new([4, 3], 0);
     private static readonly Typeface s_signHereFace = new("Inter");
 
@@ -146,6 +164,8 @@ public sealed partial class PagesCanvas
         IBrush blue = Brush("SelectionOnPage", Brushes.RoyalBlue);
         Color blueColour = blue is ISolidColorBrush solid ? solid.Color : Colors.RoyalBlue;
         var tint = new SolidColorBrush(blueColour, 0.06);
+
+        DrawFindHits(context, page, rect);
 
         if (editor.CheckingGap is { } gap && gap.Page == page.Id)
         {

@@ -178,6 +178,9 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         LoadedPageCount = Source.PageCount;
         RebuildPages();
         OnPropertyChanged(nameof(ContextHint));
+
+        // Pages that were still loading weren't searched.
+        RefreshFind();
     }
 
     /// <summary>Pages the view should show as damaged (FS-209): unreadable and not yet kept as they are.</summary>
@@ -300,6 +303,8 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         _recoveryGeneration++;
         Platform.RecoveryStore.CopiesDeleted -= OnRecoveryCopiesDeleted;
         _loading.Cancel();
+        _search?.Cancel();
+        _search?.Dispose();
         Renderer.PageFailed -= OnPageFailed;
         Renderer.Dispose();
         Source.Dispose();
@@ -369,6 +374,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         }
 
         ItemsChanged?.Invoke();
+        RefreshFind();
     }
 
     private void OnPageFailed(int sourceIndex)
@@ -397,6 +403,7 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
             page.HasEdits = State.HasItems(entry.Id);
             page.IsCurrent = i == CurrentPageIndex;
             page.IsSelected = SelectedPages.Contains(entry.Id);
+            page.FindMatchCount = FindHits.Count(hit => hit.Page == entry.Id);
             if (existing is null)
             {
                 Pages.Add(page);
