@@ -1,6 +1,6 @@
 # Third-party notices
 
-Fillsign uses the following third-party components. Each is distributed under its own licence.
+Chainpen uses the following third-party components. Each is distributed under its own licence.
 
 | Component | Use | Licence | Source |
 |---|---|---|---|
@@ -32,4 +32,4 @@ embedded in the document, and only if the font's own embedding permission allows
 
 Test-only packages (xUnit, Avalonia.Headless) aren't shipped.
 
-Full licence texts are shipped in the app's `Licenses` folder (source: `src/Fillsign.App/Licenses`), with the bundled fonts' licences next to the font files (`OFL.txt`, and `*-OFL.txt` for the handwriting fonts).
+Full licence texts are shipped in the app's `Licenses` folder (source: `src/Chainpen.App/Licenses`), with the bundled fonts' licences next to the font files (`OFL.txt`, and `*-OFL.txt` for the handwriting fonts).

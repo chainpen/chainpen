@@ -489,7 +489,7 @@ $RECYCLE.BIN/
 # macOS
 .DS_Store
 
-# Fillsign build output
+# Chainpen build output
 artifacts/
 
 # Claude Code's local state (agent worktrees and settings)
@@ -498,4 +498,4 @@ samples/corpus/
 
 # The macOS "Icon" rule above is for Finder's hidden Icon\r files; it also matches these folders on case-insensitive disks.
 !build/icon/
-!src/Fillsign.App/Assets/Icon/
+!src/Chainpen.App/Assets/Icon/

@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Chainpen.App.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Chainpen.App.ViewModels"
+             xmlns:c="using:Chainpen.App.Controls"
+             x:Class="Chainpen.App.Views.DamagedPageCard"
+             x:DataType="vm:PageViewModel"
+             Width="420">
+    <!-- D13: one bad page never blocks the rest. -->
+    <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+            CornerRadius="14" Padding="24,22" BoxShadow="0 2 8 0 #0f000000">
+        <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <c:StrokeIcon Data="{StaticResource IconWarning}" Size="22" Foreground="{DynamicResource DamagedText}" />
+                <TextBlock FontSize="17" FontWeight="SemiBold" Text="{Binding Number, StringFormat={x:Static l:Strings.DamagedPage_PageCantBeShown}}" />
+            </StackPanel>
+            <TextBlock x:Name="Explanation" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                       Text="{Binding Number, StringFormat={x:Static l:Strings.DamagedPage_KeepExplanation}}" />
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                <Button MinHeight="36" Content="{x:Static l:Strings.DamagedPage_KeepPageAsItIs}" Click="OnKeep" />
+                <Button MinHeight="36" Content="{Binding Number, StringFormat={x:Static l:Strings.DamagedPage_RemovePage}}" Click="OnRemove" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

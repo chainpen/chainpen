@@ -1,8 +1,8 @@
-# Fillsign working-copy format (version 1)
+# Chainpen working-copy format (version 1)
 
-A Fillsign **working copy** is an ordinary PDF that other readers display normally. Fillsign also stores an **editable record** inside it, so it can restore every added item when the file is reopened. Final copies never contain the record.
+A Chainpen **working copy** is an ordinary PDF that other readers display normally. Chainpen also stores an **editable record** inside it, so it can restore every added item when the file is reopened. Final copies never contain the record.
 
-Code: `src/Fillsign.Core/Session/` (`SessionStore`, `SessionJson`, `SessionRecord`).
+Code: `src/Chainpen.Core/Session/` (`SessionStore`, `SessionJson`, `SessionRecord`).
 
 ## Where the record lives
 
@@ -13,7 +13,7 @@ The record is the last **incremental update** in the file. Before it, the file h
 <PDFium's incremental update>           ← pages reordered, rotated and duplicated; items drawn in as PDF content
                                            (the two together are "content")
 N 0 obj
-<</Type/FillsignSession/Filter/FlateDecode/Length L>>
+<</Type/ChainpenSession/Filter/FlateDecode/Length L>>
 stream
 <zlib-compressed JSON record>
 endstream
@@ -22,23 +22,23 @@ xref
 N 1
 OOOOOOOOOO 00000 n
 trailer
-<</Size N+1 /Root … /Info … /ID … /Encrypt … /Prev P /FillsignSession N 0 R>>
+<</Size N+1 /Root … /Info … /ID … /Encrypt … /Prev P /ChainpenSession N 0 R>>
 startxref
 X
 %%EOF
 ```
 
-- `/FillsignSession` is a private trailer key. Other readers ignore it, and the update adds no visible object, so nothing shows in attachment panels.
+- `/ChainpenSession` is a private trailer key. Other readers ignore it, and the update adds no visible object, so nothing shows in attachment panels.
 - `/Root`, `/Info`, `/ID` and `/Encrypt` are copied from the previous trailer. `/Prev` points at the previous cross-reference section (classic table or xref stream).
 - Saving again starts from the clean original, not from the last save, so the file doesn't keep growing.
-- Code that writes it: `src/Fillsign.Pdf/Export/DocumentWriter.cs`. A final copy (Export) is written by the same code as a full, compact file with no record and none of the original's unused pages.
+- Code that writes it: `src/Chainpen.Pdf/Export/DocumentWriter.cs`. A final copy (Export) is written by the same code as a full, compact file with no record and none of the original's unused pages.
 
 ## Detecting changes by other apps
 
-PDFium and some other writers keep unknown trailer keys when they resave a file, so the key surviving proves nothing. On open, Fillsign checks:
+PDFium and some other writers keep unknown trailer keys when they resave a file, so the key surviving proves nothing. On open, Chainpen checks:
 
 1. `content.sha256` matches the first `content.length` bytes of the file, and
-2. Fillsign's update is the only one after those bytes, and
+2. Chainpen's update is the only one after those bytes, and
 3. `base.sha256` matches the first `base.length` bytes (the clean original, needed to restore clean pages).
 
 All three → **Intact**: restore. Otherwise → **ChangedElsewhere**: open the file as it is now and offer restoring only as a deliberate choice. If the record can't be read → **Damaged**: open as a normal PDF.
@@ -49,7 +49,7 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
 
 ```json
 {
-  "format": "fillsign-session",
+  "format": "chainpen-session",
   "version": 1,
   "base": { "length": 12345, "sha256": "<64 lowercase hex>" },
   "content": { "length": 23456, "sha256": "<64 lowercase hex>" },
@@ -61,8 +61,8 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
 }
 ```
 
-- `pages` is the page list in display order. `source` is a 0-based page index in the clean original. `rotation` is the extra clockwise rotation added in Fillsign (0, 90, 180 or 270).
-- `fields` (optional) holds values typed into the PDF's own form fields, by full field name: the text, the chosen option (a multi-select list's chosen options one per line, separated by `\n`), or for check boxes and radio buttons their on-value or `Off`. Only fields changed in Fillsign are listed; it's left out when there are none. Names are up to 1,000 characters and unique.
+- `pages` is the page list in display order. `source` is a 0-based page index in the clean original. `rotation` is the extra clockwise rotation added in Chainpen (0, 90, 180 or 270).
+- `fields` (optional) holds values typed into the PDF's own form fields, by full field name: the text, the chosen option (a multi-select list's chosen options one per line, separated by `\n`), or for check boxes and radio buttons their on-value or `Off`. Only fields changed in Chainpen are listed; it's left out when there are none. Names are up to 1,000 characters and unique.
 - Every item has `type`, `id`, `page` (a page `id`), and `x`, `y`. Coordinates are PDF points from the top-left of the page as displayed, with y pointing down.
 
 | `type` | Other properties |
@@ -82,9 +82,9 @@ UTF-8 JSON. The reader is strict. It rejects the whole record on an unknown or m
 
 # Saved signatures file (version 1)
 
-Signatures and initials the person chose to keep live in `signatures.dat` in the app data folder (`~/Library/Application Support/Fillsign`, `%APPDATA%\Fillsign`, `$XDG_CONFIG_HOME/Fillsign`). It never leaves the computer, and it isn't part of any PDF.
+Signatures and initials the person chose to keep live in `signatures.dat` in the app data folder (`~/Library/Application Support/Chainpen`, `%APPDATA%\Chainpen`, `$XDG_CONFIG_HOME/Chainpen`). It never leaves the computer, and it isn't part of any PDF.
 
-Code: `src/Fillsign.App/Platform/Signatures/` (`SavedSignatureStore`, the key vaults).
+Code: `src/Chainpen.App/Platform/Signatures/` (`SavedSignatureStore`, the key vaults).
 
 ## Layout
 
@@ -95,7 +95,7 @@ mode 1 only:      nonce (12 bytes), tag (16 bytes), ciphertext
 ```
 
 - Encryption is AES-256-GCM. The associated data is the 7-byte header, so the mode can't be changed without the tag failing.
-- The 32-byte key lives in the system's secret store: the login Keychain on macOS (generic password, service `Fillsign`, account `Saved signatures key`), a DPAPI-protected `signatures.key` beside the file on Windows, and the Secret Service via `secret-tool` on Linux (attributes `application=fillsign`, `purpose=saved-signatures-key`). Without a secret store (Linux with no keyring), the file is plain.
+- The 32-byte key lives in the system's secret store: the login Keychain on macOS (generic password, service `Chainpen`, account `Saved signatures key`), a DPAPI-protected `signatures.key` beside the file on Windows, and the Secret Service via `secret-tool` on Linux (attributes `application=chainpen`, `purpose=saved-signatures-key`). Without a secret store (Linux with no keyring), the file is plain.
 - The file is created readable and writable by its owner only, and replaced atomically (written to `.tmp`, then moved).
 
 ## Reading

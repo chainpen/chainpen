@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Chainpen.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Icon\chainpen.ico</ApplicationIcon>
+    <Product>Chainpen</Product>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Ship only Chainpen's own languages, not every language a library has satellite resources for. -->
+    <SatelliteResourceLanguages>en;de;ja</SatelliteResourceLanguages>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The render service writes PDFium output straight into bitmap memory. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Chainpen.Core\Chainpen.Core.csproj" />
+    <ProjectReference Include="..\Chainpen.Pdf\Chainpen.Pdf.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Generates the Strings class from Strings.resx while compiling, so editors see it too (build-time only). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Velopack" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The same font files the PDF writer embeds, so the screen and the export use identical glyphs. -->
+    <AvaloniaResource Include="..\Chainpen.Pdf\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\Chainpen.Pdf\Fonts\Handwriting\*.ttf" Link="Assets\Fonts\Handwriting\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\practice-form.pdf" />
+    <AvaloniaResource Include="Assets\practice-form.de.pdf" />
+    <AvaloniaResource Include="Assets\practice-form.ja.pdf" />
+    <AvaloniaResource Include="Assets\Icon\chainpen-256.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Text people see (English), with a generated Strings class; translations sit beside it as Strings.<lang>.resx. -->
+    <EmbeddedResource Update="Localization\Strings.resx" ClassName="Chainpen.App.Localization.Strings" Public="true" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Chainpen.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Third-party licences and notices, shipped in the app's Licenses folder (see THIRD-PARTY-NOTICES.md). -->
+    <None Include="Licenses\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\LICENSE" Link="Licenses\Chainpen-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\NOTICE" Link="Licenses\Chainpen-NOTICE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.md" Link="Licenses\THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

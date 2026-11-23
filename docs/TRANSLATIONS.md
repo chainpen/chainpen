@@ -1,8 +1,8 @@
 # Translations
 
-Fillsign's interface is in English, German and Japanese. It follows the computer's language, or the one chosen in
+Chainpen's interface is in English, German and Japanese. It follows the computer's language, or the one chosen in
 **Settings → Language**, which rebuilds the open windows in it straight away (a toast or dialog already showing keeps
-its wording until it next appears). The `fillsign` command and its MCP server stay in English.
+its wording until it next appears). The `chainpen` command and its MCP server stay in English.
 
 | Language | Interface | Practice form | User guide | Status |
 |---|---|---|---|---|
@@ -10,7 +10,7 @@ its wording until it next appears). The `fillsign` command and its MCP server st
 | German (`de`) | `Strings.de.resx` | `practice-form.de.pdf` | not yet | Draft: needs a native speaker's review |
 | Japanese (`ja`) | `Strings.ja.resx` | `practice-form.ja.pdf` | not yet | Draft: needs a native speaker's review |
 
-The strings live in `src/Fillsign.App/Localization/` and `src/Fillsign.Pdf/Localization/`. The practice forms are made
+The strings live in `src/Chainpen.App/Localization/` and `src/Chainpen.Pdf/Localization/`. The practice forms are made
 by `build/make-practice-form.py`, and the practice guide quotes their wording (`Editor_Guide*` keys).
 
 ## Reviewing a translation
@@ -35,5 +35,5 @@ Japanese glossary: 作業用コピー (working copy), 最終版 (final copy), �
 - Typed signatures use Latin-script handwriting styles. Names in other scripts (Japanese, Chinese) are drawn in an
   installed font that has every character, not in a handwriting style.
 - Crash reports stay in English, as they go into a GitHub issue.
-- Labels Fillsign makes for an open document's form fields ("Deceased, part 2") are made when it opens, so they keep
+- Labels Chainpen makes for an open document's form fields ("Deceased, part 2") are made when it opens, so they keep
   the language they were made in until the document is opened again.

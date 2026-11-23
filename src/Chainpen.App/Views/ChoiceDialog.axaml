@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Chainpen.App.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Chainpen.App.Views.ChoiceDialog"
+             Width="500">
+    <!-- D4 / D8: a question with named answers; focus starts on the safe one. -->
+    <Border Classes="dialog">
+        <StackPanel>
+            <TextBlock x:Name="Heading" Classes="heading-dialog" />
+            <TextBlock x:Name="Body" Classes="muted" Margin="0,10,0,0" TextWrapping="Wrap" LineHeight="21" />
+            <DockPanel Margin="0,22,0,0">
+                <Button x:Name="OtherButton" DockPanel.Dock="Left" Click="OnOther" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button x:Name="CancelButton" Content="{x:Static l:Strings.Common_Cancel}" Click="OnCancel" />
+                    <Button x:Name="MainButton" Classes="primary" Click="OnMain" />
+                </StackPanel>
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

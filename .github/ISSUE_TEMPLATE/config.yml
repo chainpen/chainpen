@@ -2,8 +2,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security problem privately
-    url: https://github.com/fillsign/fillsign/security/advisories/new
+    url: https://github.com/chainpen/chainpen/security/advisories/new
     about: Please don't open a public issue for a security problem. See SECURITY.md.
   - name: Read the user guide
-    url: https://github.com/fillsign/fillsign/blob/main/docs/USER-GUIDE.md
+    url: https://github.com/chainpen/chainpen/blob/main/docs/USER-GUIDE.md
     about: How to fill, sign, save and export, and what the working copy is.

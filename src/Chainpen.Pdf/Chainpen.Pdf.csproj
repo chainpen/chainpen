@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>Chainpen.Pdf</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NeutralLanguage>en</NeutralLanguage>
+    <SatelliteResourceLanguages>en;de;ja</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Text the app shows from here (why a file can't be opened, field labels), translated beside it. -->
+    <EmbeddedResource Update="Localization\Strings.resx" ClassName="Chainpen.Pdf.Localization.Strings" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Chainpen.Core\Chainpen.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Chainpen.Pdf.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Generates the Strings class from Strings.resx while compiling, so editors see it too (build-time only). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="bblanchon.PDFium.Win32" />
+    <PackageReference Include="bblanchon.PDFium.macOS" />
+    <PackageReference Include="bblanchon.PDFium.Linux" />
+    <PackageReference Include="HarfBuzzSharp" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\*.ttf" LogicalName="Chainpen.Pdf.Fonts.%(Filename)%(Extension)" />
+    <None Include="Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" Link="Licenses\Noto-OFL.txt" />
+    <!-- Typed signatures (FR-4.2): three handwriting styles, unmodified upstream files. -->
+    <EmbeddedResource Include="Fonts\Handwriting\*.ttf" LogicalName="Chainpen.Pdf.Fonts.Handwriting.%(Filename)%(Extension)" />
+    <None Include="Fonts\Handwriting\*-OFL.txt" CopyToOutputDirectory="PreserveNewest" Link="Licenses\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

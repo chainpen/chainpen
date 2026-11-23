@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <!-- Pure logic: no UI and no PDF library dependencies. -->
-  <PropertyGroup>
-    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
-    <IsAotCompatible>true</IsAotCompatible>
-    <RootNamespace>Fillsign.Core</RootNamespace>
-  </PropertyGroup>
-</Project>

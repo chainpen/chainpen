@@ -1,4 +1,4 @@
-# Fillsign
+# Chainpen
 
 Fill in and sign documents, especially scanned paper forms with no fillable fields. A native desktop app for Windows, macOS and Linux, built with .NET 11 and Avalonia.
 
@@ -7,13 +7,13 @@ Fill in and sign documents, especially scanned paper forms with no fillable fiel
 <!-- GitHub shows the dark screenshot to people browsing in dark mode, the light one otherwise. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/scanned-form-dark.png">
-  <img src="docs/images/scanned-form.png" alt="A consent form with no fillable fields, ticked, named and signed in Fillsign">
+  <img src="docs/images/scanned-form.png" alt="A consent form with no fillable fields, ticked, named and signed in Chainpen">
 </picture>
 
 | | |
 |---|---|
 | ![A PDF's own form fields filled in, and signed in its signature field](docs/images/fill-a-form.png) | ![Export final copy, pointing out a box left unticked and a space that may need a signature](docs/images/export.png) |
-| Fill in a PDF's own form fields, and sign in its signature field. | Export a final copy to send. Fillsign points out what may still be missing. |
+| Fill in a PDF's own form fields, and sign in its signature field. | Export a final copy to send. Chainpen points out what may still be missing. |
 | ![Organise pages: three files opened as one document, with one page selected](docs/images/organise-pages.png) | ![Find: the words highlighted on the page, and each page's matches counted](docs/images/find.png) |
 | Rotate, reorder, duplicate and delete pages, and add pages from other files. | Find words on the pages and in what you've added (⌘F / Ctrl+F). |
 
@@ -29,10 +29,10 @@ Requires the .NET 11 SDK (`global.json` pins `11.0.100`, rolling forward to late
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/Fillsign.App
+dotnet run --project src/Chainpen.App
 ```
 
-On macOS, `build/run-mac.sh [file ...]` builds and runs it as an app bundle (`artifacts/Fillsign Dev.app`) instead: run as a bare program, macOS won't let you choose files in its Open panel.
+On macOS, `build/run-mac.sh [file ...]` builds and runs it as an app bundle (`artifacts/Chainpen Dev.app`) instead: run as a bare program, macOS won't let you choose files in its Open panel.
 
 ## Release builds
 
@@ -42,16 +42,16 @@ On macOS, `build/run-mac.sh [file ...]` builds and runs it as an app bundle (`ar
 
 | Path | Contents |
 |---|---|
-| `src/Fillsign.Core` | Model, geometry, undo/redo, editable-save format. No UI or PDF dependencies. |
-| `src/Fillsign.Pdf` | PDFium binding: rendering and writing (export), HarfBuzz font subsetting. |
-| `src/Fillsign.App` | Avalonia desktop app. |
+| `src/Chainpen.Core` | Model, geometry, undo/redo, editable-save format. No UI or PDF dependencies. |
+| `src/Chainpen.Pdf` | PDFium binding: rendering and writing (export), HarfBuzz font subsetting. |
+| `src/Chainpen.App` | Avalonia desktop app. |
 | `tests/` | xUnit v3 tests for each project. |
 | `docs/` | User guide, install guide, command line and working-copy file format. |
 | `build/` | Packaging script, macOS Info.plist, app icon, corpus download. |
 
 ## Command line and MCP
 
-The `fillsign` command fills a PDF's form fields from scripts, and `fillsign mcp` lets AI assistants do the same over
+The `chainpen` command fills a PDF's form fields from scripts, and `chainpen mcp` lets AI assistants do the same over
 the Model Context Protocol. Neither signs: that's done in the app. See [docs/CLI.md](docs/CLI.md).
 
 ## Licence
@@ -60,7 +60,7 @@ the Model Context Protocol. Neither signs: that's done in the app. See [docs/CLI
 
 - **Free for personal use**, always.
 - **Free for everyone during the beta**, businesses included: every version below 1.0.0, until 90 days after 1.0.0 is released.
-- **After the beta, businesses and other organisations need a paid licence** to use Fillsign for their work.
+- **After the beta, businesses and other organisations need a paid licence** to use Chainpen for their work.
 
 The source is public to read, build and change for non-production use. [LICENSE](LICENSE) is what counts; [NOTICE](NOTICE)
-summarises it. Libraries and fonts Fillsign ships, and their licences, are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+summarises it. Libraries and fonts Chainpen ships, and their licences, are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

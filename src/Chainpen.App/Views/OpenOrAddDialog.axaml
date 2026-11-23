@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Chainpen.App.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Chainpen.App.Views.OpenOrAddDialog"
+             Width="520">
+    <!-- D5: opening never replaces the current document. -->
+    <Border Classes="dialog">
+        <StackPanel>
+            <TextBlock x:Name="Heading" Classes="heading-dialog" />
+            <TextBlock x:Name="Body" Classes="muted" Margin="0,8,0,16" TextWrapping="Wrap" />
+            <StackPanel Spacing="10">
+                <RadioButton x:Name="NewWindow" Classes="choice" GroupName="open" IsChecked="True">
+                    <StackPanel Spacing="2">
+                        <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.Common_OpenInANewWindow}" />
+                        <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.OpenOrAdd_WorkOnTheTwoDocumentsSeparately}" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="AddPages" Classes="choice" GroupName="open">
+                    <StackPanel Spacing="2">
+                        <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.OpenOrAdd_AddItsPagesToThisDocument}" />
+                        <TextBlock x:Name="AddDetail" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                    </StackPanel>
+                </RadioButton>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,22,0,0">
+                <Button Content="{x:Static l:Strings.Common_Cancel}" Click="OnCancel" />
+                <Button x:Name="OpenButton" Classes="primary" Content="{x:Static l:Strings.Common_Open}" Click="OnOpen" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

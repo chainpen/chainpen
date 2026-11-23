@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Chainpen.Core/Chainpen.Core.csproj" />
+    <Project Path="src/Chainpen.Pdf/Chainpen.Pdf.csproj" />
+    <Project Path="src/Chainpen.App/Chainpen.App.csproj" />
+    <Project Path="src/Chainpen.Cli/Chainpen.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Chainpen.Core.Tests/Chainpen.Core.Tests.csproj" />
+    <Project Path="tests/Chainpen.Pdf.Tests/Chainpen.Pdf.Tests.csproj" />
+    <Project Path="tests/Chainpen.App.Tests/Chainpen.App.Tests.csproj" />
+    <Project Path="tests/Chainpen.Cli.Tests/Chainpen.Cli.Tests.csproj" />
+  </Folder>
+  <Folder Name="/solution items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+  </Folder>
+</Solution>

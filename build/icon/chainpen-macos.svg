@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Chainpen</title>
+  <!-- macOS: the same artwork on Apple's icon grid (824 px body, 100 px margin, about 185 px corners). -->
+  <g transform="translate(100 100) scale(10.3)">
+    <rect width="80" height="80" rx="18" fill="#1f4fc4"/>
+    <path d="M19 10h33l12 12v45a3 3 0 01-3 3H19a3 3 0 01-3-3V13a3 3 0 013-3z" fill="#fdfcf8"/><path d="M52 10v12h12z" fill="#c9d5f3"/><rect x="21.5" y="17.5" width="13" height="13" rx="2.5" fill="none" stroke="#868c96" stroke-width="1.8"/><path d="M24 24l4 4 9.5-11" fill="none" stroke="#1d3f9e" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 27h10" stroke="#c9d5f3" stroke-width="3" stroke-linecap="round"/><path d="M22 58c4-9 7-14 9-14s-3 12 1 12 4-8 7-8-1 7 2 7 4-5 6-5 2 2 5 1" fill="none" stroke="#1d3f9e" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 63.5h36" stroke="#868c96" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -116,6 +116,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.package.outputs.version }}
         run: |
-          gh release create "v$VERSION" releases/* --repo "$GITHUB_REPOSITORY" --title "Fillsign $VERSION" \
+          gh release create "v$VERSION" releases/* --repo "$GITHUB_REPOSITORY" --title "Chainpen $VERSION" \
             --target "$GITHUB_SHA" --draft \
             --notes-file <(echo "See docs/INSTALL.md for first-run steps on unsigned builds.")

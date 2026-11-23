@@ -1,17 +1,17 @@
-Fillsign
-Copyright 2026 The Fillsign Authors
+Chainpen
+Copyright 2026 The Chainpen Authors
 
-Fillsign is licensed under the Business Source License 1.1 (see LICENSE). In short, and LICENSE decides:
+Chainpen is licensed under the Business Source License 1.1 (see LICENSE). In short, and LICENSE decides:
 
 - Personal use by individuals is free.
 - During the beta (versions below 1.0.0, until 90 days after 1.0.0 is released) everyone, businesses included, may
-  use Fillsign free of charge.
+  use Chainpen free of charge.
 - After that, use by businesses and other organisations needs a commercial licence from the Licensor.
 
-Fillsign includes third-party software under its own licences; see THIRD-PARTY-NOTICES.md and the app's Licenses
+Chainpen includes third-party software under its own licences; see THIRD-PARTY-NOTICES.md and the app's Licenses
 folder.
 
-Required acknowledgements for libraries bundled in PDFium, which Fillsign uses to read and write PDFs (their
+Required acknowledgements for libraries bundled in PDFium, which Chainpen uses to read and write PDFs (their
 licences ask for these exact words):
 
 Portions of this software are copyright © 2026 The FreeType Project (www.freetype.org). All rights reserved.

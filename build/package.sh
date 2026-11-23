@@ -18,11 +18,11 @@ releases="$root/artifacts/releases/$rid"
 export DOTNET_ROLL_FORWARD=Major
 
 rm -rf "$publish" "$releases"
-dotnet publish "$root/src/Fillsign.App/Fillsign.App.csproj" -c Release -r "$rid" --self-contained \
+dotnet publish "$root/src/Chainpen.App/Chainpen.App.csproj" -c Release -r "$rid" --self-contained \
   -p:Version="$version" -o "$publish"
 
-# The `fillsign` command and MCP server (FS-969, FS-970) ship beside the app, sharing its runtime and libraries.
-dotnet publish "$root/src/Fillsign.Cli/Fillsign.Cli.csproj" -c Release -r "$rid" --self-contained \
+# The `chainpen` command and MCP server (FS-969, FS-970) ship beside the app, sharing its runtime and libraries.
+dotnet publish "$root/src/Chainpen.Cli/Chainpen.Cli.csproj" -c Release -r "$rid" --self-contained \
   -p:Version="$version" -o "$publish"
 
 # Optional release notes: the path to a markdown file of bullet points, shown in the app's "Update ready" panel.
@@ -30,10 +30,10 @@ notes=()
 if [[ -n "${RELEASE_NOTES:-}" ]]; then notes=(--releaseNotes "$RELEASE_NOTES"); fi
 
 dotnet tool restore
-exe="Fillsign.App"
-if [[ $rid == win-* ]]; then exe="Fillsign.App.exe"; fi
-common=(--packId Fillsign --packVersion "$version" --packDir "$publish" --mainExe "$exe"
-        --packTitle Fillsign --outputDir "$releases" --channel "$rid" ${notes[@]+"${notes[@]}"})
+exe="Chainpen.App"
+if [[ $rid == win-* ]]; then exe="Chainpen.App.exe"; fi
+common=(--packId Chainpen --packVersion "$version" --packDir "$publish" --mainExe "$exe"
+        --packTitle Chainpen --outputDir "$releases" --channel "$rid" ${notes[@]+"${notes[@]}"})
 
 case "$rid" in
   osx-*)
@@ -41,12 +41,12 @@ case "$rid" in
     sed -e "s/@VERSION@/$version/g" "$root/build/macos/Info.plist" > "$plist"
     # "-" is an ad-hoc signature: free, and required for the app to run on Apple Silicon at all. The .pkg installer
     # stays unsigned: an installer package can't take an ad-hoc signature.
-    dotnet vpk pack "${common[@]}" --icon "$root/src/Fillsign.App/Assets/Icon/fillsign.icns" \
+    dotnet vpk pack "${common[@]}" --icon "$root/src/Chainpen.App/Assets/Icon/chainpen.icns" \
       --plist "$plist" --signAppIdentity - ;;
   win-*)
-    dotnet vpk pack "${common[@]}" --icon "$root/src/Fillsign.App/Assets/Icon/fillsign.ico" ;;
+    dotnet vpk pack "${common[@]}" --icon "$root/src/Chainpen.App/Assets/Icon/chainpen.ico" ;;
   linux-*)
-    dotnet vpk pack "${common[@]}" --icon "$root/src/Fillsign.App/Assets/Icon/fillsign.png" ;;
+    dotnet vpk pack "${common[@]}" --icon "$root/src/Chainpen.App/Assets/Icon/chainpen.png" ;;
   *)
     echo "Unknown rid: $rid" >&2; exit 1 ;;
 esac

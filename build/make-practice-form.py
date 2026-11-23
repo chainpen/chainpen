@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Makes src/Fillsign.App/Assets/practice-form.pdf: a one-page form that looks scanned.
+"""Makes src/Chainpen.App/Assets/practice-form.pdf: a one-page form that looks scanned.
 
-The practice form teaches the way Fillsign fills a scan or photo (choose a tool, then click where the answer goes),
+The practice form teaches the way Chainpen fills a scan or photo (choose a tool, then click where the answer goes),
 so it is an image of a page, not a PDF with text or fields: clicking a box with Select does nothing, just as on a
 real scan. Run on macOS (it uses the system's Arial) with Pillow installed:
 
@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 DPI = 150
 WIDTH_PT, HEIGHT_PT = 595, 842  # A4
 TILT_DEGREES = 0.7  # A scan is never quite straight.
-ASSETS = Path(__file__).resolve().parent.parent / "src" / "Fillsign.App" / "Assets"
+ASSETS = Path(__file__).resolve().parent.parent / "src" / "Chainpen.App" / "Assets"
 FONTS = Path("/System/Library/Fonts/Supplemental")
 JAPANESE = {"regular": "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", "bold": "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"}
 
@@ -31,7 +31,7 @@ TEXT = {
         "note_title": "PRACTICE FORM: an example of a scanned paper form",
         "note": [
             "Its boxes and lines are only part of the picture, so clicking them does nothing.",
-            "In Fillsign, choose a tool first (Tick, Text or Sign), then click where each answer goes.",
+            "In Chainpen, choose a tool first (Tick, Text or Sign), then click where each answer goes.",
         ],
         "title": "Riverside Community Garden",
         "subtitle": "Volunteer sign-up form",
@@ -45,7 +45,7 @@ TEXT = {
         "note_title": "ÜBUNGSFORMULAR: ein Beispiel für ein gescanntes Papierformular",
         "note": [
             "Kästchen und Linien sind nur Teil des Bildes, ein Klick darauf bewirkt nichts.",
-            "Wählen Sie in Fillsign zuerst ein Werkzeug und klicken Sie dann auf die richtige Stelle.",
+            "Wählen Sie in Chainpen zuerst ein Werkzeug und klicken Sie dann auf die richtige Stelle.",
         ],
         "title": "Gemeinschaftsgarten am Fluss",
         "subtitle": "Anmeldung für Freiwillige",
@@ -59,7 +59,7 @@ TEXT = {
         "note_title": "練習用フォーム：スキャンした紙の書類の例です",
         "note": [
             "チェックボックスや線は画像の一部なので、クリックしても何も起こりません。",
-            "Fillsignでは、まずツール（チェック、テキスト、署名）を選んでから、記入する場所をクリックします。",
+            "Chainpenでは、まずツール（チェック、テキスト、署名）を選んでから、記入する場所をクリックします。",
         ],
         "title": "リバーサイド・コミュニティガーデン",
         "subtitle": "ボランティア申込書",

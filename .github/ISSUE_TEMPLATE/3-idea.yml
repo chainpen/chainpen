@@ -1,5 +1,5 @@
 name: An idea or a missing feature
-description: Something Fillsign could do, or do better.
+description: Something Chainpen could do, or do better.
 labels: [idea, needs-triage]
 body:
   - type: textarea
@@ -14,7 +14,7 @@ body:
     id: idea
     attributes:
       label: What would help?
-      description: If you have an idea of how Fillsign could do it, describe it here.
+      description: If you have an idea of how Chainpen could do it, describe it here.
     validations:
       required: false
   - type: textarea

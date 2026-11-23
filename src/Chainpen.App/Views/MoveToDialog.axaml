@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Chainpen.App.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Chainpen.App.Controls"
+             x:Class="Chainpen.App.Views.MoveToDialog"
+             Width="440">
+    <!-- "Move to…" (FR-6.4): the non-drag way to reorder pages. A typed page number saves scrolling a long list. -->
+    <Border Classes="dialog">
+        <StackPanel>
+            <TextBlock x:Name="Heading" Classes="heading-dialog" />
+            <TextBlock Margin="0,16,0,8" FontWeight="SemiBold" Text="{x:Static l:Strings.MoveTo_PutThem}" />
+            <StackPanel Spacing="10">
+                <RadioButton x:Name="AtStart" Classes="choice" GroupName="moveTo">
+                    <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.MoveTo_AtTheStart}" />
+                </RadioButton>
+                <RadioButton x:Name="AfterPage" Classes="choice" GroupName="moveTo"
+                             AutomationProperties.Name="{x:Static l:Strings.MoveTo_AfterAPageYouType}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock FontWeight="SemiBold" Text="{x:Static l:Strings.MoveTo_AfterPage}" VerticalAlignment="Center" />
+                        <TextBox x:Name="PageNumber" Width="80" MinHeight="32" MaxLength="6"
+                                 AutomationProperties.Name="{x:Static l:Strings.MoveTo_PageNumber}" />
+                        <TextBlock x:Name="OfPages" Classes="muted" VerticalAlignment="Center" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="AtEnd" Classes="choice" GroupName="moveTo" IsChecked="True">
+                    <TextBlock x:Name="AtEndText" FontWeight="SemiBold" />
+                </RadioButton>
+            </StackPanel>
+            <StackPanel x:Name="Error" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" IsVisible="False"
+                        AutomationProperties.LiveSetting="Assertive">
+                <c:StrokeIcon Data="{StaticResource IconWarningCircle}" Size="16" Foreground="{DynamicResource Danger}" />
+                <TextBlock x:Name="ErrorText" FontSize="13" Foreground="{DynamicResource Danger}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,22,0,0">
+                <Button Content="{x:Static l:Strings.Common_Cancel}" Click="OnCancel" />
+                <Button x:Name="MoveButton" Classes="primary" Content="{x:Static l:Strings.MoveTo_Move}" Click="OnMove" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+    <UserControl.Styles>
+        <Style Selector="TextBox.error, TextBox.error:focus, TextBox.error:pointerover">
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="TextBox.error /template/ Border#PART_BorderElement, TextBox.error:focus /template/ Border#PART_BorderElement, TextBox.error:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource Danger}" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

@@ -1,10 +1,10 @@
 # Contributing
 
-Thank you for your interest. **Outside contributions aren't accepted yet**: Fillsign will be paid for by businesses after the beta (see [LICENSE](LICENSE)), and its ownership and licensing are still being set up for that, so accepting code now would complicate it.
+Thank you for your interest. **Outside contributions aren't accepted yet**: Chainpen will be paid for by businesses after the beta (see [LICENSE](LICENSE)), and its ownership and licensing are still being set up for that, so accepting code now would complicate it.
 
 You're welcome to:
 
-- report bugs and suggest features in GitHub Issues once the repository is public (the beta). Each kind of issue has a short form: something that doesn't work, a PDF that doesn't open or look right, an idea, or a crash report (Fillsign fills that one in). Issues are public, so please don't attach your own filled-in documents;
+- report bugs and suggest features in GitHub Issues once the repository is public (the beta). Each kind of issue has a short form: something that doesn't work, a PDF that doesn't open or look right, an idea, or a crash report (Chainpen fills that one in). Issues are public, so please don't attach your own filled-in documents;
 - report security problems privately, as [SECURITY.md](SECURITY.md) describes;
 - read, build and change the code under the [Business Source License](LICENSE): free for personal use, and for everyone during the beta.
 

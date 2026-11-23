@@ -1,18 +1,18 @@
-# Fillsign opens this form pre-filled (CrashReports.IssueLink): the "report" field's id is part of that link.
+# Chainpen opens this form pre-filled (CrashReports.IssueLink): the "report" field's id is part of that link.
 name: Crash report
-description: Fillsign stopped unexpectedly. Fillsign fills this in when you choose Review and send on its start screen.
+description: Chainpen stopped unexpectedly. Chainpen fills this in when you choose Review and send on its start screen.
 labels: [crash, needs-triage]
 body:
   - type: markdown
     attributes:
       value: |
-        The report holds the Fillsign version, your system, and the names of the code that failed. It never holds
+        The report holds the Chainpen version, your system, and the names of the code that failed. It never holds
         your documents, signatures or file names. Read it below before you submit.
   - type: textarea
     id: report
     attributes:
       label: Report
-      description: Filled in by Fillsign.
+      description: Filled in by Chainpen.
       render: text
     validations:
       required: true

@@ -1,6 +1,6 @@
 # Notes for coding agents
 
-Fillsign is a desktop app for filling in and signing PDFs and scanned paper forms, in C# on .NET 11 with Avalonia,
+Chainpen is a desktop app for filling in and signing PDFs and scanned paper forms, in C# on .NET 11 with Avalonia,
 using PDFium to read and write PDFs. The [README](README.md) covers what it is, the layout and the licence; this file
 covers how to work on it.
 
@@ -11,24 +11,24 @@ Needs the .NET 11 SDK (`global.json`). From the repository root:
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/Fillsign.App
+dotnet run --project src/Chainpen.App
 ```
 
 - On macOS, run the app with `build/run-mac.sh [file ...]` rather than `dotnet run`: it builds and opens it as
-  `artifacts/Fillsign Dev.app`. Run as a bare program, macOS won't let anything be chosen in the Open panel (Open…,
+  `artifacts/Chainpen Dev.app`. Run as a bare program, macOS won't let anything be chosen in the Open panel (Open…,
   Add pages…) and computer-use tools can't reach the window.
 - Tests use xUnit v3 on Microsoft.Testing.Platform. Run one project, class or test with
-  `dotnet test --project tests/Fillsign.Pdf.Tests --filter-class Fillsign.Pdf.Tests.PdfCompactorTests` or
+  `dotnet test --project tests/Chainpen.Pdf.Tests --filter-class Chainpen.Pdf.Tests.PdfCompactorTests` or
   `--filter-method "*Some_test_name*"`.
 - `build/fetch-corpus.sh` downloads real-world PDFs from the pdf.js test suite into `samples/corpus/` (not committed).
-  Corpus tests skip without it; CI always fetches it, so run it before changing anything in `Fillsign.Pdf`.
-- `Fillsign.App.Tests` drive the real app headlessly with Avalonia.Headless: real windows, pointer and key input, and
+  Corpus tests skip without it; CI always fetches it, so run it before changing anything in `Chainpen.Pdf`.
+- `Chainpen.App.Tests` drive the real app headlessly with Avalonia.Headless: real windows, pointer and key input, and
   rendered frames. Screenshots they save land in `artifacts/screenshots/` (ignored).
-- Golden-file tests compare exported pages with the images in `tests/Fillsign.Pdf.Tests/Golden`. After a deliberate
-  change, run them with `FILLSIGN_UPDATE_GOLDEN=1`, look at every changed image, and commit the ones that are right.
-- Keychain tests only run on macOS with `FILLSIGN_KEYCHAIN_TESTS=1`.
-- The README's screenshots in `docs/images/` are made by `ReadmeScreenshots` in `Fillsign.App.Tests` at 1440×900.
-  After a change people see, run it with `FILLSIGN_README_SCREENSHOTS=1`, look at every image, and commit the right ones.
+- Golden-file tests compare exported pages with the images in `tests/Chainpen.Pdf.Tests/Golden`. After a deliberate
+  change, run them with `CHAINPEN_UPDATE_GOLDEN=1`, look at every changed image, and commit the ones that are right.
+- Keychain tests only run on macOS with `CHAINPEN_KEYCHAIN_TESTS=1`.
+- The README's screenshots in `docs/images/` are made by `ReadmeScreenshots` in `Chainpen.App.Tests` at 1440×900.
+  After a change people see, run it with `CHAINPEN_README_SCREENSHOTS=1`, look at every image, and commit the right ones.
 
 ## Rules the build enforces
 
@@ -39,11 +39,11 @@ dotnet run --project src/Fillsign.App
 
 ## How the code is arranged
 
-- `Fillsign.Core`: the model, geometry, undo and redo, and the working-copy record. No UI and no PDF library.
-- `Fillsign.Pdf`: everything that touches PDFium. PDFium is the only thing that writes PDFs.
-- `Fillsign.App`: the Avalonia app. Behaviour belongs in view models where it can; code-behind handles focus, dialogs,
+- `Chainpen.Core`: the model, geometry, undo and redo, and the working-copy record. No UI and no PDF library.
+- `Chainpen.Pdf`: everything that touches PDFium. PDFium is the only thing that writes PDFs.
+- `Chainpen.App`: the Avalonia app. Behaviour belongs in view models where it can; code-behind handles focus, dialogs,
   input and platform details.
-- `Fillsign.Cli`: the `fillsign` command and its MCP server, sharing `Core` and `Pdf` with the app.
+- `Chainpen.Cli`: the `chainpen` command and its MCP server, sharing `Core` and `Pdf` with the app.
 
 Keep to those boundaries: `Core` must not reference Avalonia or PDFium.
 
@@ -59,7 +59,7 @@ Keep to those boundaries: `Core` must not reference Avalonia or PDFium.
 - The working-copy format is a contract with files people already have. If you change the record, keep older files
   opening, and update [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) in the same change.
 - When behaviour people see changes, update [docs/USER-GUIDE.md](docs/USER-GUIDE.md) too.
-- Text people see goes in `Localization/Strings.resx` (app or `Fillsign.Pdf`), never as a literal: `Strings.Key` in C#,
+- Text people see goes in `Localization/Strings.resx` (app or `Chainpen.Pdf`), never as a literal: `Strings.Key` in C#,
   `{x:Static l:Strings.Key}` in AXAML. Whole sentences with `{0}` placeholders via `Text.Format`, and `Text.Plural` for
   counts; never glue a sentence from pieces. Add the German and Japanese values too (`Strings.de.resx`,
   `Strings.ja.resx`), marked for review in [docs/TRANSLATIONS.md](docs/TRANSLATIONS.md); `TranslationTests` checks they

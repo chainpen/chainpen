@@ -1,0 +1,159 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:l="using:Chainpen.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Chainpen.App.Controls"
+        xmlns:vm="using:Chainpen.App.ViewModels"
+        x:Class="Chainpen.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="{x:Static l:Strings.Settings_ChainpenSettings}" Icon="avares://Chainpen.App/Assets/Icon/chainpen-256.png" Width="820" Height="760" MinWidth="560" MinHeight="480"
+        WindowStartupLocation="CenterOwner">
+    <!-- 🎨 7: every change is saved as soon as it's made (FR-10.1). -->
+    <Panel>
+        <ScrollViewer Background="{DynamicResource SurfaceApp}">
+            <StackPanel Margin="32,28" Spacing="16" MaxWidth="760" HorizontalAlignment="Left">
+                <TextBlock Classes="muted" FontSize="13" Text="{x:Static l:Strings.Settings_ChangesAreSavedAsSoonAs}" />
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="LanguageHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_Language}" />
+                        <ComboBox x:Name="LanguageChoice" Margin="0,8,0,0" MinWidth="220" ItemsSource="{Binding LanguageOptions}"
+                                  SelectedItem="{Binding SelectedLanguage}" AutomationProperties.LabeledBy="{Binding #LanguageHeading}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LanguageOption">
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="AppearanceHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_Appearance}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{x:Static l:Strings.Settings_MatchYourComputerOrChooseOne}" />
+                        <Border Classes="segments" Margin="0,10,0,0" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #AppearanceHeading}">
+                                <RadioButton x:Name="MatchSystem" Classes="segment" GroupName="theme" Content="{x:Static l:Strings.Settings_MatchSystem}" IsChecked="{Binding IsMatchSystem}" />
+                                <RadioButton x:Name="Light" Classes="segment" GroupName="theme" Content="{x:Static l:Strings.Settings_Light}" IsChecked="{Binding IsLight}" />
+                                <RadioButton x:Name="Dark" Classes="segment" GroupName="theme" Content="{x:Static l:Strings.Settings_Dark}" IsChecked="{Binding IsDark}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="heading-section" Text="{x:Static l:Strings.Settings_SavedSignaturesAndInitials}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="{x:Static l:Strings.Settings_StoredOnlyOnThisComputerRemoving}" />
+                        <TextBlock Classes="muted" FontSize="13" Margin="0,10,0,0" TextWrapping="Wrap" IsVisible="{Binding ShowsNoneSaved}"
+                                   Text="{x:Static l:Strings.Settings_NoneSavedTickKeepOnThis}" />
+                        <!-- Locked until the key comes back; Start again is the way out if it never does. -->
+                        <StackPanel Spacing="8" Margin="0,10,0,0" IsVisible="{Binding AreSignaturesLocked}">
+                            <TextBlock FontSize="13" Foreground="{DynamicResource Warning}" TextWrapping="Wrap"
+                                       Text="{x:Static l:Strings.Settings_SavedSignaturesCantBeOpenedRight}" />
+                            <Button Classes="small dangerText" HorizontalAlignment="Left" Content="{x:Static l:Strings.Settings_StartAgainWithoutThem}"
+                                    Command="{Binding StartSignaturesAgainCommand}" />
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding Saved}" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SavedRowViewModel">
+                                    <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}" Padding="0,12">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="{x:Static l:Strings.Settings_Remove}"
+                                                    Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveSignatureCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Description, StringFormat={x:Static l:Strings.Settings_RemoveNamed}}" />
+                                            <Border DockPanel.Dock="Left" Margin="0,0,16,0" Padding="6" CornerRadius="6" Background="{DynamicResource Page}">
+                                                <Image Width="150" Height="42" Stretch="Uniform" HorizontalAlignment="Left" Source="{Binding Thumbnail}" />
+                                            </Border>
+                                            <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding Description}" />
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="RecoveryHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_RecoveryCopies}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="{x:Static l:Strings.Settings_IfChainpenClosesUnexpectedlyUnsavedChanges}" />
+                        <DockPanel Margin="0,10,0,0">
+                            <Button DockPanel.Dock="Right" Classes="small dangerText" Content="{x:Static l:Strings.Settings_DeleteAllRecoveryCopies}"
+                                    Command="{Binding DeleteRecoveryCopiesCommand}" />
+                            <Border Classes="segments" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #RecoveryHeading}">
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="{x:Static l:Strings.Settings_1Day}" IsChecked="{Binding IsOneDay}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="{x:Static l:Strings.Settings_7Days}" IsChecked="{Binding IsSevenDays}" />
+                                    <RadioButton Classes="segment" GroupName="recovery" Content="{x:Static l:Strings.Settings_30Days}" IsChecked="{Binding IsThirtyDays}" />
+                                </StackPanel>
+                            </Border>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="DateFormatHeading" Classes="heading-section" Text="{x:Static l:Strings.Settings_DateFormat}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="{x:Static l:Strings.Settings_ForDatesYouAddWithThe}" />
+                        <Border Classes="segments" HorizontalAlignment="Left" Margin="0,10,0,0">
+                            <StackPanel x:Name="DateFormatChoices" Orientation="Horizontal" Spacing="2" AutomationProperties.LabeledBy="{Binding #DateFormatHeading}">
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_DDMMYYYY}" IsChecked="{Binding IsDayMonthYear}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_MMDDYYYY}" IsChecked="{Binding IsMonthDayYear}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_YYYYMMDD}" IsChecked="{Binding IsYearMonthDay}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_YYYYMMDDSlashes}" IsChecked="{Binding IsYearMonthDaySlashes}" />
+                                <RadioButton Classes="segment" GroupName="dateFormat" Content="{x:Static l:Strings.Settings_DDMMYYYYDots}" IsChecked="{Binding IsDayMonthYearDots}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="DateExample" Classes="muted" FontSize="13" Margin="0,4,0,0" Text="{Binding DateExample}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="heading-section" Text="{x:Static l:Strings.Settings_Keyboard}" />
+                        <CheckBox x:Name="SingleKeyTools" Margin="0,6,0,0" IsChecked="{Binding UseSingleKeyTools}"
+                                  Content="{x:Static l:Strings.Settings_ChooseToolsWithSingleLettersV}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="{x:Static l:Strings.Settings_OffUnlessYouTurnItOn}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="heading-section" Text="{x:Static l:Strings.Settings_CrashReports}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="{x:Static l:Strings.Settings_IfSomethingGoesWrongAShort}" />
+                        <RadioButton GroupName="crash" Margin="0,8,0,0" Content="{x:Static l:Strings.Settings_KeepReportsForMeToReview}" IsChecked="{Binding SendCrashReports}" />
+                        <RadioButton GroupName="crash" Content="{x:Static l:Strings.Settings_DontKeepReports}" IsChecked="{Binding DontSendCrashReports}" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock FontSize="13" Foreground="{DynamicResource TextMuted}" Text="{Binding Message}"
+                           AutomationProperties.LiveSetting="Polite" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Confirmations (D10, FR-10.4) show over the window, like the editor's dialogs. -->
+        <Border x:Name="DialogLayer" IsVisible="False" Background="{DynamicResource Overlay}">
+            <ContentControl x:Name="DialogHost" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,140,0,0" />
+        </Border>
+    </Panel>
+
+    <Window.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="24,20" />
+        </Style>
+        <Style Selector="Button.dangerText">
+            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+        </Style>
+    </Window.Styles>
+</Window>

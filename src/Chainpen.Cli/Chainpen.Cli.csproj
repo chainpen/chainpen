@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- FS-969, FS-970: the `chainpen` command and its MCP server, for scripts and AI assistants. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>chainpen</AssemblyName>
+    <RootNamespace>Chainpen.Cli</RootNamespace>
+    <Version>1.0.0</Version>
+    <!-- Native AOT (FS-809): the analyzers flag anything AOT can't compile, as build errors. -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Chainpen.Pdf\Chainpen.Pdf.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Chainpen.Cli.Tests" />
+  </ItemGroup>
+</Project>

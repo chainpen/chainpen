@@ -38,8 +38,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Fillsign version
-      description: In About Fillsign (the Fillsign menu on a Mac, the Help menu on Windows and Linux).
+      label: Chainpen version
+      description: In About Chainpen (the Chainpen menu on a Mac, the Help menu on Windows and Linux).
     validations:
       required: true
   - type: dropdown

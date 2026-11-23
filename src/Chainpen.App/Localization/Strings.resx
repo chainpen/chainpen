@@ -1,0 +1,735 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Menu_CheckForUpdates" xml:space="preserve"><value>Check for updates…</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="DamagedPage_KeepPageAsItIs" xml:space="preserve"><value>Keep page as it is</value></data>
+  <data name="Editor_Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Editor_Redo" xml:space="preserve"><value>Redo</value></data>
+  <data name="Common_KeyboardShortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
+  <data name="Editor_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Editor_MoreSaveOptions" xml:space="preserve"><value>More save options</value></data>
+  <data name="Editor_KeepsYourEditsSoYouCan" xml:space="preserve"><value>Keeps your edits so you can change them next time you open it in Chainpen.</value></data>
+  <data name="Editor_SaveAs" xml:space="preserve"><value>Save as…</value></data>
+  <data name="Editor_SaveACopyWithANew" xml:space="preserve"><value>Save a copy with a new name or in another folder.</value></data>
+  <data name="Editor_ThisDocumentContainsYourSignature" xml:space="preserve"><value>This document contains your signature.</value></data>
+  <data name="Editor_YourWorkingCopyCanBeEdited" xml:space="preserve"><value> Your working copy can be edited by anyone with Chainpen. To send it, use Export final copy: it makes a copy that can’t be changed.</value><comment>Follows a bold sentence in the same line. Keep the leading space where the language puts one between sentences (Japanese doesn’t).</comment></data>
+  <data name="Common_ExportFinalCopy" xml:space="preserve"><value>Export final copy</value></data>
+  <data name="Editor_ExportFinalCopy" xml:space="preserve"><value>Export final copy…</value></data>
+  <data name="Editor_View" xml:space="preserve"><value>View</value></data>
+  <data name="Editor_EditContent" xml:space="preserve"><value>Edit content</value></data>
+  <data name="Editor_EditContentAddTextTicksAnd" xml:space="preserve"><value>Edit content: add text, ticks and signatures</value></data>
+  <data name="Editor_OrganisePages" xml:space="preserve"><value>Organise pages</value></data>
+  <data name="Editor_OrganisePagesReorderRotateDuplicateAnd" xml:space="preserve"><value>Organise pages: reorder, rotate, duplicate and delete</value></data>
+  <data name="Editor_AddPagesFromPDFsOrImages" xml:space="preserve"><value>Add pages from PDFs or images at the end</value></data>
+  <data name="Editor_AddPages" xml:space="preserve"><value>Add pages…</value></data>
+  <data name="Editor_Tools" xml:space="preserve"><value>Tools</value></data>
+  <data name="Editor_ShowOrHidePages" xml:space="preserve"><value>Show or hide pages</value></data>
+  <data name="Editor_PagesPanel" xml:space="preserve"><value>Pages panel</value></data>
+  <data name="Editor_Select" xml:space="preserve"><value>Select</value></data>
+  <data name="Editor_SelectMoveAndResizeWhatYouve" xml:space="preserve"><value>Select, move and resize what you’ve added (V)</value></data>
+  <data name="Editor_Text" xml:space="preserve"><value>Text</value></data>
+  <data name="Editor_ClickOnThePageAndType" xml:space="preserve"><value>Click on the page and type (T)</value></data>
+  <data name="Editor_Tick" xml:space="preserve"><value>Tick</value></data>
+  <data name="Editor_ClickBoxesToTickThemC" xml:space="preserve"><value>Click boxes to tick them (C)</value></data>
+  <data name="Editor_Cross" xml:space="preserve"><value>Cross</value></data>
+  <data name="Editor_ClickBoxesToCrossThemX" xml:space="preserve"><value>Click boxes to cross them (X)</value></data>
+  <data name="Editor_Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Editor_ClickToAddTodaysDateD" xml:space="preserve"><value>Click to add today’s date (D)</value></data>
+  <data name="Editor_Sign" xml:space="preserve"><value>Sign</value></data>
+  <data name="Editor_AddYourSignatureS" xml:space="preserve"><value>Add your signature (S)</value></data>
+  <data name="Editor_Initials" xml:space="preserve"><value>Initials</value></data>
+  <data name="Common_AddYourInitials" xml:space="preserve"><value>Add your initials</value></data>
+  <data name="Editor_Shapes" xml:space="preserve"><value>Shapes</value></data>
+  <data name="Editor_RectangleEllipseLineArrowHighlightOr" xml:space="preserve"><value>Rectangle, ellipse, line, arrow, highlight or whiteout (R)</value></data>
+  <data name="Editor_Rectangle" xml:space="preserve"><value>Rectangle</value></data>
+  <data name="Editor_DrawABoxAroundSomething" xml:space="preserve"><value>Draw a box around something</value></data>
+  <data name="Editor_Ellipse" xml:space="preserve"><value>Ellipse</value></data>
+  <data name="Editor_CircleAWordOrAnswer" xml:space="preserve"><value>Circle a word or answer</value></data>
+  <data name="Editor_Line" xml:space="preserve"><value>Line</value></data>
+  <data name="Editor_StrikeThroughOrUnderline" xml:space="preserve"><value>Strike through or underline</value></data>
+  <data name="Editor_Arrow" xml:space="preserve"><value>Arrow</value></data>
+  <data name="Editor_PointToSomething" xml:space="preserve"><value>Point to something</value></data>
+  <data name="Editor_Highlight" xml:space="preserve"><value>Highlight</value></data>
+  <data name="Editor_SeeThroughYellowOverText" xml:space="preserve"><value>See-through yellow over text</value></data>
+  <data name="Editor_Whiteout" xml:space="preserve"><value>Whiteout</value></data>
+  <data name="Editor_CoverAndRemoveGoneFromThe" xml:space="preserve"><value>Cover and remove: gone from the final copy</value></data>
+  <data name="Common_Draw" xml:space="preserve"><value>Draw</value></data>
+  <data name="Editor_DrawFreelyWithAPenP" xml:space="preserve"><value>Draw freely with a pen (P)</value></data>
+  <data name="Editor_MoreTools" xml:space="preserve"><value>More tools</value></data>
+  <data name="Editor_More" xml:space="preserve"><value>More</value></data>
+  <data name="Editor_TodaysDate" xml:space="preserve"><value>Today’s date</value></data>
+  <data name="Editor_StopChecking" xml:space="preserve"><value>Stop checking</value></data>
+  <data name="Editor_StopCheckingEsc" xml:space="preserve"><value>Stop checking (Esc)</value></data>
+  <data name="Editor_BackToExport" xml:space="preserve"><value>Back to export</value></data>
+  <data name="Editor_NextGap" xml:space="preserve"><value>Next gap</value></data>
+  <data name="Editor_PreviousGap" xml:space="preserve"><value>Previous gap</value></data>
+  <data name="Editor_ClearSelection" xml:space="preserve"><value>Clear selection</value></data>
+  <data name="Editor_ClearSelectionEsc" xml:space="preserve"><value>Clear selection (Esc)</value></data>
+  <data name="Editor_RotateLeft" xml:space="preserve"><value>Rotate left</value></data>
+  <data name="Editor_RotateRight" xml:space="preserve"><value>Rotate right</value></data>
+  <data name="Editor_Duplicate" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="Editor_ChooseWhereThesePagesGo" xml:space="preserve"><value>Choose where these pages go</value></data>
+  <data name="Editor_MoveTo" xml:space="preserve"><value>Move to…</value></data>
+  <data name="Editor_DeleteDeleteKey" xml:space="preserve"><value>Delete (Delete key)</value></data>
+  <data name="Common_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Editor_FinishTheDrawingEsc" xml:space="preserve"><value>Finish the drawing (Esc)</value></data>
+  <data name="Editor_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Editor_Smaller" xml:space="preserve"><value>Smaller</value></data>
+  <data name="Editor_Larger" xml:space="preserve"><value>Larger</value></data>
+  <data name="Editor_Colour" xml:space="preserve"><value>Colour</value></data>
+  <data name="Editor_InkColour" xml:space="preserve"><value>Ink colour</value></data>
+  <data name="Editor_Black" xml:space="preserve"><value>Black</value></data>
+  <data name="Editor_Blue" xml:space="preserve"><value>Blue</value></data>
+  <data name="Editor_Red" xml:space="preserve"><value>Red</value></data>
+  <data name="Editor_Bold" xml:space="preserve"><value>Bold</value></data>
+  <data name="Editor_StopPlacingEsc" xml:space="preserve"><value>Stop placing (Esc)</value></data>
+  <data name="Editor_YouCanMoveOrResizeIt" xml:space="preserve"><value> You can move or resize it afterwards, or use the arrow keys to move it and Enter to place it.</value><comment>Follows a bold sentence in the same line. Keep the leading space where the language puts one between sentences (Japanese doesn’t).</comment></data>
+  <data name="Editor_LetGoToSelectThemHold" xml:space="preserve"><value>Let go to select them · hold Shift to add to the current selection · Esc to cancel</value></data>
+  <data name="Editor_EditAnyway" xml:space="preserve"><value>Edit anyway</value></data>
+  <data name="Editor_ViewOnly" xml:space="preserve"><value>View only.</value></data>
+  <data name="Editor_TheOwnerOfThisFileSet" xml:space="preserve"><value> The owner of this file set it so it shouldn’t be changed. Choose Edit anyway if you’re allowed to fill it in.</value><comment>Follows a bold sentence in the same line. Keep the leading space where the language puts one between sentences (Japanese doesn’t).</comment></data>
+  <data name="Common_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
+  <data name="Editor_OpenFinalCopyInstead" xml:space="preserve"><value>Open final copy instead</value></data>
+  <data name="Editor_ShowsThePagesAsRecipientsSee" xml:space="preserve"><value>Shows the pages as recipients see them. Your editable copy stays in the file.</value></data>
+  <data name="Editor_ThisFileWasChangedInAnother" xml:space="preserve"><value>This file was changed in another app after you saved it in Chainpen.</value></data>
+  <data name="Editor_ChainpenOpenedItAsItIs" xml:space="preserve"><value> Chainpen opened it as it is now, so nothing from the other app is lost.</value><comment>Follows a bold sentence in the same line. Keep the leading space where the language puts one between sentences (Japanese doesn’t).</comment></data>
+  <data name="Editor_RestoreChainpenEdits" xml:space="preserve"><value>Restore Chainpen edits…</value></data>
+  <data name="Editor_KeepAsItIs" xml:space="preserve"><value>Keep as it is</value></data>
+  <data name="Editor_SendTheFinalCopyWithMail" xml:space="preserve"><value>Send the final copy with Mail, Messages, AirDrop and more</value></data>
+  <data name="Editor_Share" xml:space="preserve"><value>Share…</value></data>
+  <data name="Editor_ShowInFolder" xml:space="preserve"><value>Show in folder</value></data>
+  <data name="Editor_FinalCopyExported" xml:space="preserve"><value>Final copy exported:</value></data>
+  <data name="Editor_PagesPanelWidth" xml:space="preserve"><value>Pages panel width</value></data>
+  <data name="Editor_DragToResizeDoubleClickTo" xml:space="preserve"><value>Drag to resize · double-click to reset</value></data>
+  <data name="Editor_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Editor_Pages" xml:space="preserve"><value>Pages</value></data>
+  <data name="Editor_PageActions" xml:space="preserve"><value>Page actions</value></data>
+  <data name="Editor_Document" xml:space="preserve"><value>Document</value></data>
+  <data name="Editor_AddToThisDocument" xml:space="preserve"><value>Add to this document</value></data>
+  <data name="Editor_ThePagesGoAtTheEnd" xml:space="preserve"><value>The pages go at the end. Drop on the page list to choose where.</value></data>
+  <data name="Common_OpenInANewWindow" xml:space="preserve"><value>Open in a new window</value></data>
+  <data name="Editor_WorkOnThemAsASeparate" xml:space="preserve"><value>Work on them as a separate document.</value></data>
+  <data name="Editor_PracticeOnlyNothingIsSavedUnless" xml:space="preserve"><value>Practice only: nothing is saved unless you choose to.</value></data>
+  <data name="Editor_UpdateReady" xml:space="preserve"><value>Update ready</value></data>
+  <data name="Editor_YourUnsavedChangesComeBackAfter" xml:space="preserve"><value>Your unsaved changes come back after the restart.</value></data>
+  <data name="Editor_RestartingTakesAFewSeconds" xml:space="preserve"><value> Restarting takes a few seconds.</value><comment>Follows a bold sentence in the same line. Keep the leading space where the language puts one between sentences (Japanese doesn’t).</comment></data>
+  <data name="Editor_RestartAndUpdate" xml:space="preserve"><value>Restart and update</value></data>
+  <data name="Editor_WhenICloseChainpen" xml:space="preserve"><value>When I close Chainpen</value></data>
+  <data name="Editor_ZoomOut" xml:space="preserve"><value>Zoom out</value></data>
+  <data name="Editor_ZoomIn" xml:space="preserve"><value>Zoom in</value></data>
+  <data name="Editor_FitWidth" xml:space="preserve"><value>Fit width</value></data>
+  <data name="Editor_Page" xml:space="preserve"><value>Page</value></data>
+  <data name="Editor_GoToPage" xml:space="preserve"><value>Go to page</value></data>
+  <data name="Editor_ACopyOfYourUnsavedChanges" xml:space="preserve"><value>A copy of your unsaved changes, kept on this computer in case Chainpen closes unexpectedly. It isn’t saved to your file.</value></data>
+  <data name="Editor_UndoModZ" xml:space="preserve"><value>Undo (Mod+Z)</value></data>
+  <data name="Editor_RedoModShiftZ" xml:space="preserve"><value>Redo (Mod+Shift+Z)</value></data>
+  <data name="Editor_SaveYourWorkingCopyModS" xml:space="preserve"><value>Save your working copy (Mod+S)</value></data>
+  <data name="Editor_MakeTheCopyToSendMod" xml:space="preserve"><value>Make the copy to send (Mod+E)</value></data>
+  <data name="Editor_ClickAPageToSelectIt" xml:space="preserve"><value>Click a page to select it. Shift-click selects a range, Mod-click adds a page.</value></data>
+  <data name="Editor_DuplicateModD" xml:space="preserve"><value>Duplicate (Mod+D)</value></data>
+  <data name="Editor_BoldModB" xml:space="preserve"><value>Bold (Mod+B)</value></data>
+  <data name="Editor_ZoomOutMod" xml:space="preserve"><value>Zoom out (Mod+−)</value></data>
+  <data name="Editor_ZoomInMod" xml:space="preserve"><value>Zoom in (Mod+=)</value></data>
+  <data name="Editor_FitThePageWidthMod0" xml:space="preserve"><value>Fit the page width (Mod+0)</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Export_KeepEditing" xml:space="preserve"><value>Keep editing</value></data>
+  <data name="Export_MakesACopyToSendIt" xml:space="preserve"><value>Makes a copy to send. It looks the same in any PDF reader and can’t be changed. Your working copy stays as it is.</value></data>
+  <data name="Export_PossibleGaps" xml:space="preserve"><value>Possible gaps</value></data>
+  <data name="Export_LockTheFormsFields" xml:space="preserve"><value>Lock the form’s fields</value></data>
+  <data name="Export_YourAnswersShowAsFilledIn" xml:space="preserve"><value>Your answers show as filled in, but can’t be changed in other PDF apps. Untick to let the person you send it to edit them.</value></data>
+  <data name="Export_FileName" xml:space="preserve"><value>File name</value></data>
+  <data name="Export_ChangeFolder" xml:space="preserve"><value>Change folder…</value></data>
+  <data name="Export_AFileWithThisNameIs" xml:space="preserve"><value>A file with this name is already in that folder. Exporting replaces it.</value></data>
+  <data name="Export_TypeANameForTheFinal" xml:space="preserve"><value>Type a name for the final copy.</value></data>
+  <data name="Export_AlsoSaveTheWorkingCopy" xml:space="preserve"><value>Also save the working copy</value></data>
+  <data name="MoveTo_PutThem" xml:space="preserve"><value>Put them</value></data>
+  <data name="MoveTo_AtTheStart" xml:space="preserve"><value>At the start</value></data>
+  <data name="MoveTo_AfterAPageYouType" xml:space="preserve"><value>After a page you type</value></data>
+  <data name="MoveTo_AfterPage" xml:space="preserve"><value>After page</value></data>
+  <data name="MoveTo_PageNumber" xml:space="preserve"><value>Page number</value></data>
+  <data name="MoveTo_Move" xml:space="preserve"><value>Move</value></data>
+  <data name="OpenOrAdd_WorkOnTheTwoDocumentsSeparately" xml:space="preserve"><value>Work on the two documents separately.</value></data>
+  <data name="OpenOrAdd_AddItsPagesToThisDocument" xml:space="preserve"><value>Add its pages to this document</value></data>
+  <data name="Common_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Password_WhoeverMadeTheFileSetThe" xml:space="preserve"><value>Whoever made the file set the password. It’s often in the email or letter that came with it.</value></data>
+  <data name="Password_Password" xml:space="preserve"><value>Password</value></data>
+  <data name="Password_ShowPassword" xml:space="preserve"><value>Show password</value></data>
+  <data name="Password_Show" xml:space="preserve"><value>Show</value></data>
+  <data name="Password_ThatPasswordDidntOpenTheFile" xml:space="preserve"><value>That password didn’t open the file. Check Caps Lock and try again.</value></data>
+  <data name="Password_ChainpenDoesntKeepThePasswordCopies" xml:space="preserve"><value>Chainpen doesn’t keep the password. Copies you save or export won’t need it.</value></data>
+  <data name="Settings_ChainpenSettings" xml:space="preserve"><value>Chainpen settings</value></data>
+  <data name="Settings_ChangesAreSavedAsSoonAs" xml:space="preserve"><value>Changes are saved as soon as you make them.</value></data>
+  <data name="Settings_Appearance" xml:space="preserve"><value>Appearance</value></data>
+  <data name="Settings_MatchYourComputerOrChooseOne" xml:space="preserve"><value>Match your computer, or choose one. Documents always show as they’ll print.</value></data>
+  <data name="Settings_MatchSystem" xml:space="preserve"><value>Match system</value></data>
+  <data name="Settings_Light" xml:space="preserve"><value>Light</value></data>
+  <data name="Settings_Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Settings_SavedSignaturesAndInitials" xml:space="preserve"><value>Saved signatures and initials</value></data>
+  <data name="Settings_StoredOnlyOnThisComputerRemoving" xml:space="preserve"><value>Stored only on this computer. Removing one doesn’t change documents you’ve already saved.</value></data>
+  <data name="Settings_NoneSavedTickKeepOnThis" xml:space="preserve"><value>None saved. Tick “Keep … on this computer” when you add one to see it here.</value></data>
+  <data name="Settings_SavedSignaturesCantBeOpenedRight" xml:space="preserve"><value>Saved signatures can’t be opened right now: the system’s keychain or keyring didn’t hand over their key. They’re kept, and come back once it does.</value></data>
+  <data name="Settings_StartAgainWithoutThem" xml:space="preserve"><value>Start again without them…</value></data>
+  <data name="Settings_Remove" xml:space="preserve"><value>Remove…</value></data>
+  <data name="Settings_RecoveryCopies" xml:space="preserve"><value>Recovery copies</value></data>
+  <data name="Settings_IfChainpenClosesUnexpectedlyUnsavedChanges" xml:space="preserve"><value>If Chainpen closes unexpectedly, unsaved changes can be recovered. Copies are kept on this computer for:</value></data>
+  <data name="Settings_DeleteAllRecoveryCopies" xml:space="preserve"><value>Delete all recovery copies…</value></data>
+  <data name="Settings_1Day" xml:space="preserve"><value>1 day</value></data>
+  <data name="Settings_7Days" xml:space="preserve"><value>7 days</value></data>
+  <data name="Settings_30Days" xml:space="preserve"><value>30 days</value></data>
+  <data name="Settings_DateFormat" xml:space="preserve"><value>Date format</value></data>
+  <data name="Settings_ForDatesYouAddWithThe" xml:space="preserve"><value>For dates you add with the Date tool, and dates Chainpen shows. Dates already on a document don’t change.</value></data>
+  <data name="Settings_DDMMYYYY" xml:space="preserve"><value>DD/MM/YYYY</value></data>
+  <data name="Settings_MMDDYYYY" xml:space="preserve"><value>MM/DD/YYYY</value></data>
+  <data name="Settings_YYYYMMDD" xml:space="preserve"><value>YYYY-MM-DD</value></data>
+  <data name="Settings_DDMMYYYYDots" xml:space="preserve"><value>DD.MM.YYYY</value></data>
+  <data name="Settings_Keyboard" xml:space="preserve"><value>Keyboard</value></data>
+  <data name="Settings_ChooseToolsWithSingleLettersV" xml:space="preserve"><value>Choose tools with single letters (V, T, C, X, D, S, R, P)</value></data>
+  <data name="Settings_OffUnlessYouTurnItOn" xml:space="preserve"><value>Off unless you turn it on. Leave it off if you use speech input, or would press letters by accident.</value></data>
+  <data name="Settings_CrashReports" xml:space="preserve"><value>Crash reports</value></data>
+  <data name="Settings_IfSomethingGoesWrongAShort" xml:space="preserve"><value>If something goes wrong, a short report is kept on this computer: the app version, your system and the code that failed. It never includes your documents, signatures or file names. Next time you start Chainpen, you can review it and send it as a GitHub issue.</value></data>
+  <data name="Settings_KeepReportsForMeToReview" xml:space="preserve"><value>Keep reports for me to review</value></data>
+  <data name="Settings_DontKeepReports" xml:space="preserve"><value>Don’t keep reports</value></data>
+  <data name="Signature_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Signature_PhotoOrScan" xml:space="preserve"><value>Photo or scan</value></data>
+  <data name="Signature_Ink" xml:space="preserve"><value>Ink</value></data>
+  <data name="Signature_BlackInk" xml:space="preserve"><value>Black ink</value></data>
+  <data name="Signature_BlueInk" xml:space="preserve"><value>Blue ink</value></data>
+  <data name="Signature_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Signature_SignaturePadSignWithYourMouse" xml:space="preserve"><value>Signature pad. Sign with your mouse, trackpad, pen or finger, or use the Type tab.</value></data>
+  <data name="Signature_Style" xml:space="preserve"><value>Style</value></data>
+  <data name="Signature_ChooseAPhotoOrScan" xml:space="preserve"><value>Choose a photo or scan…</value></data>
+  <data name="Signature_ChooseAnother" xml:space="preserve"><value>Choose another…</value></data>
+  <data name="Signature_YourPhoto" xml:space="preserve"><value>Your photo</value></data>
+  <data name="Signature_HowItWillLookOnThe" xml:space="preserve"><value>How it will look on the page</value></data>
+  <data name="Signature_YourSignatureAsItWillLook" xml:space="preserve"><value>Your signature as it will look on the page</value></data>
+  <data name="Signature_RemoveThePaperBackground" xml:space="preserve"><value>Remove the paper background</value></data>
+  <data name="Signature_UntickIfPartsOfYourSignature" xml:space="preserve"><value>Untick if parts of your signature disappear.</value></data>
+  <data name="Signature_ThePhotoStaysOnThisComputer" xml:space="preserve"><value>The photo stays on this computer.</value></data>
+  <data name="Signature_ItWillBeRemovedFromThis" xml:space="preserve"><value>It will be removed from this computer and can’t be brought back. Documents you’ve already saved or exported keep it.</value></data>
+  <data name="Start_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Start_ReviewAndSend" xml:space="preserve"><value>Review and send…</value></data>
+  <data name="Start_OpensAGitHubIssueWithThe" xml:space="preserve"><value>Opens a GitHub issue with the report filled in. Nothing is sent until you submit it.</value></data>
+  <data name="Start_ChainpenHitAProblemLastTime" xml:space="preserve"><value>Chainpen hit a problem last time.</value></data>
+  <data name="Start_AReportOfWhatWentWrong" xml:space="preserve"><value>A report of what went wrong is ready: the app version, your system and the code that failed. No documents, signatures or file names.</value></data>
+  <data name="Start_YesKeepReports" xml:space="preserve"><value>Yes, keep reports</value></data>
+  <data name="Start_NoThanks" xml:space="preserve"><value>No thanks</value></data>
+  <data name="Start_HelpFixProblems" xml:space="preserve"><value>Help fix problems?</value></data>
+  <data name="Start_IfSomethingGoesWrongChainpenCan" xml:space="preserve"><value>If something goes wrong, Chainpen can keep a short report on this computer for you to review and send. It never includes your documents, signatures or file names. You can change this in Settings.</value></data>
+  <data name="Start_RecoverChanges" xml:space="preserve"><value>Recover changes</value></data>
+  <data name="Start_NotNow" xml:space="preserve"><value>Not now</value></data>
+  <data name="Start_YouCanRecoverItFromRecent" xml:space="preserve"><value>You can recover it from Recent</value></data>
+  <data name="Start_FillInAndSignADocument" xml:space="preserve"><value>Fill in and sign a document</value></data>
+  <data name="Start_OpenAPDFOrAPhoto" xml:space="preserve"><value>Open a PDF, or a photo or scan of a paper form. Your files stay on this computer.</value></data>
+  <data name="Start_ChooseAnotherFile" xml:space="preserve"><value>Choose another file…</value></data>
+  <data name="Start_DropFilesHereToOpenThem" xml:space="preserve"><value>Drop files here to open them</value></data>
+  <data name="Start_Open" xml:space="preserve"><value>Open…</value></data>
+  <data name="Start_ClearList" xml:space="preserve"><value>Clear list</value></data>
+  <data name="Start_Recent" xml:space="preserve"><value>Recent</value></data>
+  <data name="Start_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Start_LastOpened" xml:space="preserve"><value>Last opened</value></data>
+  <data name="Start_TryItWithAPracticeForm" xml:space="preserve"><value>Try it with a practice form</value></data>
+  <data name="Start_OpensAPracticeFormWithA" xml:space="preserve"><value>Opens a practice form with a guide that takes you through it step by step. Nothing is saved unless you choose to.</value></data>
+  <data name="Start_HowItWorks" xml:space="preserve"><value>How it works</value></data>
+  <data name="Start_OpenYourForm" xml:space="preserve"><value>Open your form</value></data>
+  <data name="Start_APDFOrAPhotoOr" xml:space="preserve"><value>A PDF, or a photo or scan of a paper form.</value></data>
+  <data name="Start_TickTypeAndSign" xml:space="preserve"><value>Tick, type and sign</value></data>
+  <data name="Start_ChooseAToolThenClickWhere" xml:space="preserve"><value>Choose a tool, then click where each answer goes.</value></data>
+  <data name="Common_ExportAFinalCopy" xml:space="preserve"><value>Export a final copy</value></data>
+  <data name="Start_AFileThatLooksTheSame" xml:space="preserve"><value>A file that looks the same for whoever you send it to.</value></data>
+  <data name="Start_DocumentsYouOpenWillBeListed" xml:space="preserve"><value>Documents you open will be listed here next time.</value></data>
+  <data name="Start_NothingLeavesThisComputerChainpenDoesnt" xml:space="preserve"><value>Nothing leaves this computer: Chainpen doesn’t need an account or an internet connection.</value></data>
+  <data name="Start_FreeForPersonalUseAndFree" xml:space="preserve"><value>Free for personal use, and free for businesses during the beta. About Chainpen has the details.</value></data>
+  <data name="Start_OpenAPDFOrImageMod" xml:space="preserve"><value>Open a PDF or image (Mod+O)</value></data>
+  <data name="Editor_PageOfPages" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Editor_PagesCantBeShown_One" xml:space="preserve"><value>{0} page can’t be shown</value></data>
+  <data name="Editor_PagesCantBeShown_Other" xml:space="preserve"><value>{0} pages can’t be shown</value></data>
+  <data name="Editor_LoadingPages" xml:space="preserve"><value>Loading pages: {0} of {1}</value></data>
+  <data name="Editor_OpeningPages" xml:space="preserve"><value>Opening · {0} pages</value></data>
+  <data name="Editor_OpenedAsItIsNow" xml:space="preserve"><value>Opened as it is now · Chainpen edits not restored</value></data>
+  <data name="Editor_WorkingCopyNotSaved" xml:space="preserve"><value>Working copy · not saved to file</value></data>
+  <data name="Editor_WorkingCopyNotSaved_Signed" xml:space="preserve"><value>Working copy · not saved to file · contains your signature</value></data>
+  <data name="Editor_WorkingCopySaved" xml:space="preserve"><value>Working copy · saved {0}</value></data>
+  <data name="Editor_WorkingCopySaved_Signed" xml:space="preserve"><value>Working copy · saved {0} · contains your signature</value></data>
+  <data name="Editor_WorkingCopyNoChanges" xml:space="preserve"><value>Working copy · no changes yet</value></data>
+  <data name="Editor_WorkingCopyNoChanges_Signed" xml:space="preserve"><value>Working copy · no changes yet · contains your signature</value></data>
+  <data name="Editor_YouCanStartOnPage1" xml:space="preserve"><value>You can start on page 1 now. The rest of the pages are still loading.</value></data>
+  <data name="Editor_CantDeleteEveryPage" xml:space="preserve"><value>Can’t delete every page</value></data>
+  <data name="Editor_ADocumentNeedsAtLeastOnePage" xml:space="preserve"><value>A document needs at least one page. Add another page first, or open a different document.</value></data>
+  <data name="Editor_PageNumberCantShow" xml:space="preserve"><value>{0} · can’t show</value></data>
+  <data name="Editor_PageNumberRotated" xml:space="preserve"><value>{0} · rotated</value></data>
+  <data name="Editor_PageNumber" xml:space="preserve"><value>Page {0}</value></data>
+  <data name="Editor_PageStateCurrent" xml:space="preserve"><value>current</value></data>
+  <data name="Editor_PageStateSelected" xml:space="preserve"><value>selected</value></data>
+  <data name="Editor_PageStateRotated" xml:space="preserve"><value>rotated</value></data>
+  <data name="Editor_PageStateHasEdits" xml:space="preserve"><value>has edits</value></data>
+  <data name="Editor_PageStateCantBeShown" xml:space="preserve"><value>can’t be shown</value></data>
+  <data name="Editor_ListSeparator" xml:space="preserve"><value>, </value></data>
+  <data name="Editor_PracticeDone" xml:space="preserve"><value>Practice done</value></data>
+  <data name="Editor_StepOfSteps" xml:space="preserve"><value>Step {0} of {1}</value></data>
+  <data name="Editor_GuideTickABox" xml:space="preserve"><value>Tick a box</value></data>
+  <data name="Editor_GuideWriteYourName" xml:space="preserve"><value>Write your name</value></data>
+  <data name="Editor_GuideSignTheForm" xml:space="preserve"><value>Sign the form</value></data>
+  <data name="Editor_GuideThatsIt" xml:space="preserve"><value>That’s it</value></data>
+  <data name="Editor_GuideTickChooseTool" xml:space="preserve"><value>This form is a scan, so its boxes are only part of the picture and clicking them does nothing. Choose Tick in the toolbar first.</value></data>
+  <data name="Editor_GuideTickClickTheBox" xml:space="preserve"><value>Now click the box beside “I agree to the volunteer guidelines”.</value></data>
+  <data name="Editor_GuideNameTypeYourName" xml:space="preserve"><value>Type your name, then press Esc or click outside the text to finish.</value></data>
+  <data name="Editor_GuideNameChooseText" xml:space="preserve"><value>Choose Text in the toolbar.</value></data>
+  <data name="Editor_GuideNameClickTheLine" xml:space="preserve"><value>Click on the Name line, then type your name.</value></data>
+  <data name="Editor_GuideSignClickTheLine" xml:space="preserve"><value>Click on the Signature line to put your signature there.</value></data>
+  <data name="Editor_GuideSignChooseSign" xml:space="preserve"><value>Choose Sign in the toolbar, then draw, type or choose your signature.</value></data>
+  <data name="Editor_GuideExportChooseExport" xml:space="preserve"><value>Choose Export at the top right. It makes the file you send: it looks the same for everyone and can’t be changed.</value></data>
+  <data name="Editor_GuideDone" xml:space="preserve"><value>You’ve filled in a form. Open your own from the start screen. Help → Try the practice form brings this guide back.</value></data>
+  <data name="Editor_GuideAnnouncement" xml:space="preserve"><value>{0}. {1}. {2}</value></data>
+  <data name="Editor_CloseGuide" xml:space="preserve"><value>Close guide</value></data>
+  <data name="Editor_SkipGuide" xml:space="preserve"><value>Skip guide</value></data>
+  <data name="Editor_ChooseAToolFirst" xml:space="preserve"><value>To fill in this page, choose a tool first: Tick for boxes, Text for lines, Sign for your signature.</value></data>
+  <data name="Editor_ClickHere" xml:space="preserve"><value>Click here</value></data>
+  <data name="Editor_SignHere" xml:space="preserve"><value>Sign here</value></data>
+  <data name="Editor_CheckingNoMoreGaps" xml:space="preserve"><value>Checking before export · no more gaps spotted. Look over each page before you send it.</value></data>
+  <data name="Editor_CheckingGapOfGaps" xml:space="preserve"><value>Checking before export · gap {0} of {1}: {2}</value></data>
+  <data name="Editor_CheckingGap" xml:space="preserve"><value>Checking before export · gap: {0}</value></data>
+  <data name="Editor_GapBadgeNotTicked" xml:space="preserve"><value>Not ticked</value></data>
+  <data name="Editor_GapBadgeEmpty" xml:space="preserve"><value>Empty</value></data>
+  <data name="Editor_GapNotAnswered" xml:space="preserve"><value>“{0}” isn’t answered</value></data>
+  <data name="Editor_GapNotTicked" xml:space="preserve"><value>Not ticked: “{0}”</value></data>
+  <data name="Editor_GapBoxNotTicked" xml:space="preserve"><value>A box isn’t ticked</value></data>
+  <data name="Editor_GapNotSigned" xml:space="preserve"><value>“{0}” isn’t signed</value></data>
+  <data name="Editor_GapEmpty" xml:space="preserve"><value>“{0}” is empty</value></data>
+  <data name="Editor_GapNotAnsweredOnPage" xml:space="preserve"><value>“{0}” isn’t answered on page {1}</value></data>
+  <data name="Editor_GapNotTickedOnPage" xml:space="preserve"><value>Not ticked: “{0}” on page {1}</value></data>
+  <data name="Editor_GapBoxNotTickedOnPage" xml:space="preserve"><value>A box isn’t ticked on page {0}</value></data>
+  <data name="Editor_GapNotSignedOnPage" xml:space="preserve"><value>“{0}” isn’t signed on page {1}</value></data>
+  <data name="Editor_GapEmptyOnPage" xml:space="preserve"><value>“{0}” is empty on page {1}</value></data>
+  <data name="Editor_GapClickAnAnswer" xml:space="preserve"><value>{0}. Click an answer to choose it, or leave it if that’s intended.</value></data>
+  <data name="Editor_GapClickToSign" xml:space="preserve"><value>{0}. Click it to sign.</value></data>
+  <data name="Editor_GapClickToFill" xml:space="preserve"><value>{0}. Click it to fill it, or leave it if that’s intended.</value></data>
+  <data name="Editor_GapCheckBoxNotTicked" xml:space="preserve"><value>a box isn’t ticked. The Tick tool is ready if you want to tick it.</value></data>
+  <data name="Editor_GapCheckDate" xml:space="preserve"><value>a line that may need a date. The Date tool is ready.</value></data>
+  <data name="Editor_GapCheckSignature" xml:space="preserve"><value>a space that may need a signature. Choose Sign to add yours.</value></data>
+  <data name="Editor_GapCheckInitials" xml:space="preserve"><value>a space that may need initials. Choose Sign, then Initials.</value></data>
+  <data name="Editor_GapCheckNothingAfter" xml:space="preserve"><value>nothing after “{0}”. The Text tool is ready.</value></data>
+  <data name="Editor_GapCheckEmptyLine" xml:space="preserve"><value>an empty line. The Text tool is ready.</value></data>
+  <data name="Editor_GapUntickedOnPage" xml:space="preserve"><value>Box not ticked on page {0}</value></data>
+  <data name="Editor_GapDateOnPage" xml:space="preserve"><value>Line that may need a date on page {0}</value></data>
+  <data name="Editor_GapSignatureOnPage" xml:space="preserve"><value>Space that may need a signature on page {0}</value></data>
+  <data name="Editor_GapInitialsOnPage" xml:space="preserve"><value>Space that may need initials on page {0}</value></data>
+  <data name="Editor_GapNothingAfterOnPage" xml:space="preserve"><value>Nothing after “{0}” on page {1}</value></data>
+  <data name="Editor_GapEmptyLineOnPage" xml:space="preserve"><value>Empty line on page {0}</value></data>
+  <data name="Editor_FormButtonNote" xml:space="preserve"><value>Chainpen doesn’t run form buttons like this one. To start again, use Undo; to print, use File → Print.</value></data>
+  <data name="Editor_ReadOnlyFieldNote" xml:space="preserve"><value>That field can’t be changed: the form fills it in itself.</value></data>
+  <data name="Editor_EnterForANewLine" xml:space="preserve"><value>Enter for a new line</value></data>
+  <data name="Editor_EnterToFinish" xml:space="preserve"><value>Enter to finish</value></data>
+  <data name="Editor_TypingInFieldHint" xml:space="preserve"><value>Typing in “{0}” · {1} · {2} · Esc to cancel</value></data>
+  <data name="Editor_FieldKeysCheckBox" xml:space="preserve"><value>Space to tick or untick</value></data>
+  <data name="Editor_FieldKeysRadio" xml:space="preserve"><value>← → to choose an answer</value></data>
+  <data name="Editor_FieldKeysMultiSelect" xml:space="preserve"><value>↑ ↓ to move · Space to tick or untick · click a row to add or remove it</value></data>
+  <data name="Editor_FieldKeysList" xml:space="preserve"><value>↑ ↓ to choose</value></data>
+  <data name="Editor_FieldKeysDropDown" xml:space="preserve"><value>↑ ↓ to change · Space to open the list</value></data>
+  <data name="Editor_FieldKeysSignature" xml:space="preserve"><value>Space to sign</value></data>
+  <data name="Editor_FieldKeysFill" xml:space="preserve"><value>Space to fill</value></data>
+  <data name="Editor_FocusedFieldHint" xml:space="preserve"><value>“{0}” · {1} · {2}</value></data>
+  <data name="Editor_FieldKindDropDownTyped" xml:space="preserve"><value>drop-down, type an answer</value></data>
+  <data name="Editor_FieldKindTextSeveralLines" xml:space="preserve"><value>text field, several lines</value></data>
+  <data name="Editor_FieldKindText" xml:space="preserve"><value>text field</value></data>
+  <data name="Editor_FieldBoxNameWithLimit" xml:space="preserve"><value>{0}, {1}, up to {2} characters</value></data>
+  <data name="Editor_FieldBoxName" xml:space="preserve"><value>{0}, {1}</value></data>
+  <data name="Editor_FieldCheckBoxTicked" xml:space="preserve"><value>{0}, check box, ticked</value></data>
+  <data name="Editor_FieldCheckBoxNotTicked" xml:space="preserve"><value>{0}, check box, not ticked</value></data>
+  <data name="Editor_FieldRadioChosen" xml:space="preserve"><value>{0}, radio button {1}, {2} of {3}, chosen</value></data>
+  <data name="Editor_FieldRadioNotChosen" xml:space="preserve"><value>{0}, radio button {1}, {2} of {3}, not chosen</value></data>
+  <data name="Editor_FieldMultiSelectTicked" xml:space="preserve"><value>{0}, list, several answers, {1}, ticked, {2} of {3} chosen</value></data>
+  <data name="Editor_FieldMultiSelectNotTicked" xml:space="preserve"><value>{0}, list, several answers, {1}, not ticked, {2} of {3} chosen</value></data>
+  <data name="Editor_FieldList" xml:space="preserve"><value>{0}, list, {1}</value></data>
+  <data name="Editor_FieldListNothingChosen" xml:space="preserve"><value>{0}, list, nothing chosen</value></data>
+  <data name="Editor_FieldDropDown" xml:space="preserve"><value>{0}, drop-down, {1}</value></data>
+  <data name="Editor_FieldDropDownNothingChosen" xml:space="preserve"><value>{0}, drop-down, nothing chosen</value></data>
+  <data name="Editor_FieldSignature" xml:space="preserve"><value>{0}, signature field. Press Space to sign.</value></data>
+  <data name="Editor_FieldText" xml:space="preserve"><value>{0}, text field, {1}</value></data>
+  <data name="Editor_FieldTextEmpty" xml:space="preserve"><value>{0}, text field, empty</value></data>
+  <data name="Editor_FieldQuestionAndName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Editor_TabBackToFirstField" xml:space="preserve"><value>Tab to go back to the first field · F6 to leave the form</value></data>
+  <data name="Editor_TabForNextField" xml:space="preserve"><value>Tab for the next field</value></data>
+  <data name="Editor_FieldsToFill_One" xml:space="preserve"><value>{0} field to fill · click it, or press Tab to go to it · Choose a tool to add your own: Text, Tick, Sign.</value></data>
+  <data name="Editor_FieldsToFill_Other" xml:space="preserve"><value>{0} fields to fill · click one, or press Tab to go through them · Choose a tool to add your own: Text, Tick, Sign.</value></data>
+  <data name="Editor_AllFieldsFilled" xml:space="preserve"><value>All {0} fields filled · Export when you’re done</value></data>
+  <data name="Editor_FieldsFilledOfTotal" xml:space="preserve"><value>{0} of {1} filled · Tab for the next field · Export when you’re done</value></data>
+  <data name="Editor_Pen" xml:space="preserve"><value>Pen</value></data>
+  <data name="Editor_ToolHintText" xml:space="preserve"><value>Click where the text should start, then type</value></data>
+  <data name="Editor_ToolHintTick" xml:space="preserve"><value>Click each box to tick it · Tick stays on until you choose another tool · Esc to stop</value></data>
+  <data name="Editor_ToolHintCross" xml:space="preserve"><value>Click each box to cross it · Cross stays on until you choose another tool · Esc to stop</value></data>
+  <data name="Editor_ToolHintDate" xml:space="preserve"><value>Click to add today’s date ({0}) · Esc to cancel</value></data>
+  <data name="Editor_ToolHintShape" xml:space="preserve"><value>Drag on the page to draw it. Click instead for a standard size · Esc to stop</value></data>
+  <data name="Editor_ToolHintDraw" xml:space="preserve"><value>Draw on the page · strokes join into one drawing · Done or Esc to finish</value></data>
+  <data name="Editor_ToolHintChooseATool" xml:space="preserve"><value>Choose a tool, then click on the page: Tick for boxes, Text for lines, Sign for your signature.</value></data>
+  <data name="Editor_PlacingInitials" xml:space="preserve"><value>Click where your initials should go.</value></data>
+  <data name="Editor_PlacingSignature" xml:space="preserve"><value>Click where your signature should go.</value></data>
+  <data name="Editor_SelectingItemsInBox_One" xml:space="preserve"><value>Selecting: {0} item in the box</value></data>
+  <data name="Editor_SelectingItemsInBox_Other" xml:space="preserve"><value>Selecting: {0} items in the box</value></data>
+  <data name="Editor_SelectionHintText" xml:space="preserve"><value>Double-click to edit · drag to move · drag a corner to resize · arrow keys nudge</value></data>
+  <data name="Editor_SelectionHintKeepsShape" xml:space="preserve"><value>Drag to move · drag a corner to resize (keeps its shape) · arrow keys nudge</value></data>
+  <data name="Editor_SelectionHintOne" xml:space="preserve"><value>Drag to move · drag a corner to resize · arrow keys nudge</value></data>
+  <data name="Editor_SelectionHintSeveral" xml:space="preserve"><value>Drag to move them together · Shift-click to add or remove · arrow keys nudge</value></data>
+  <data name="Editor_ItemsDeleted" xml:space="preserve"><value>{0} items deleted</value></data>
+  <data name="Editor_SizeSmall" xml:space="preserve"><value>Small</value></data>
+  <data name="Editor_SizeMedium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Editor_SizeLarge" xml:space="preserve"><value>Large</value></data>
+  <data name="Editor_SizeThin" xml:space="preserve"><value>Thin</value></data>
+  <data name="Editor_SizeThick" xml:space="preserve"><value>Thick</value></data>
+  <data name="Editor_SizePoints" xml:space="preserve"><value>{0} pt</value></data>
+  <data name="Editor_SizePointsWide" xml:space="preserve"><value>{0} pt wide</value></data>
+  <data name="Editor_SizePointsLine" xml:space="preserve"><value>{0} pt line</value></data>
+  <data name="Editor_TextSelected" xml:space="preserve"><value>Text selected</value></data>
+  <data name="Editor_TextDeleted" xml:space="preserve"><value>Text deleted</value></data>
+  <data name="Editor_SeveralTexts" xml:space="preserve"><value>{0} texts</value></data>
+  <data name="Editor_TickSelected" xml:space="preserve"><value>Tick selected</value></data>
+  <data name="Editor_TickDeleted" xml:space="preserve"><value>Tick deleted</value></data>
+  <data name="Editor_SeveralTicks" xml:space="preserve"><value>{0} ticks</value></data>
+  <data name="Editor_CrossSelected" xml:space="preserve"><value>Cross selected</value></data>
+  <data name="Editor_CrossDeleted" xml:space="preserve"><value>Cross deleted</value></data>
+  <data name="Editor_SeveralCrosses" xml:space="preserve"><value>{0} crosses</value></data>
+  <data name="Editor_InitialsSelected" xml:space="preserve"><value>Initials selected</value></data>
+  <data name="Editor_InitialsDeleted" xml:space="preserve"><value>Initials deleted</value></data>
+  <data name="Editor_SeveralInitials" xml:space="preserve"><value>{0} initials</value></data>
+  <data name="Editor_SignatureSelected" xml:space="preserve"><value>Signature selected</value></data>
+  <data name="Editor_SignatureDeleted" xml:space="preserve"><value>Signature deleted</value></data>
+  <data name="Editor_SeveralSignatures" xml:space="preserve"><value>{0} signatures</value></data>
+  <data name="Editor_DrawingSelected" xml:space="preserve"><value>Drawing selected</value></data>
+  <data name="Editor_DrawingDeleted" xml:space="preserve"><value>Drawing deleted</value></data>
+  <data name="Editor_SeveralDrawings" xml:space="preserve"><value>{0} drawings</value></data>
+  <data name="Editor_PictureSelected" xml:space="preserve"><value>Picture selected</value></data>
+  <data name="Editor_PictureDeleted" xml:space="preserve"><value>Picture deleted</value></data>
+  <data name="Editor_SeveralPictures" xml:space="preserve"><value>{0} pictures</value></data>
+  <data name="Editor_RectangleSelected" xml:space="preserve"><value>Rectangle selected</value></data>
+  <data name="Editor_RectangleDeleted" xml:space="preserve"><value>Rectangle deleted</value></data>
+  <data name="Editor_SeveralRectangles" xml:space="preserve"><value>{0} rectangles</value></data>
+  <data name="Editor_EllipseSelected" xml:space="preserve"><value>Ellipse selected</value></data>
+  <data name="Editor_EllipseDeleted" xml:space="preserve"><value>Ellipse deleted</value></data>
+  <data name="Editor_SeveralEllipses" xml:space="preserve"><value>{0} ellipses</value></data>
+  <data name="Editor_LineSelected" xml:space="preserve"><value>Line selected</value></data>
+  <data name="Editor_LineDeleted" xml:space="preserve"><value>Line deleted</value></data>
+  <data name="Editor_SeveralLines" xml:space="preserve"><value>{0} lines</value></data>
+  <data name="Editor_ArrowSelected" xml:space="preserve"><value>Arrow selected</value></data>
+  <data name="Editor_ArrowDeleted" xml:space="preserve"><value>Arrow deleted</value></data>
+  <data name="Editor_SeveralArrows" xml:space="preserve"><value>{0} arrows</value></data>
+  <data name="Editor_HighlightSelected" xml:space="preserve"><value>Highlight selected</value></data>
+  <data name="Editor_HighlightDeleted" xml:space="preserve"><value>Highlight deleted</value></data>
+  <data name="Editor_SeveralHighlights" xml:space="preserve"><value>{0} highlights</value></data>
+  <data name="Editor_WhiteoutSelected" xml:space="preserve"><value>Whiteout selected</value></data>
+  <data name="Editor_WhiteoutDeleted" xml:space="preserve"><value>Whiteout deleted</value></data>
+  <data name="Editor_SeveralWhiteouts" xml:space="preserve"><value>{0} whiteouts</value></data>
+  <data name="Editor_SeveralItems" xml:space="preserve"><value>{0} items</value></data>
+  <data name="Editor_Typing" xml:space="preserve"><value>Typing</value></data>
+  <data name="Editor_TypingHint" xml:space="preserve"><value>Enter for a new line · Esc or click outside to finish</value></data>
+  <data name="Editor_Size" xml:space="preserve"><value>Size</value></data>
+  <data name="Editor_AllPagesSelected" xml:space="preserve"><value>All {0} pages selected</value></data>
+  <data name="Editor_PagesSelected_One" xml:space="preserve"><value>{0} page selected</value></data>
+  <data name="Editor_PagesSelected_Other" xml:space="preserve"><value>{0} pages selected</value></data>
+  <data name="Editor_DeselectThePageToKeep" xml:space="preserve"><value>A document needs at least one page. Deselect the page you want to keep, then delete the others.</value></data>
+  <data name="Editor_PageDeleted" xml:space="preserve"><value>Page {0} deleted</value></data>
+  <data name="Editor_PagesDeleted" xml:space="preserve"><value>{0} pages deleted</value></data>
+  <data name="Editor_RecoveryCopyKept" xml:space="preserve"><value>Recovery copy kept {0}</value></data>
+  <data name="Editor_UnsavedChangesRecovered" xml:space="preserve"><value>Your unsaved changes from {0} were recovered. Save to keep them in the file.</value></data>
+  <data name="Editor_ExportedNotice" xml:space="preserve"><value>{0} ({1}) in the “{2}” folder. This is the one to send.</value></data>
+  <data name="Editor_SizeKilobytes" xml:space="preserve"><value>{0} KB</value></data>
+  <data name="Editor_SizeMegabytes" xml:space="preserve"><value>{0} MB</value></data>
+  <data name="Editor_RestoringBringsBackFrom" xml:space="preserve"><value>Restoring brings back your editable ticks, text and signature from {0}, but removes the other app’s changes.</value></data>
+  <data name="Editor_RestoringBringsBack" xml:space="preserve"><value>Restoring brings back your editable ticks, text and signature, but removes the other app’s changes.</value></data>
+  <data name="Editor_YourEditsFromWereRestored" xml:space="preserve"><value>Your edits from {0} were restored. You can move, change or delete anything you added.</value></data>
+  <data name="Editor_YourEditsWereRestored" xml:space="preserve"><value>Your edits were restored. You can move, change or delete anything you added.</value></data>
+  <data name="Common_Print" xml:space="preserve"><value>Print</value></data>
+  <data name="Editor_AvailableWhenPagesHaveLoaded" xml:space="preserve"><value>Available when all {0} pages have loaded. {1}.</value></data>
+  <data name="Editor_DocumentCouldntBePrinted" xml:space="preserve"><value>The document couldn’t be printed</value></data>
+  <data name="Editor_CouldntMakeACopyToPrint" xml:space="preserve"><value>Chainpen couldn’t make a copy to print. Export a final copy and print it from your PDF viewer instead.</value></data>
+  <data name="Editor_PrintFromYourPdfViewer" xml:space="preserve"><value>Print from your PDF viewer</value></data>
+  <data name="Editor_OpenedInYourPdfViewer" xml:space="preserve"><value>The document opened in your PDF viewer, looking as it will print. Print it from there.</value></data>
+  <data name="Editor_PrintingCouldntStart" xml:space="preserve"><value>Printing couldn’t start</value></data>
+  <data name="Editor_ExportAndPrintFromViewer" xml:space="preserve"><value>Export a final copy and print it from your PDF viewer instead.</value></data>
+  <data name="Editor_OpenToViewOnly" xml:space="preserve"><value>This document is open to view only</value></data>
+  <data name="Editor_OwnerSetItSoItShouldntBeChanged" xml:space="preserve"><value>Its owner set it so it shouldn’t be changed. Choose Edit anyway in the bar above the page to fill it in, save or export it.</value></data>
+  <data name="Editor_FinalCopyCouldntBeMade" xml:space="preserve"><value>The final copy couldn’t be made</value></data>
+  <data name="Editor_FillableFieldsMayNotWork" xml:space="preserve"><value>Fillable fields may not work</value></data>
+  <data name="Editor_WorkingCopyCouldntBeSaved" xml:space="preserve"><value>Your working copy couldn’t be saved</value></data>
+  <data name="Editor_FileCouldntBeSaved" xml:space="preserve"><value>{0} couldn’t be saved</value></data>
+  <data name="Editor_NoPermissionToWriteThere" xml:space="preserve"><value>Chainpen doesn’t have permission to write there, or the disk is full or the file is open in another app. Try another folder. ({0})</value></data>
+  <data name="Editor_CouldntWriteThisDocument" xml:space="preserve"><value>Chainpen couldn’t write this document. Your edits are still open here, so nothing is lost. Try again, or export the pages as they are.</value></data>
+  <data name="Editor_FormsMovedMessage" xml:space="preserve"><value>This document’s pages couldn’t be reordered in place, so they were copied in their new order. Fillable fields and links may not work in the saved file.</value></data>
+  <data name="Editor_RadioButtonName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Editor_SignatureFieldName" xml:space="preserve"><value>{0}, signature field</value></data>
+  <data name="Editor_EmptyOption" xml:space="preserve"><value>(empty)</value></data>
+  <data name="Editor_TypeAnAnswer" xml:space="preserve"><value>Type an answer…</value></data>
+  <data name="Editor_TextOnThePage" xml:space="preserve"><value>Text on the page</value></data>
+  <data name="Signature_AddASignature" xml:space="preserve"><value>Add a signature</value></data>
+  <data name="Signature_AddYourSignature" xml:space="preserve"><value>Add your signature</value></data>
+  <data name="Signature_PlaceInitials" xml:space="preserve"><value>Place initials</value></data>
+  <data name="Signature_PlaceSignature" xml:space="preserve"><value>Place signature</value></data>
+  <data name="Signature_ChooseYourInitials" xml:space="preserve"><value>Choose your initials</value></data>
+  <data name="Signature_ChooseASignature" xml:space="preserve"><value>Choose a signature</value></data>
+  <data name="Signature_SavedHintInitials" xml:space="preserve"><value>Last used {0}. Choose New to draw, type or use a photo.</value></data>
+  <data name="Signature_SavedHintSignature" xml:space="preserve"><value>Last used {0}. Choose New signature to draw, type or use a photo.</value></data>
+  <data name="Signature_FirstTimeHintInitials" xml:space="preserve"><value>You haven’t added your initials yet. Draw, type, or use a photo.</value></data>
+  <data name="Signature_FirstTimeHintSignature" xml:space="preserve"><value>You haven’t added a signature yet. Draw, type, or use a photo.</value></data>
+  <data name="Signature_PadHintInitials" xml:space="preserve"><value>Write your initials here with your mouse, trackpad, pen or finger</value></data>
+  <data name="Signature_PadHintSignature" xml:space="preserve"><value>Sign here with your mouse, trackpad, pen or finger</value></data>
+  <data name="Signature_YourInitials" xml:space="preserve"><value>Your initials</value></data>
+  <data name="Signature_YourName" xml:space="preserve"><value>Your name</value></data>
+  <data name="Signature_TypePlaceholderInitials" xml:space="preserve"><value>For example JL</value></data>
+  <data name="Signature_TypePlaceholderSignature" xml:space="preserve"><value>For example Jordan Lee</value></data>
+  <data name="Signature_SampleInitials" xml:space="preserve"><value>JL</value></data>
+  <data name="Signature_KeepInitials" xml:space="preserve"><value>Keep these initials on this computer for next time</value></data>
+  <data name="Signature_KeepSignature" xml:space="preserve"><value>Keep this signature on this computer for next time</value></data>
+  <data name="Signature_CantKeepInitials" xml:space="preserve"><value>Saved initials can’t be opened right now, so this one can’t be kept.</value></data>
+  <data name="Signature_CantKeepSignature" xml:space="preserve"><value>Saved signature can’t be opened right now, so this one can’t be kept.</value></data>
+  <data name="Signature_KeepingReplaces" xml:space="preserve"><value>You have {0} saved. Keeping this one replaces the one used longest ago.</value></data>
+  <data name="Signature_KeptUnencrypted" xml:space="preserve"><value>This computer has no keyring, so it’s kept unencrypted, readable only by you.</value></data>
+  <data name="Signature_RemoveTheseInitialsTitle" xml:space="preserve"><value>Remove these initials?</value></data>
+  <data name="Signature_RemoveThisSignatureTitle" xml:space="preserve"><value>Remove this signature?</value></data>
+  <data name="Signature_RemoveInitials" xml:space="preserve"><value>Remove initials</value></data>
+  <data name="Signature_RemoveSignature" xml:space="preserve"><value>Remove signature</value></data>
+  <data name="Signature_RemoveTheseInitials" xml:space="preserve"><value>Remove these initials…</value></data>
+  <data name="Signature_RemoveThisSignature" xml:space="preserve"><value>Remove this signature…</value></data>
+  <data name="Signature_PhotoTooBig" xml:space="preserve"><value>That file is too big to be a photo of a signature. Choose a photo under 50 MB.</value></data>
+  <data name="Signature_PhotoUnreadable" xml:space="preserve"><value>That file couldn’t be read as a picture. Choose a JPG or PNG photo or scan.</value></data>
+  <data name="Signature_CouldntOpenFile" xml:space="preserve"><value>Chainpen couldn’t open {0}. Check it’s still there and try again.</value></data>
+  <data name="Signature_CouldntKeepInitials" xml:space="preserve"><value>Chainpen couldn’t keep these initials on this computer. Untick “Keep…” to place them without keeping them.</value></data>
+  <data name="Signature_CouldntKeepSignature" xml:space="preserve"><value>Chainpen couldn’t keep this signature on this computer. Untick “Keep…” to place it without keeping it.</value></data>
+  <data name="Signature_CouldntRemove" xml:space="preserve"><value>Chainpen couldn’t remove it. Try again in a moment.</value></data>
+  <data name="Signature_NoSignatureInPhoto" xml:space="preserve"><value>Chainpen couldn’t find a signature in this photo. Untick “Remove the paper background”, or choose a clearer photo.</value></data>
+  <data name="Signature_DrawFirstInitials" xml:space="preserve"><value>Write your initials in the box first, or use the Type tab.</value></data>
+  <data name="Signature_DrawFirstSignature" xml:space="preserve"><value>Sign in the box first, or use the Type tab.</value></data>
+  <data name="Signature_TypeInitialsFirst" xml:space="preserve"><value>Type your initials first.</value></data>
+  <data name="Signature_TypeNameFirst" xml:space="preserve"><value>Type your name first.</value></data>
+  <data name="Signature_ChoosePhotoFirst" xml:space="preserve"><value>Choose a photo or scan of your signature first.</value></data>
+  <data name="Signature_New" xml:space="preserve"><value>New</value></data>
+  <data name="Signature_NewSignature" xml:space="preserve"><value>New signature</value></data>
+  <data name="Signature_NewInitialsAccessibleName" xml:space="preserve"><value>New: draw, type or use a photo</value></data>
+  <data name="Signature_NewSignatureAccessibleName" xml:space="preserve"><value>New signature: draw, type or use a photo</value></data>
+  <data name="Signature_SavedInitialsDrawn" xml:space="preserve"><value>Saved initials, drawn, last used {0}</value></data>
+  <data name="Signature_SavedInitialsTyped" xml:space="preserve"><value>Saved initials, typed, last used {0}</value></data>
+  <data name="Signature_SavedInitialsPhoto" xml:space="preserve"><value>Saved initials, photo, last used {0}</value></data>
+  <data name="Signature_SavedSignatureDrawn" xml:space="preserve"><value>Saved signature, drawn, last used {0}</value></data>
+  <data name="Signature_SavedSignatureTyped" xml:space="preserve"><value>Saved signature, typed, last used {0}</value></data>
+  <data name="Signature_SavedSignaturePhoto" xml:space="preserve"><value>Saved signature, photo, last used {0}</value></data>
+  <data name="Signature_DescriptionDrawn" xml:space="preserve"><value>Drawn · last used {0}</value></data>
+  <data name="Signature_DescriptionTyped" xml:space="preserve"><value>Typed · last used {0}</value></data>
+  <data name="Signature_DescriptionPhoto" xml:space="preserve"><value>Photo · last used {0}</value></data>
+  <data name="Signature_StyleAccessibleName" xml:space="preserve"><value>{0} style</value></data>
+  <data name="Signature_KeepDetailBoth" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="Settings_TodayIsInThisFormat" xml:space="preserve"><value>Today is {0} in this format.</value></data>
+  <data name="Settings_NoRecoveryCopiesToDelete" xml:space="preserve"><value>There are no recovery copies to delete.</value></data>
+  <data name="Settings_DeleteAllRecoveryCopiesTitle" xml:space="preserve"><value>Delete all recovery copies?</value></data>
+  <data name="Settings_DeleteRecoveryCopiesBody_One" xml:space="preserve"><value>Unsaved changes in the recovery copy will be removed from this computer and can’t be brought back. Documents you’ve saved aren’t affected, and documents open now keep a fresh copy while they’re open.</value></data>
+  <data name="Settings_DeleteRecoveryCopiesBody_Other" xml:space="preserve"><value>Unsaved changes in all {0} recovery copies will be removed from this computer and can’t be brought back. Documents you’ve saved aren’t affected, and documents open now keep a fresh copy while they’re open.</value></data>
+  <data name="Settings_DeleteRecoveryCopies" xml:space="preserve"><value>Delete recovery copies</value></data>
+  <data name="Settings_RecoveryCopiesDeleted" xml:space="preserve"><value>Recovery copies deleted.</value></data>
+  <data name="Settings_StartAgainTitle" xml:space="preserve"><value>Start again without your saved signatures?</value></data>
+  <data name="Settings_StartAgainBody" xml:space="preserve"><value>Chainpen can’t open the ones saved now, so you won’t be able to use them. New signatures and initials you keep will be saved from now on. Documents you’ve already saved or exported keep theirs.</value></data>
+  <data name="Settings_StartAgain" xml:space="preserve"><value>Start again</value></data>
+  <data name="Settings_CanKeepAgain" xml:space="preserve"><value>You can keep new signatures and initials again.</value></data>
+  <data name="Settings_CouldntSetAside" xml:space="preserve"><value>Chainpen couldn’t set the old ones aside. Try again in a moment.</value></data>
+  <data name="Settings_SavedSignatureDrawn" xml:space="preserve"><value>Signature · last used {0}</value></data>
+  <data name="Settings_SavedSignatureTyped" xml:space="preserve"><value>Signature (typed) · last used {0}</value></data>
+  <data name="Settings_SavedSignaturePhoto" xml:space="preserve"><value>Signature (photo) · last used {0}</value></data>
+  <data name="Settings_SavedInitialsDrawn" xml:space="preserve"><value>Initials · last used {0}</value></data>
+  <data name="Settings_SavedInitialsTyped" xml:space="preserve"><value>Initials (typed) · last used {0}</value></data>
+  <data name="Settings_SavedInitialsPhoto" xml:space="preserve"><value>Initials (photo) · last used {0}</value></data>
+  <data name="Start_DropHintFirstLaunch" xml:space="preserve"><value>PDF, JPG, PNG and other images. Drop several to combine them.</value></data>
+  <data name="Start_DropHint" xml:space="preserve"><value>PDF, JPG, PNG and other images. Drop several files to combine them into one document.</value></data>
+  <data name="Start_ChainpenWasUpdated" xml:space="preserve"><value>Chainpen was updated.</value></data>
+  <data name="Start_ChainpenClosedUnexpectedly" xml:space="preserve"><value>Chainpen closed unexpectedly.</value></data>
+  <data name="Start_RecoveryText_One" xml:space="preserve"><value>Changes to {0} from {1} weren’t saved to the file, and can be recovered. If you choose Not now, you can still recover them from Recent for {2} day.</value></data>
+  <data name="Start_RecoveryText_Other" xml:space="preserve"><value>Changes to {0} from {1} weren’t saved to the file, and can be recovered. If you choose Not now, you can still recover them from Recent for {2} days.</value></data>
+  <data name="Start_TodayAt" xml:space="preserve"><value>today, {0}</value></data>
+  <data name="Start_RecentAccessibleNameWithStatus" xml:space="preserve"><value>{0}, {1}, last opened {2}, {3}</value></data>
+  <data name="Start_RecentAccessibleName" xml:space="preserve"><value>{0}, {1}, last opened {2}</value></data>
+  <data name="Start_ChangesNotSavedOpenToRecover" xml:space="preserve"><value>Changes not saved · open to recover</value></data>
+  <data name="Start_CantFindThisFile" xml:space="preserve"><value>Can’t find this file</value></data>
+  <data name="Start_FinalCopyCantBeEdited" xml:space="preserve"><value>Final copy (can’t be edited)</value></data>
+  <data name="Start_NotSavedToAFile" xml:space="preserve"><value>Not saved to a file</value></data>
+  <data name="Window_DocumentTitle" xml:space="preserve"><value>{0} – Chainpen</value></data>
+  <data name="Updates_ReadyToInstall" xml:space="preserve"><value>Chainpen {0} is ready to install</value></data>
+  <data name="Updates_YoureUpToDate" xml:space="preserve"><value>You’re up to date</value></data>
+  <data name="Updates_IsTheLatestVersion" xml:space="preserve"><value>Chainpen {0} is the latest version.</value></data>
+  <data name="Updates_HasBeenDownloaded" xml:space="preserve"><value>Chainpen {0} has been downloaded. Choose Update ready at the bottom of the window to install it; your work is kept.</value></data>
+  <data name="Updates_NotAvailableForThisCopy" xml:space="preserve"><value>Updates aren’t available for this copy</value></data>
+  <data name="Updates_NotInstalledWithInstaller" xml:space="preserve"><value>This copy of Chainpen ({0}) wasn’t installed with the Chainpen installer, so it can’t update itself. Download the latest version from the Chainpen releases page.</value></data>
+  <data name="Updates_CouldntCheckForUpdates" xml:space="preserve"><value>Couldn’t check for updates</value></data>
+  <data name="Updates_CouldntReachTheUpdateServer" xml:space="preserve"><value>Chainpen couldn’t reach the update server. Check your internet connection and try again later.</value></data>
+  <data name="Updates_CouldntKeepUnsavedWork" xml:space="preserve"><value>Chainpen couldn’t keep a copy of your unsaved work, so it hasn’t restarted. Wait for every page to load, or save your work, then try again.</value></data>
+  <data name="Main_SomethingWentWrong" xml:space="preserve"><value>Something went wrong</value></data>
+  <data name="Main_UnexpectedErrorBody" xml:space="preserve"><value>Chainpen hit a problem it didn’t expect, and what you were doing may not have finished. Your document is still open: save it to be safe, and check that your last change is there.</value></data>
+  <data name="Menu_AboutChainpen" xml:space="preserve"><value>About Chainpen</value></data>
+  <data name="Menu_Settings" xml:space="preserve"><value>Settings…</value></data>
+  <data name="Main_UnknownVersion" xml:space="preserve"><value>unknown</value></data>
+  <data name="Keys_Ctrl" xml:space="preserve"><value>Ctrl</value></data>
+  <data name="Keys_Shift" xml:space="preserve"><value>Shift</value></data>
+  <data name="DamagedPage_ExplanationOnlyPage" xml:space="preserve"><value>This page is damaged in {0}. It’s the only page, so there’s nothing else to work on.</value></data>
+  <data name="DamagedPage_Explanation_One" xml:space="preserve"><value>This page is damaged in {0}. The other page is fine and you can keep working on it.</value></data>
+  <data name="DamagedPage_Explanation_Other" xml:space="preserve"><value>This page is damaged in {0}. The other {1} pages are fine and you can keep working on them.</value></data>
+  <data name="MoveTo_MovePages_One" xml:space="preserve"><value>Move {0} page</value></data>
+  <data name="MoveTo_MovePages_Other" xml:space="preserve"><value>Move {0} pages</value></data>
+  <data name="MoveTo_OfPages" xml:space="preserve"><value>of {0}</value></data>
+  <data name="MoveTo_AtTheEndAfterPage" xml:space="preserve"><value>At the end (after page {0})</value></data>
+  <data name="MoveTo_TypeAPageNumber" xml:space="preserve"><value>Type a page number.</value></data>
+  <data name="MoveTo_TypeAPageNumberFrom1To" xml:space="preserve"><value>Type a page number from 1 to {0}.</value></data>
+  <data name="OpenOrAdd_ThisDocument" xml:space="preserve"><value>this document</value></data>
+  <data name="OpenOrAdd_StaysOpenEitherWay" xml:space="preserve"><value>{0} stays open either way.</value></data>
+  <data name="OpenOrAdd_PagesGoAtTheEnd_One" xml:space="preserve"><value>{0} page goes at the end. You can move it afterwards.</value></data>
+  <data name="OpenOrAdd_PagesGoAtTheEnd_Other" xml:space="preserve"><value>{0} pages go at the end. You can move them afterwards.</value></data>
+  <data name="OpenOrAdd_ThePagesGoAtTheEnd" xml:space="preserve"><value>The pages go at the end. You can move them afterwards.</value></data>
+  <data name="Password_NeedsAPasswordToOpen" xml:space="preserve"><value>{0} needs a password to open</value></data>
+  <data name="Password_Hide" xml:space="preserve"><value>Hide</value></data>
+  <data name="Password_HidePassword" xml:space="preserve"><value>Hide password</value></data>
+  <data name="Shortcuts_ShownForThisMac" xml:space="preserve"><value>Shown for this Mac: ⌘ is the Command key.</value></data>
+  <data name="Shortcuts_OnAMacCtrlIsCommand" xml:space="preserve"><value>On a Mac, Ctrl is ⌘.</value></data>
+  <data name="Shortcuts_Editing" xml:space="preserve"><value>Editing</value></data>
+  <data name="Shortcuts_CopyCutItemsOrPages" xml:space="preserve"><value>Copy, cut items or pages</value></data>
+  <data name="Shortcuts_PasteAlsoTextFromOtherApps" xml:space="preserve"><value>Paste (also text from other apps)</value></data>
+  <data name="Shortcuts_BoldText" xml:space="preserve"><value>Bold text</value></data>
+  <data name="Shortcuts_DeleteTheSelection" xml:space="preserve"><value>Delete the selection</value></data>
+  <data name="Shortcuts_UndoRedo" xml:space="preserve"><value>Undo, redo</value></data>
+  <data name="Shortcuts_Selecting" xml:space="preserve"><value>Selecting</value></data>
+  <data name="Shortcuts_SelectEverythingOnThisPage" xml:space="preserve"><value>Select everything on this page (all pages when organising)</value></data>
+  <data name="Shortcuts_ShiftOrModClick" xml:space="preserve"><value>Shift or Mod + click</value></data>
+  <data name="Shortcuts_AddToOrRemoveFromTheSelection" xml:space="preserve"><value>Add to or remove from the selection</value></data>
+  <data name="Shortcuts_NudgeHoldShiftForBiggerSteps" xml:space="preserve"><value>Nudge (hold Shift for bigger steps)</value></data>
+  <data name="Shortcuts_ClearTheSelectionOrStop" xml:space="preserve"><value>Clear the selection, or stop what you’re doing</value></data>
+  <data name="Shortcuts_SelectTextTickCross" xml:space="preserve"><value>Select, text, tick (C for check), cross</value></data>
+  <data name="Shortcuts_DateSignShapesDraw" xml:space="preserve"><value>Date, sign, shapes, draw. All eight are off until turned on in Settings → Keyboard</value></data>
+  <data name="Shortcuts_SaveWorkingCopySaveAs" xml:space="preserve"><value>Save working copy, save as</value></data>
+  <data name="Shortcuts_ZoomInOutFitWidth" xml:space="preserve"><value>Zoom in, out, fit width</value></data>
+  <data name="Keys_PageUp" xml:space="preserve"><value>Page Up</value></data>
+  <data name="Keys_PageDown" xml:space="preserve"><value>Page Down</value></data>
+  <data name="Shortcuts_PreviousNextPage" xml:space="preserve"><value>Previous, next page</value></data>
+  <data name="Shortcuts_MoveBetweenToolbarPageListPage" xml:space="preserve"><value>Move between toolbar, page list, page and status bar</value></data>
+  <data name="Shortcuts_RowName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Editor_SelectedPages" xml:space="preserve"><value>{0} selected pages</value></data>
+  <data name="Menu_MoveUp" xml:space="preserve"><value>Move up</value></data>
+  <data name="Menu_MoveDown" xml:space="preserve"><value>Move down</value></data>
+  <data name="Menu_DeletePage" xml:space="preserve"><value>Delete page</value></data>
+  <data name="Editor_Export" xml:space="preserve"><value>Export…</value></data>
+  <data name="Editor_WhereYouLetGoDecides" xml:space="preserve"><value>Where you let go decides: add the pages here, or open them on their own.</value></data>
+  <data name="Editor_PagesPanelWidthHelp" xml:space="preserve"><value>{0:0} points wide. Left and Right arrow keys change it.</value></data>
+  <data name="Export_FinalCopySize" xml:space="preserve"><value>Final copy {0}</value></data>
+  <data name="Export_AlsoSaveContainsSignature" xml:space="preserve"><value>Keeps your edits so you can change them. It contains your signature, so keep it private and send only the final copy.</value></data>
+  <data name="Export_AlsoSaveSomewherePrivate" xml:space="preserve"><value>Keeps your edits so you can change them. Save it somewhere private, and send only the final copy.</value></data>
+  <data name="Export_LedeLocked" xml:space="preserve"><value>Makes a copy to send. It looks the same in any PDF reader, and your answers can’t be changed. Your working copy stays as it is.</value></data>
+  <data name="Export_LedeEditable" xml:space="preserve"><value>Makes a copy to send. It looks the same in any PDF reader, and the form’s fields stay editable. Your working copy stays as it is.</value></data>
+  <data name="Export_GapsNoteSomePages" xml:space="preserve"><value>Chainpen can’t check everything, and only looked at pages you’ve added to. Look over each page before you send it.</value></data>
+  <data name="Export_GapsNote" xml:space="preserve"><value>Chainpen can’t check everything. Look over each page before you send it.</value></data>
+  <data name="Export_OptionsFineToLeave" xml:space="preserve"><value>Options: {0}. Fine to leave if that’s intended.</value></data>
+  <data name="Export_FineToLeave" xml:space="preserve"><value>Fine to leave if that’s intended.</value></data>
+  <data name="Export_BoxesTickedOnPage" xml:space="preserve"><value>{0} of {1} boxes ticked on page {2}</value></data>
+  <data name="Export_NotTickedFineToLeave" xml:space="preserve"><value>Not ticked: “{0}”. Fine to leave if that’s intended.</value></data>
+  <data name="Export_AndMoreShowMeStepsThrough" xml:space="preserve"><value>And {0} more. Show me steps through them all.</value></data>
+  <data name="Export_ShowMe" xml:space="preserve"><value>Show me</value></data>
+  <data name="Export_ShowMeName" xml:space="preserve"><value>Show me: {0}</value></data>
+  <data name="Export_ChooseWhereToSaveTheFinal" xml:space="preserve"><value>Choose where to save the final copy</value></data>
+  <data name="Editor_DeleteCountPages" xml:space="preserve"><value>Delete {0} pages</value></data>
+  <data name="Menu_OpenRecent" xml:space="preserve"><value>Open recent</value></data>
+  <data name="Menu_File" xml:space="preserve"><value>File</value></data>
+  <data name="Menu_Print" xml:space="preserve"><value>Print…</value></data>
+  <data name="Menu_CloseWindow" xml:space="preserve"><value>Close window</value></data>
+  <data name="Menu_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Menu_Cut" xml:space="preserve"><value>Cut</value></data>
+  <data name="Menu_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Menu_Paste" xml:space="preserve"><value>Paste</value></data>
+  <data name="Menu_SelectAll" xml:space="preserve"><value>Select all</value></data>
+  <data name="Menu_ResetLayout" xml:space="preserve"><value>Reset layout</value></data>
+  <data name="Menu_PreviousPage" xml:space="preserve"><value>Previous page</value></data>
+  <data name="Menu_NextPage" xml:space="preserve"><value>Next page</value></data>
+  <data name="Menu_DuplicatePage" xml:space="preserve"><value>Duplicate page</value></data>
+  <data name="Menu_Help" xml:space="preserve"><value>Help</value></data>
+  <data name="Menu_TryThePracticeForm" xml:space="preserve"><value>Try the practice form</value></data>
+  <data name="Menu_NoRecentDocuments" xml:space="preserve"><value>No recent documents</value></data>
+  <data name="Menu_AboutText" xml:space="preserve"><value>Version {0}
+
+Fill in and sign PDFs and scanned forms. Your documents stay on this computer.
+
+Free for personal use, and for businesses during the beta. After the beta, businesses need a licence.
+
+The full terms, and the licences for the fonts and libraries Chainpen uses, are in the Licenses folder that comes with the app.</value></data>
+  <data name="Main_PracticeFormPdf" xml:space="preserve"><value>Practice form.pdf</value></data>
+  <data name="Main_PdfsAndImages" xml:space="preserve"><value>PDFs and images</value></data>
+  <data name="Main_PhotosAndScans" xml:space="preserve"><value>Photos and scans</value></data>
+  <data name="Main_OpenFileName" xml:space="preserve"><value>Open {0}</value></data>
+  <data name="Main_OpenCountFiles" xml:space="preserve"><value>Open {0} files</value></data>
+  <data name="Main_TheChangesCantBeRecovered" xml:space="preserve"><value>The changes can’t be recovered</value></data>
+  <data name="Main_TheRecoveryCopyCouldntBeRead" xml:space="preserve"><value>The recovery copy couldn’t be read. ({0})</value></data>
+  <data name="Main_SaveChangesBeforeClosing" xml:space="preserve"><value>Save changes to {0} before closing?</value></data>
+  <data name="Main_UnsavedChangesSince" xml:space="preserve"><value>Your changes since {0:HH:mm} aren’t saved to the file. If you don’t save, they’re lost.</value></data>
+  <data name="Main_UnsavedChanges" xml:space="preserve"><value>Your changes aren’t saved to the file. If you don’t save, they’re lost.</value></data>
+  <data name="Main_DontSave" xml:space="preserve"><value>Don’t save</value></data>
+  <data name="Main_ThatCantBePasted" xml:space="preserve"><value>That can’t be pasted</value></data>
+  <data name="Main_ChainpenCanPasteItsOwnItems" xml:space="preserve"><value>Chainpen can paste its own items, text and pictures from other apps. What’s on the clipboard isn’t one of those.</value></data>
+  <data name="Main_OpenAPdfOrImage" xml:space="preserve"><value>Open a PDF or image</value></data>
+  <data name="Main_FilesWereOpened" xml:space="preserve"><value>{0} of {1} files were opened</value></data>
+  <data name="Main_TheseFilesCantBeOpened" xml:space="preserve"><value>These files can’t be opened</value></data>
+  <data name="Main_ProblemTitleAndMessage" xml:space="preserve"><value>{0}. {1}</value></data>
+  <data name="Main_GotIt" xml:space="preserve"><value>Got it</value></data>
+  <data name="Main_ChooseAPhotoOrScanOfYourSignature" xml:space="preserve"><value>Choose a photo or scan of your signature</value></data>
+  <data name="Main_SaveYourWorkingCopy" xml:space="preserve"><value>Save your working copy</value></data>
+  <data name="Main_PdfFileType" xml:space="preserve"><value>PDF</value></data>
+  <data name="Main_FileCantBeChanged" xml:space="preserve"><value>{0} can’t be changed</value></data>
+  <data name="Main_TheseFilesCantBeChanged" xml:space="preserve"><value>These files can’t be changed</value></data>
+  <data name="Main_RestrictedFileBody" xml:space="preserve"><value>The owner of {0} set it so it shouldn’t be changed. You can view it, or edit it anyway if you’re allowed to fill it in. Copies you save or export from Chainpen won’t carry the restriction.</value></data>
+  <data name="Main_RestrictedFilesBody" xml:space="preserve"><value>The owner of {0} of these files set it so it shouldn’t be changed. You can view it, or edit it anyway if you’re allowed to fill it in. Copies you save or export from Chainpen won’t carry the restriction.</value></data>
+  <data name="Main_ViewOnly" xml:space="preserve"><value>View only</value></data>
+  <data name="Main_DontOpen" xml:space="preserve"><value>Don’t open</value></data>
+  <data name="Main_AddPagesThatCantBeChanged" xml:space="preserve"><value>Add pages that can’t be changed?</value></data>
+  <data name="Main_AddRestrictedFileBody" xml:space="preserve"><value>The owner of {0} set it so it shouldn’t be changed. Adding its pages copies them into this document without the restriction.</value></data>
+  <data name="Main_AddRestrictedFilesBody" xml:space="preserve"><value>The owner of {0} of these files set it so it shouldn’t be changed. Adding its pages copies them into this document without the restriction.</value></data>
+  <data name="Main_AddPagesAnyway" xml:space="preserve"><value>Add pages anyway</value></data>
+  <data name="Main_DontAdd" xml:space="preserve"><value>Don’t add</value></data>
+  <data name="Main_RestoreYourChainpenEdits" xml:space="preserve"><value>Restore your Chainpen edits?</value></data>
+  <data name="Main_RestoreBodyFrom" xml:space="preserve"><value>Your editable ticks, text and signature from {0} come back, and the changes made in the other app are removed from this window. The file isn’t changed until you save.</value></data>
+  <data name="Main_RestoreBody" xml:space="preserve"><value>Your editable ticks, text and signature come back, and the changes made in the other app are removed from this window. The file isn’t changed until you save.</value></data>
+  <data name="Main_RestoreEdits" xml:space="preserve"><value>Restore edits</value></data>
+  <data name="Editor_BoldLetter" xml:space="preserve"><value>B</value><comment>The letter on the Bold button: the first letter of the word for bold.</comment></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Settings_LanguageSystem" xml:space="preserve"><value>Match system ({0})</value><comment>{0} is the computer's language, in its own name (English, Deutsch, 日本語).</comment></data>
+  <data name="Settings_YYYYMMDDSlashes" xml:space="preserve"><value>YYYY/MM/DD</value></data>
+  <data name="Editor_OfPageCount" xml:space="preserve"><value>of {0}</value></data>
+  <data name="DamagedPage_PageCantBeShown" xml:space="preserve"><value>Page {0} can’t be shown</value></data>
+  <data name="DamagedPage_KeepExplanation" xml:space="preserve"><value>If you keep it, page {0} goes into your copies exactly as it is in the original file, without your edits. If someone sent you this file, ask them for a new copy.</value></data>
+  <data name="DamagedPage_RemovePage" xml:space="preserve"><value>Remove page {0}</value></data>
+  <data name="Editor_PageActionsNamed" xml:space="preserve"><value>Page {0} actions</value></data>
+  <data name="Settings_RemoveNamed" xml:space="preserve"><value>Remove {0}</value></data>
+  <data name="Signature_AfterYouChoose" xml:space="preserve"><value>After you choose {0}, click where it should go on the page.</value></data>
+  <data name="Export_SavesToFolder" xml:space="preserve"><value>Saves to {0}</value><comment>{0} is the folder, shown in bold.</comment></data>
+  <data name="Editor_OrganiseHint_One" xml:space="preserve"><value>{0} page · Drag pages to reorder, or drop files between pages to insert them. Shift-click selects a range, Mod-click adds a page. Double-click opens a page.</value><comment>{0} is the number of pages. "Mod" becomes ⌘ or Ctrl.</comment></data>
+  <data name="Editor_OrganiseHint_Other" xml:space="preserve"><value>{0} pages · Drag pages to reorder, or drop files between pages to insert them. Shift-click selects a range, Mod-click adds a page. Double-click opens a page.</value></data>
+  <data name="Keys_Delete" xml:space="preserve"><value>Delete</value><comment>The Delete key as printed on keyboards.</comment></data>
+  <data name="Find_Find" xml:space="preserve"><value>Find</value></data>
+  <data name="Find_FindInTheDocumentModF" xml:space="preserve"><value>Find in the document (Mod+F)</value></data>
+  <data name="Find_FindModF" xml:space="preserve"><value>Find… (Mod+F)</value></data>
+  <data name="Find_CloseFind" xml:space="preserve"><value>Close find</value></data>
+  <data name="Find_CloseFindEsc" xml:space="preserve"><value>Close find (Esc)</value></data>
+  <data name="Find_KeysHint" xml:space="preserve"><value>Return for next · Shift+Return for previous · Esc closes</value></data>
+  <data name="Find_FindInDocument" xml:space="preserve"><value>Find in document</value></data>
+  <data name="Find_PreviousMatch" xml:space="preserve"><value>Previous match</value></data>
+  <data name="Find_PreviousMatchKeys" xml:space="preserve"><value>Previous match (Shift+Return, Mod+Shift+G)</value></data>
+  <data name="Find_Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Find_NextMatch" xml:space="preserve"><value>Next match</value></data>
+  <data name="Find_NextMatchKeys" xml:space="preserve"><value>Next match (Return, Mod+G)</value></data>
+  <data name="Find_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Find_Searching" xml:space="preserve"><value>Searching…</value></data>
+  <data name="Find_NoMatches" xml:space="preserve"><value>No matches</value></data>
+  <data name="Find_MatchOfCount" xml:space="preserve"><value>{0} of {1}</value></data>
+  <data name="Find_PageIsAScan" xml:space="preserve"><value>Page {0} is a scan or picture, so it has no text to search.</value></data>
+  <data name="Find_AllPagesAreScans" xml:space="preserve"><value>These pages are scans or pictures, so they have no text to search.</value></data>
+  <data name="Find_SomePagesAreScans" xml:space="preserve"><value>{0} pages are scans or pictures, so they have no text to search.</value></data>
+  <data name="Find_Badge_One" xml:space="preserve"><value>{0} match</value></data>
+  <data name="Find_Badge_Other" xml:space="preserve"><value>{0} matches</value></data>
+  <data name="Menu_Find" xml:space="preserve"><value>Find…</value></data>
+  <data name="Menu_FindNext" xml:space="preserve"><value>Find next</value></data>
+  <data name="Menu_FindPrevious" xml:space="preserve"><value>Find previous</value></data>
+  <data name="Shortcuts_Finding" xml:space="preserve"><value>Finding</value></data>
+  <data name="Shortcuts_FindWordsInTheDocument" xml:space="preserve"><value>Find words in the document</value></data>
+  <data name="Shortcuts_NextPreviousMatch" xml:space="preserve"><value>Next, previous match (Return and Shift+Return in the find box)</value></data>
+  <data name="Editor_NoRoomForAnotherPicture" xml:space="preserve"><value>This document has as many pictures as its working copy can hold. Remove one to add another.</value></data>
+  <data name="Export_ThatNameIsThisDocumentsOwnFile" xml:space="preserve"><value>That name is this document’s own file. Choose another name for the final copy, so it isn’t replaced.</value></data>
+</root>
