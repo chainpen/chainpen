@@ -1,8 +1,8 @@
 """Builds the Chainpen app icon files from the SVG sources in this folder.
 
-Design B: a page with a ticked box and a signature kept inside the page, on the brand blue.
+A pen tethered by a yellow bead chain to an anchor, on the brand violet.
 - chainpen.svg        Windows, Linux and the window icon (32 px and up)
-- chainpen-small.svg  16 and 24 px, simplified so the tick and signature stay readable
+- chainpen-small.svg  16 and 24 px, simplified: no beads, a thicker pen and one yellow dot
 - chainpen-macos.svg  the same artwork on Apple's icon grid
 
 Run from the repo root on macOS 14+: python3 build/icon/make-icon.py
