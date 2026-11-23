@@ -264,6 +264,8 @@
         <Setter Property="VerticalContentAlignment" Value="Top" />
         <Setter Property="CaretBrush" Value="#1b1e23" />
         <Setter Property="SelectionBrush" Value="#667443c9" />
+        <!-- The page is light in both themes, so selected text can't take the dark theme's pale text colour. -->
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource InkBlack}" />
     </Style>
     <Style Selector="TextBox.onPage:focus /template/ Border#PART_BorderElement, TextBox.onPage:pointerover /template/ Border#PART_BorderElement">
         <Setter Property="Background" Value="Transparent" />

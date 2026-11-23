@@ -375,6 +375,65 @@ public sealed class EditingTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>
+    /// Text selected while typing on the page, or in one of the PDF's own fields, stays readable (4.5:1) in the dark
+    /// appearance: the page is light there, so the dark theme's pale text colour can't be used for it.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Selected_text_on_the_page_stays_readable_in_dark_mode()
+    {
+        Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.Dark });
+        try
+        {
+            using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+            await Pump(() => e.Window.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
+
+            Pdf.Pdfium.FormField name = e.Editor.Source.FormFields(0).Single(field => field.Name == "Name");
+            var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+            PagePoint corner = transform.ToDisplay(name.Rect.Left, name.Rect.Top);
+            PagePoint opposite = transform.ToDisplay(name.Rect.Right, name.Rect.Bottom);
+            e.Click((corner.X + opposite.X) / 2, (corner.Y + opposite.Y) / 2);
+            await Pump(() => e.TypingBox?.IsFocused == true);
+            await AssertSelectionReadable(e, "WWWWWWWW", "form-field-selection-dark");
+            e.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+            await Pump(() => e.Editor.EditingField is null);
+
+            e.Editor.SelectToolCommand.Execute(EditorTool.Text);
+            e.Click(80, 40);
+            await Pump(() => e.TypingBox?.IsFocused == true);
+            await AssertSelectionReadable(e, "WWWWWWWW", "page-text-selection-dark");
+        }
+        finally
+        {
+            Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
+        }
+
+        static async Task AssertSelectionReadable(EditorSession e, string text, string screenshot)
+        {
+            TextBox box = e.TypingBox!;
+            e.Window.KeyTextInput(text);
+            await Pump(() => box.Text == text);
+            box.SelectAll();
+            await e.SaveAsync(screenshot);
+
+            // The selection is the commonest colour across the text; the letters are what differs most from it.
+            Point topLeft = box.TranslatePoint(default, e.Window)!.Value;
+            using WriteableBitmap frame = await e.FrameAsync();
+            var colours = new List<(byte, byte, byte)>();
+            for (int x = (int)topLeft.X + 2; x < (int)(topLeft.X + box.Bounds.Width) - 2; x++)
+            {
+                for (int y = (int)topLeft.Y + 2; y < (int)(topLeft.Y + box.Bounds.Height) - 2; y++)
+                {
+                    colours.Add(Pixel(frame, x, y));
+                }
+            }
+
+            (byte, byte, byte) selection = colours.GroupBy(colour => colour).OrderByDescending(group => group.Count()).First().Key;
+            double letters = colours.Max(colour => Contrast(colour, selection));
+            Assert.True(letters >= 4.5, $"{screenshot}: selected text is {letters:0.00}:1 on {selection}");
+        }
+    }
+
     [AvaloniaFact]
     public async Task Tab_in_a_form_field_keeps_it_and_moves_to_the_next_field()
     {
