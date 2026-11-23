@@ -1,3 +1,8 @@
+<!--
+    EXPERIMENT (experiment/aaa-contrast): every text colour raised to WCAG 2.2 AAA (1.4.6, 7:1) to see what it does to
+    the brand. In the dark theme the filled buttons flip to a light fill with a dark label, since no violet keeps a
+    white label at 7:1 and its edge at 3:1 on the dark surfaces.
+-->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!--
@@ -27,12 +32,12 @@
             <SolidColorBrush x:Key="BorderControlOnSunken" Color="#7d838d" />
             <Color x:Key="TextColor">#1b1e23</Color>
             <SolidColorBrush x:Key="Text" Color="#1b1e23" />
-            <Color x:Key="TextMutedColor">#4a505a</Color>
-            <SolidColorBrush x:Key="TextMuted" Color="#4a505a" />
+            <Color x:Key="TextMutedColor">#474d57</Color>
+            <SolidColorBrush x:Key="TextMuted" Color="#474d57" />
             <Color x:Key="TextDisabledColor">#5c626c</Color>
             <SolidColorBrush x:Key="TextDisabled" Color="#5c626c" />
-            <Color x:Key="AccentColor">#7443c9</Color>
-            <SolidColorBrush x:Key="Accent" Color="#7443c9" />
+            <Color x:Key="AccentColor">#5d31aa</Color>
+            <SolidColorBrush x:Key="Accent" Color="#5d31aa" />
             <Color x:Key="AccentStrongColor">#4a2a7a</Color>
             <SolidColorBrush x:Key="AccentStrong" Color="#4a2a7a" />
             <Color x:Key="AccentTintColor">#efe7fb</Color>
@@ -50,29 +55,29 @@
             <SolidColorBrush x:Key="FocusRingOnPage" Color="#4a2a7a" />
             <!-- Selected text in boxes: a pale accent, so the text on it keeps its own colour and full contrast (WCAG 1.4.3). -->
             <SolidColorBrush x:Key="TextSelection" Color="#d9c8f5" />
-            <Color x:Key="SelectionOnPageColor">#7443c9</Color>
-            <SolidColorBrush x:Key="SelectionOnPage" Color="#7443c9" />
+            <Color x:Key="SelectionOnPageColor">#6334b4</Color>
+            <SolidColorBrush x:Key="SelectionOnPage" Color="#6334b4" />
             <!-- The practice guide's "do this next": orange, so it never reads as a tool that's on or selected (violet). -->
-            <SolidColorBrush x:Key="Guide" Color="#c2410c" />
+            <SolidColorBrush x:Key="Guide" Color="#8a2e09" />
             <SolidColorBrush x:Key="GuideTint" Color="#ffedd5" />
-            <SolidColorBrush x:Key="GuideStrong" Color="#9a3412" />
-            <Color x:Key="GuideOnPageColor">#c2410c</Color>
-            <Color x:Key="WarningColor">#92400e</Color>
-            <SolidColorBrush x:Key="Warning" Color="#92400e" />
+            <SolidColorBrush x:Key="GuideStrong" Color="#8a2f10" />
+            <Color x:Key="GuideOnPageColor">#9f350a</Color>
+            <Color x:Key="WarningColor">#80380c</Color>
+            <SolidColorBrush x:Key="Warning" Color="#80380c" />
             <Color x:Key="WarningTintColor">#fff7ed</Color>
             <SolidColorBrush x:Key="WarningTint" Color="#fff7ed" />
             <Color x:Key="WarningBorderColor">#f3d3b0</Color>
             <SolidColorBrush x:Key="WarningBorder" Color="#f3d3b0" />
-            <Color x:Key="DangerColor">#b42318</Color>
-            <SolidColorBrush x:Key="Danger" Color="#b42318" />
-            <Color x:Key="DangerFillColor">#b42318</Color>
-            <SolidColorBrush x:Key="DangerFill" Color="#b42318" />
+            <Color x:Key="DangerColor">#961d14</Color>
+            <SolidColorBrush x:Key="Danger" Color="#961d14" />
+            <Color x:Key="DangerFillColor">#ac2117</Color>
+            <SolidColorBrush x:Key="DangerFill" Color="#ac2117" />
             <SolidColorBrush x:Key="DangerFillHover" Color="#8f1c13" />
             <SolidColorBrush x:Key="DangerFillHoverBorder" Color="#8f1c13" />
             <Color x:Key="DangerTintColor">#fdecea</Color>
             <SolidColorBrush x:Key="DangerTint" Color="#fdecea" />
-            <Color x:Key="SuccessColor">#1d6b3a</Color>
-            <SolidColorBrush x:Key="Success" Color="#1d6b3a" />
+            <Color x:Key="SuccessColor">#185830</Color>
+            <SolidColorBrush x:Key="Success" Color="#185830" />
             <Color x:Key="SuccessTintColor">#ecf7ef</Color>
             <SolidColorBrush x:Key="SuccessTint" Color="#ecf7ef" />
             <Color x:Key="UnsavedColor">#c2410c</Color>
@@ -96,7 +101,7 @@
             <!-- Not design-system tokens: values taken from the mockups. -->
             <SolidColorBrush x:Key="DropZoneBorder" Color="#c3b3e0" />
             <SolidColorBrush x:Key="DangerBorder" Color="#f5c2bd" />
-            <SolidColorBrush x:Key="DamagedText" Color="#8a5a00" />
+            <SolidColorBrush x:Key="DamagedText" Color="#6a4500" />
             <SolidColorBrush x:Key="ChoiceSelected" Color="#efe7fb" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
@@ -120,51 +125,51 @@
             <SolidColorBrush x:Key="BorderControlOnSunken" Color="#7c828c" />
             <Color x:Key="TextColor">#e6e8eb</Color>
             <SolidColorBrush x:Key="Text" Color="#e6e8eb" />
-            <Color x:Key="TextMutedColor">#a9aeb6</Color>
-            <SolidColorBrush x:Key="TextMuted" Color="#a9aeb6" />
+            <Color x:Key="TextMutedColor">#b5b9c0</Color>
+            <SolidColorBrush x:Key="TextMuted" Color="#b5b9c0" />
             <Color x:Key="TextDisabledColor">#8b9099</Color>
             <SolidColorBrush x:Key="TextDisabled" Color="#8b9099" />
-            <Color x:Key="AccentColor">#b79df2</Color>
-            <SolidColorBrush x:Key="Accent" Color="#b79df2" />
+            <Color x:Key="AccentColor">#c4aef4</Color>
+            <SolidColorBrush x:Key="Accent" Color="#c4aef4" />
             <Color x:Key="AccentStrongColor">#d6c7fb</Color>
             <SolidColorBrush x:Key="AccentStrong" Color="#d6c7fb" />
             <Color x:Key="AccentTintColor">#32264d</Color>
             <SolidColorBrush x:Key="AccentTint" Color="#32264d" />
             <!-- Only a narrow band of violet keeps white text on it at 4.5:1 and its edge at 3:1 on every dark surface
                  (the context bar and sunken panels included): this is 4.6:1 and 3.0:1. -->
-            <Color x:Key="PrimaryColor">#8b5ecd</Color>
-            <SolidColorBrush x:Key="Primary" Color="#8b5ecd" />
-            <Color x:Key="OnPrimaryColor">#ffffff</Color>
-            <SolidColorBrush x:Key="OnPrimary" Color="#ffffff" />
+            <Color x:Key="PrimaryColor">#b79df2</Color>
+            <SolidColorBrush x:Key="Primary" Color="#b79df2" />
+            <Color x:Key="OnPrimaryColor">#16181d</Color>
+            <SolidColorBrush x:Key="OnPrimary" Color="#16181d" />
             <!-- Darker (white 6.2:1), with a light edge that keeps the button 5:1 or more on every dark surface. -->
-            <SolidColorBrush x:Key="PrimaryHover" Color="#7443c9" />
-            <SolidColorBrush x:Key="PrimaryHoverBorder" Color="#b79df2" />
+            <SolidColorBrush x:Key="PrimaryHover" Color="#d6c7fb" />
+            <SolidColorBrush x:Key="PrimaryHoverBorder" Color="#d6c7fb" />
             <Color x:Key="FocusRingColor">#d6c7fb</Color>
             <SolidColorBrush x:Key="FocusRing" Color="#d6c7fb" />
             <!-- Pages stay light in dark mode, where #d6c7fb would be 1.5:1, so the ring on them keeps the light theme's. -->
             <SolidColorBrush x:Key="FocusRingOnPage" Color="#4a2a7a" />
             <SolidColorBrush x:Key="TextSelection" Color="#4a3780" />
-            <Color x:Key="SelectionOnPageColor">#7443c9</Color>
-            <SolidColorBrush x:Key="SelectionOnPage" Color="#7443c9" />
-            <SolidColorBrush x:Key="Guide" Color="#fb923c" />
+            <Color x:Key="SelectionOnPageColor">#6334b4</Color>
+            <SolidColorBrush x:Key="SelectionOnPage" Color="#6334b4" />
+            <SolidColorBrush x:Key="Guide" Color="#fca65f" />
             <SolidColorBrush x:Key="GuideTint" Color="#43261a" />
             <SolidColorBrush x:Key="GuideStrong" Color="#fdba74" />
             <!-- Pages stay white in dark mode, so the outline on them keeps the light theme's orange. -->
-            <Color x:Key="GuideOnPageColor">#c2410c</Color>
-            <Color x:Key="WarningColor">#f0a868</Color>
-            <SolidColorBrush x:Key="Warning" Color="#f0a868" />
+            <Color x:Key="GuideOnPageColor">#9f350a</Color>
+            <Color x:Key="WarningColor">#f0ab6d</Color>
+            <SolidColorBrush x:Key="Warning" Color="#f0ab6d" />
             <Color x:Key="WarningTintColor">#3a2a1a</Color>
             <SolidColorBrush x:Key="WarningTint" Color="#3a2a1a" />
             <Color x:Key="WarningBorderColor">#6b4a2a</Color>
             <SolidColorBrush x:Key="WarningBorder" Color="#6b4a2a" />
-            <Color x:Key="DangerColor">#ff8a80</Color>
-            <SolidColorBrush x:Key="Danger" Color="#ff8a80" />
+            <Color x:Key="DangerColor">#ffa097</Color>
+            <SolidColorBrush x:Key="Danger" Color="#ffa097" />
             <!-- As with Primary: white on it at 4.5:1 and its edge at 3:1 on every dark surface (4.5:1 and 3.0:1). -->
-            <Color x:Key="DangerFillColor">#d34336</Color>
-            <SolidColorBrush x:Key="DangerFill" Color="#d34336" />
+            <Color x:Key="DangerFillColor">#ff8a80</Color>
+            <SolidColorBrush x:Key="DangerFill" Color="#ff8a80" />
             <!-- Darker under the pointer (white 6.8:1), with a light edge that keeps it 6:1 on the surface. -->
-            <SolidColorBrush x:Key="DangerFillHover" Color="#a82e24" />
-            <SolidColorBrush x:Key="DangerFillHoverBorder" Color="#ff8a80" />
+            <SolidColorBrush x:Key="DangerFillHover" Color="#ffb3ab" />
+            <SolidColorBrush x:Key="DangerFillHoverBorder" Color="#ffb3ab" />
             <Color x:Key="DangerTintColor">#3a1d1b</Color>
             <SolidColorBrush x:Key="DangerTint" Color="#3a1d1b" />
             <Color x:Key="SuccessColor">#7fd19b</Color>
@@ -191,7 +196,7 @@
             <SolidColorBrush x:Key="Overlay" Color="#99000000" />
             <SolidColorBrush x:Key="DropZoneBorder" Color="#5e4b86" />
             <SolidColorBrush x:Key="DangerBorder" Color="#6b2c27" />
-            <SolidColorBrush x:Key="DamagedText" Color="#f0a868" />
+            <SolidColorBrush x:Key="DamagedText" Color="#f0ab6d" />
             <SolidColorBrush x:Key="ChoiceSelected" Color="#32264d" />
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>

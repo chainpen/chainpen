@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Styling;
@@ -160,8 +161,10 @@ public sealed class DarkModeTests
         // Inside the button, clear of its label and rounded corners; its outermost pixels; and the strip above it.
         (byte, byte, byte) fill = Pixel(frame, (int)(box.X + 6), (int)box.Center.Y);
         (byte, byte, byte) strip = Pixel(frame, (int)box.Center.X, (int)(box.Y - 4));
+        Color onPrimary = window.TryFindResource("OnPrimaryColor", window.ActualThemeVariant, out object? found) && found is Color colour ? colour : Colors.White;
+        (byte, byte, byte) label = (onPrimary.R, onPrimary.G, onPrimary.B);
         double edge = Enumerable.Range(0, 2).Max(inset => Contrast(Pixel(frame, (int)box.X + inset, (int)box.Center.Y), strip));
-        Assert.True(Contrast((255, 255, 255), fill) >= 4.5, $"{state}: white on the fill {fill} is {Contrast((255, 255, 255), fill):0.00}:1");
+        Assert.True(Contrast(label, fill) >= 4.5, $"{state}: the label {label} on the fill {fill} is {Contrast(label, fill):0.00}:1");
         Assert.True(edge >= 3, $"{state}: the button's edge on the strip {strip} is {edge:0.00}:1");
     }
 }
