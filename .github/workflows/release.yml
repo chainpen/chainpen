@@ -23,7 +23,7 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, rid: win-x64 }
-          - { os: windows-latest, rid: win-arm64 }
+          - { os: windows-11-arm, rid: win-arm64 }
           - { os: macos-latest, rid: osx-arm64 }
           - { os: macos-15-intel, rid: osx-x64 }
           - { os: ubuntu-latest, rid: linux-x64 }
@@ -53,10 +53,8 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      # Tests run where the package's own architecture can run them. win-arm64 is packed on an x64 runner, so its
-      # tests have a job of their own below, on an Arm one.
+      # Every package is built and tested on a runner of its own architecture, so nothing is published untested.
       - name: Test
-        if: matrix.rid != 'win-arm64'
         shell: bash
         run: |
           ./build/fetch-corpus.sh
@@ -75,26 +73,8 @@ jobs:
           path: artifacts/releases/${{ matrix.rid }}/
           if-no-files-found: error
 
-  # The win-arm64 package is built on x64, which can't run it: the same commit is tested here on Windows on Arm, and
-  # nothing is published unless it passes.
-  test-win-arm64:
-    name: test (win-arm64)
-    runs-on: windows-11-arm
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          global-json-file: global.json
-
-      - name: Test
-        shell: bash
-        run: |
-          ./build/fetch-corpus.sh
-          dotnet test -c Release
-
   publish:
-    needs: [package, test-win-arm64]
+    needs: package
     runs-on: ubuntu-latest
     permissions:
       contents: write
