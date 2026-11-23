@@ -67,6 +67,8 @@
             <SolidColorBrush x:Key="Danger" Color="#b42318" />
             <Color x:Key="DangerFillColor">#b42318</Color>
             <SolidColorBrush x:Key="DangerFill" Color="#b42318" />
+            <SolidColorBrush x:Key="DangerFillHover" Color="#8f1c13" />
+            <SolidColorBrush x:Key="DangerFillHoverBorder" Color="#8f1c13" />
             <Color x:Key="DangerTintColor">#fdecea</Color>
             <SolidColorBrush x:Key="DangerTint" Color="#fdecea" />
             <Color x:Key="SuccessColor">#1d6b3a</Color>
@@ -157,8 +159,12 @@
             <SolidColorBrush x:Key="WarningBorder" Color="#6b4a2a" />
             <Color x:Key="DangerColor">#ff8a80</Color>
             <SolidColorBrush x:Key="Danger" Color="#ff8a80" />
-            <Color x:Key="DangerFillColor">#c4372b</Color>
-            <SolidColorBrush x:Key="DangerFill" Color="#c4372b" />
+            <!-- As with Primary: white on it at 4.5:1 and its edge at 3:1 on every dark surface (4.5:1 and 3.0:1). -->
+            <Color x:Key="DangerFillColor">#d34336</Color>
+            <SolidColorBrush x:Key="DangerFill" Color="#d34336" />
+            <!-- Darker under the pointer (white 6.8:1), with a light edge that keeps it 6:1 on the surface. -->
+            <SolidColorBrush x:Key="DangerFillHover" Color="#a82e24" />
+            <SolidColorBrush x:Key="DangerFillHoverBorder" Color="#ff8a80" />
             <Color x:Key="DangerTintColor">#3a1d1b</Color>
             <SolidColorBrush x:Key="DangerTint" Color="#3a1d1b" />
             <Color x:Key="SuccessColor">#7fd19b</Color>

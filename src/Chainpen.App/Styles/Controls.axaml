@@ -348,8 +348,8 @@
         <Setter Property="Foreground" Value="{DynamicResource OnPrimary}" />
     </Style>
     <Style Selector="Button.danger-fill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource Danger}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Danger}" />
+        <Setter Property="Background" Value="{DynamicResource DangerFillHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerFillHoverBorder}" />
         <Setter Property="Foreground" Value="{DynamicResource OnPrimary}" />
     </Style>
     <!-- A dialog card over a dimmed window. -->

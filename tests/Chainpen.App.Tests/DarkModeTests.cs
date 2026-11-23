@@ -100,6 +100,60 @@ public sealed class DarkModeTests
         }
     }
 
+    /// <summary>
+    /// Filled buttons (the violet primary and the red one that confirms removing something) keep a readable label
+    /// (4.5:1) and a visible edge (3:1) on every surface they can sit on, at rest and under the pointer, in both
+    /// appearances.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("Light")]
+    [InlineData("Dark")]
+    public async Task Filled_buttons_stay_readable_on_every_surface(string variant)
+    {
+        string[] surfaces = ["SurfaceApp", "Surface", "SurfaceSubtle", "SurfaceSunken"];
+        string[] kinds = ["primary", "danger-fill"];
+        var rows = new StackPanel();
+        var buttons = new List<(Button Button, string Name)>();
+        foreach (string surface in surfaces)
+        {
+            var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 24 };
+            var band = new Border { Padding = new Thickness(24), Child = row };
+            band[!Border.BackgroundProperty] = band.GetResourceObservable(surface).ToBinding();
+            foreach (string kind in kinds)
+            {
+                var button = new Button { Content = "Export final copy", Classes = { kind } };
+                row.Children.Add(button);
+                buttons.Add((button, $"{kind} on {surface}"));
+            }
+
+            rows.Children.Add(band);
+        }
+
+        var window = new Window
+        {
+            Width = 600,
+            Height = 600,
+            Content = rows,
+            RequestedThemeVariant = variant == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light,
+        };
+        window.Show();
+        await Pump(() => buttons.All(entry => entry.Button.Bounds.Width > 0));
+
+        foreach ((Button button, string name) in buttons)
+        {
+            Point topLeft = button.TranslatePoint(default, window)!.Value;
+            Rect box = new(topLeft, button.Bounds.Size);
+            window.MouseMove(new Point(1, 1), RawInputModifiers.None);
+            await Pump(() => !button.IsPointerOver);
+            AssertReadable(window, box, $"{variant}: {name}, at rest");
+            window.MouseMove(box.Center, RawInputModifiers.None);
+            await Pump(() => button.IsPointerOver);
+            AssertReadable(window, box, $"{variant}: {name}, hovered");
+        }
+
+        window.Close();
+    }
+
     private static void AssertReadable(Window window, Rect box, string state)
     {
         using WriteableBitmap frame = window.CaptureRenderedFrame()!;
