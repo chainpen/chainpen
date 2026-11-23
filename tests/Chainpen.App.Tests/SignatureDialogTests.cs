@@ -351,8 +351,8 @@ public sealed class SignatureDialogTests : IDisposable
             System.Runtime.InteropServices.Marshal.Copy(pixels.Address + (y * pixels.RowBytes) + (x * 4), pixel, 0, 4);
             (byte red, byte green, byte blue) = pixels.Format == PixelFormat.Bgra8888 ? (pixel[2], pixel[1], pixel[0]) : (pixel[0], pixel[1], pixel[2]);
 
-            // The ring is #173c96: dark blue, nothing like the white, grey and light blue around it.
-            return red < 80 && green < 110 && blue > 110;
+            // The ring is #4a2a7a: deep violet, nothing like the white, grey and pale violet around it.
+            return red < 110 && green < 80 && blue > 100;
         }
     }
 

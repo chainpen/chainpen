@@ -164,7 +164,7 @@
     </Style>
 
     <!-- The button the practice guide (or the nudge) wants next: a pale orange fill with an orange border and text,
-         apart from the blue of a tool that's on, and the same on every button (Export too). The view also points an
+         apart from the violet of a tool that's on, and the same on every button (Export too). The view also points an
          arrow at it. -->
     <Style Selector="Button.guided /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource GuideTint}" />
@@ -263,7 +263,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="VerticalContentAlignment" Value="Top" />
         <Setter Property="CaretBrush" Value="#1b1e23" />
-        <Setter Property="SelectionBrush" Value="#661f4fc4" />
+        <Setter Property="SelectionBrush" Value="#667443c9" />
     </Style>
     <Style Selector="TextBox.onPage:focus /template/ Border#PART_BorderElement, TextBox.onPage:pointerover /template/ Border#PART_BorderElement">
         <Setter Property="Background" Value="Transparent" />

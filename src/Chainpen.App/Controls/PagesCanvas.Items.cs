@@ -157,13 +157,13 @@ public sealed partial class PagesCanvas
     private static readonly DashStyle s_signHereDash = new([4, 3], 0);
     private static readonly Typeface s_signHereFace = new("Inter");
 
-    /// <summary>Selection and focus on the page use the light-theme blue, even in dark mode (INTERACTION-PATTERNS §4).</summary>
+    /// <summary>Selection and focus on the page use the light-theme violet, even in dark mode (INTERACTION-PATTERNS §4).</summary>
     private void DrawOverlays(DrawingContext context, PageViewModel page, Rect rect)
     {
         EditorViewModel editor = _editor!;
-        IBrush blue = Brush("SelectionOnPage", Brushes.RoyalBlue);
-        Color blueColour = blue is ISolidColorBrush solid ? solid.Color : Colors.RoyalBlue;
-        var tint = new SolidColorBrush(blueColour, 0.06);
+        IBrush selection = Brush("SelectionOnPage", Brushes.RoyalBlue);
+        Color selectionColour = selection is ISolidColorBrush solid ? solid.Color : Colors.RoyalBlue;
+        var tint = new SolidColorBrush(selectionColour, 0.06);
 
         DrawFindHits(context, page, rect);
 
@@ -182,8 +182,8 @@ public sealed partial class PagesCanvas
         foreach (FieldHit unsigned in editor.UnsignedSignatureFields(page.Id))
         {
             var box = new Rect(rect.X + (unsigned.Box.X * Zoom), rect.Y + (unsigned.Box.Y * Zoom), unsigned.Box.Width * Zoom, unsigned.Box.Height * Zoom);
-            context.DrawRectangle(tint, new Pen(blue, 1.5, s_signHereDash), box, 3, 3);
-            var signHere = new FormattedText(Strings.Editor_SignHere, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), blue);
+            context.DrawRectangle(tint, new Pen(selection, 1.5, s_signHereDash), box, 3, 3);
+            var signHere = new FormattedText(Strings.Editor_SignHere, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, s_signHereFace, Math.Clamp(box.Height * 0.4, 11, 14), selection);
             if (signHere.Width + 16 <= box.Width && signHere.Height <= box.Height)
             {
                 context.DrawText(signHere, new Point(box.X + 8, box.Y + ((box.Height - signHere.Height) / 2)));
@@ -195,7 +195,7 @@ public sealed partial class PagesCanvas
         {
             Chainpen.Core.Model.PageRect ringBox = ringed.Box;
             var ring = new Rect(rect.X + (ringBox.X * Zoom), rect.Y + (ringBox.Y * Zoom), ringBox.Width * Zoom, ringBox.Height * Zoom).Inflate(3);
-            context.DrawRectangle(null, new Pen(Brush("FocusRing", blue), 2), ring, 3, 3);
+            context.DrawRectangle(null, new Pen(Brush("FocusRing", selection), 2), ring, 3, 3);
         }
 
         if (editor.FocusedField is { } focused && focused.Page == page.Id)
@@ -207,7 +207,7 @@ public sealed partial class PagesCanvas
             {
                 double top = box.Y + 1 + (editor.FocusedOption * list.ListRowHeight);
                 var row = new Rect(rect.X + ((box.X + 1) * Zoom), rect.Y + (top * Zoom), (box.Width - 2) * Zoom, list.ListRowHeight * Zoom);
-                context.DrawRectangle(null, new Pen(Brush("FocusRing", blue), 1, new DashStyle([2, 2], 0)), row);
+                context.DrawRectangle(null, new Pen(Brush("FocusRing", selection), 1, new DashStyle([2, 2], 0)), row);
             }
         }
 
@@ -216,13 +216,13 @@ public sealed partial class PagesCanvas
             if (item.Page == page.Id)
             {
                 Rect box = ViewBox(item, rect).Inflate(OutlineGap);
-                context.DrawRectangle(null, new Pen(blue, 1.5, s_selectionDash), box, 3, 3);
+                context.DrawRectangle(null, new Pen(selection, 1.5, s_selectionDash), box, 3, 3);
             }
         }
 
         if (SingleSelected() is { } single && single.Page == page.Id)
         {
-            var handlePen = new Pen(blue, 2);
+            var handlePen = new Pen(selection, 2);
             foreach ((_, Point corner) in Handles(single, rect))
             {
                 var handle = new Rect(corner.X - (HandleSize / 2), corner.Y - (HandleSize / 2), HandleSize, HandleSize);
@@ -234,13 +234,13 @@ public sealed partial class PagesCanvas
         {
             if (editor.BoxCandidates.Contains(item.Id))
             {
-                context.DrawRectangle(tint, new Pen(blue, 1.5), ViewBox(item, rect).Inflate(OutlineGap), 3, 3);
+                context.DrawRectangle(tint, new Pen(selection, 1.5), ViewBox(item, rect).Inflate(OutlineGap), 3, 3);
             }
         }
 
         if (editor.SelectionBox is { } selectionBox && selectionBox.Page == page.Id)
         {
-            context.DrawRectangle(new SolidColorBrush(blueColour, 0.08), new Pen(blue, 1), ToView(selectionBox.Box, rect));
+            context.DrawRectangle(new SolidColorBrush(selectionColour, 0.08), new Pen(selection, 1), ToView(selectionBox.Box, rect));
         }
 
         if (editor.TypingItem is { } typing && editor.State.FindItem(typing) is TextItem text && text.Page == page.Id)
@@ -249,7 +249,7 @@ public sealed partial class PagesCanvas
             Rect box = ViewBox(text, rect);
             double minWidth = text.FontSize * Zoom;
             box = box.WithWidth(Math.Max(box.Width, minWidth));
-            context.DrawRectangle(tint, new Pen(blue, 1.5), box.Inflate(new Thickness(6, 2)), 4, 4);
+            context.DrawRectangle(tint, new Pen(selection, 1.5), box.Inflate(new Thickness(6, 2)), 4, 4);
         }
 
     }
@@ -267,7 +267,7 @@ public sealed partial class PagesCanvas
 
         Rect rect = PageRect(index);
         double zoom = Zoom;
-        IBrush blue = Brush("SelectionOnPage", Brushes.RoyalBlue);
+        IBrush selection = Brush("SelectionOnPage", Brushes.RoyalBlue);
         using (context.PushClip(rect))
         {
             using (context.PushTransform(Matrix.CreateScale(zoom, zoom) * Matrix.CreateTranslation(rect.X, rect.Y)))
@@ -288,7 +288,7 @@ public sealed partial class PagesCanvas
             {
                 // E4: the signature follows the pointer inside a dashed box until it's placed.
                 SignatureItem preview = editor.SignatureAt(cursor.Page, cursor.Point, ghost.Image, ghost.Kind);
-                context.DrawRectangle(null, new Pen(blue, 1.5, new DashStyle([4, 3], 0)), ViewBox(preview, rect).Inflate(OutlineGap), 3, 3);
+                context.DrawRectangle(null, new Pen(selection, 1.5, new DashStyle([4, 3], 0)), ViewBox(preview, rect).Inflate(OutlineGap), 3, 3);
             }
 
             if (editor.IsKeyboardCursor)
@@ -298,7 +298,7 @@ public sealed partial class PagesCanvas
                 var pen = new Pen(Brush("Text", Brushes.Black), 1.5);
                 context.DrawLine(pen, centre - new Point(11, 0), centre + new Point(11, 0));
                 context.DrawLine(pen, centre - new Point(0, 11), centre + new Point(0, 11));
-                context.DrawEllipse(null, new Pen(blue, 1.5), centre, 6, 6);
+                context.DrawEllipse(null, new Pen(selection, 1.5), centre, 6, 6);
             }
         }
     }

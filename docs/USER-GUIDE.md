@@ -57,7 +57,7 @@ Tick **Keep … on this computer** to reuse it next time. Kept signatures are en
 
 ## Organise pages
 
-Switch to **Organise pages** at the top left. Click pages to select them (Shift-click for a range, ⌘/Ctrl-click to add), then rotate, duplicate, move or delete them from the blue bar, the page's **⋯** menu, or by right-clicking. Drag pages to reorder them, or drop files between pages to insert them. A document always keeps at least one page.
+Switch to **Organise pages** at the top left. Click pages to select them (Shift-click for a range, ⌘/Ctrl-click to add), then rotate, duplicate, move or delete them from the violet bar, the page's **⋯** menu, or by right-clicking. Drag pages to reorder them, or drop files between pages to insert them. A document always keeps at least one page.
 
 ## Save and send
 

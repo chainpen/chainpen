@@ -42,7 +42,7 @@ public sealed partial class EditorViewModel
 
     public bool HasPageMessage => PageMessage is not null;
 
-    /// <summary>The blue selection bar with page actions (🎨 4).</summary>
+    /// <summary>The violet selection bar with page actions (🎨 4).</summary>
     public bool ShowsPageActions => IsOrganising && HasPageSelection;
 
     public bool ShowsOrganiseHint => IsOrganising && !HasPageSelection;

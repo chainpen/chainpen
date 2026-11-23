@@ -31,7 +31,7 @@ public enum ContextMode
     /// <summary>The pen: colour, line width and Done (E6).</summary>
     Drawing,
 
-    /// <summary>Placing a signature: one instruction and Cancel (E4), blue tint.</summary>
+    /// <summary>Placing a signature: one instruction and Cancel (E4), violet tint.</summary>
     Placing,
 
     /// <summary>Dragging a selection box (E5).</summary>
