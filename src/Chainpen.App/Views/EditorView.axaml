@@ -948,12 +948,13 @@
         <Style Selector="Border.thumb.large.selected">
             <Setter Property="Padding" Value="7" />
         </Style>
-        <!-- A tick in a violet circle on a selected page's corner (🎨 4). -->
+        <!-- A tick in a violet circle on a selected page's corner (🎨 4). Primary, not Accent: the white tick is only
+             2.3:1 on the dark theme's light Accent. -->
         <Style Selector="Border.selectedBadge">
             <Setter Property="Width" Value="22" />
             <Setter Property="Height" Value="22" />
             <Setter Property="CornerRadius" Value="11" />
-            <Setter Property="Background" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource Primary}" />
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="VerticalAlignment" Value="Top" />
             <Setter Property="Margin" Value="0,-9,-9,0" />

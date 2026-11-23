@@ -13,7 +13,17 @@
         </ResourceDictionary>
     </Application.Resources>
     <Application.Styles>
-        <FluentTheme />
+        <!--
+            Fluent's own controls (check boxes, focused text boxes) are drawn in its accent, which otherwise follows the
+            system's, usually blue. The light theme uses Accent; the dark one uses Primary, as #7443c9 is only 2.6:1
+            on the dark surface and check boxes are filled with it.
+        -->
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Light" Accent="#7443c9" />
+                <ColorPaletteResources x:Key="Dark" Accent="#8457c7" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
         <StyleInclude Source="avares://Chainpen.App/Styles/Controls.axaml" />
     </Application.Styles>
 </Application>

@@ -1,7 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using Chainpen.App.Platform.Signatures;
 using Chainpen.App.ViewModels;
 using Chainpen.App.Views;
@@ -56,5 +61,68 @@ public sealed class DarkModeTests
             MainWindow.SignatureStoreOverride = null;
             Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
         }
+    }
+
+    /// <summary>
+    /// A primary button under the pointer keeps its white label readable (4.5:1) and its edge visible against the
+    /// title strip (3:1), in both appearances. The hover fill once used AccentStrong, the dark theme's palest violet.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(Platform.AppearanceChoice.Light)]
+    [InlineData(Platform.AppearanceChoice.Dark)]
+    public async Task A_hovered_primary_button_keeps_its_label_and_edge_readable(Platform.AppearanceChoice appearance)
+    {
+        Platform.AppSettings.Update(settings => settings with { Appearance = appearance });
+        try
+        {
+            var window = new MainWindow(isFirstLaunch: false, []) { Width = 1280, Height = 860 };
+            window.Show();
+            await window.OpenPathsAsync([TestFiles.Sample("sample-form.pdf")]);
+            EditorViewModel editor = Editor(window);
+            await Pump(() => !editor.IsLoading);
+
+            Button export = window.GetVisualDescendants().OfType<Button>().First(b => b.Name == "ExportButton");
+            Point topLeft = export.TranslatePoint(default, window)!.Value;
+            Rect box = new(topLeft, export.Bounds.Size);
+            window.MouseMove(box.Center, RawInputModifiers.None);
+            await Pump(() => export.IsPointerOver);
+            Save(window, $"primary-hover-{appearance.ToString().ToLowerInvariant()}");
+
+            using WriteableBitmap frame = window.CaptureRenderedFrame()!;
+            // Inside the button, clear of its label and rounded corners; and the strip just above it.
+            (byte, byte, byte) fill = Pixel(frame, (int)(box.X + 6), (int)box.Center.Y);
+            (byte, byte, byte) strip = Pixel(frame, (int)box.Center.X, (int)(box.Y - 4));
+            Assert.True(Contrast((255, 255, 255), fill) >= 4.5, $"white on the hover fill {fill} is {Contrast((255, 255, 255), fill):0.00}:1");
+            Assert.True(Contrast(fill, strip) >= 3, $"the hover fill {fill} on the strip {strip} is {Contrast(fill, strip):0.00}:1");
+            window.CloseWithoutAsking();
+        }
+        finally
+        {
+            Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
+        }
+    }
+
+    private static (byte Red, byte Green, byte Blue) Pixel(WriteableBitmap frame, int x, int y)
+    {
+        using ILockedFramebuffer pixels = frame.Lock();
+        byte[] pixel = new byte[4];
+        System.Runtime.InteropServices.Marshal.Copy(pixels.Address + (y * pixels.RowBytes) + (x * 4), pixel, 0, 4);
+        return pixels.Format == PixelFormat.Bgra8888 ? (pixel[2], pixel[1], pixel[0]) : (pixel[0], pixel[1], pixel[2]);
+    }
+
+    /// <summary>WCAG 2.2 contrast ratio.</summary>
+    private static double Contrast((byte, byte, byte) a, (byte, byte, byte) b)
+    {
+        double la = Luminance(a), lb = Luminance(b);
+        return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
+    }
+
+    private static double Luminance((byte Red, byte Green, byte Blue) colour) =>
+        (0.2126 * Channel(colour.Red)) + (0.7152 * Channel(colour.Green)) + (0.0722 * Channel(colour.Blue));
+
+    private static double Channel(byte value)
+    {
+        double c = value / 255.0;
+        return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
     }
 }
