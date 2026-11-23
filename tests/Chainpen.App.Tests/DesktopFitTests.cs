@@ -130,18 +130,8 @@ public sealed class DesktopFitTests : IDisposable
     [AvaloniaFact]
     public async Task A_recovery_copy_held_by_another_running_Chainpen_is_left_alone_until_that_one_has_gone()
     {
-        // A copy written by "another Chainpen": any other process that's running now stands in for it.
-        using System.Diagnostics.Process other = System.Diagnostics.Process.GetProcesses().First(process =>
-        {
-            try
-            {
-                return process.Id != Environment.ProcessId && !process.HasExited && process.StartTime > DateTime.MinValue;
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
-            {
-                return false;
-            }
-        });
+        // A copy written by "another Chainpen": another process that's running now stands in for it.
+        using System.Diagnostics.Process other = LongestRunningOtherProcess();
         var written = new RecoveryCopy(Guid.NewGuid(), "theirs.pdf", null, null, DateTimeOffset.Now.AddDays(-40));
         Assert.True(RecoveryStore.Write(written, File.ReadAllBytes(TestFiles.Sample("sample-form.pdf"))));
         string info = Path.Combine(RecoveryStore.Folder, $"{written.Id:N}.json");
@@ -170,6 +160,38 @@ public sealed class DesktopFitTests : IDisposable
         Assert.False(RecoveryStore.IsInUse(Assert.Single(RecoveryStore.List())));
         s.Start.Refresh();
         Assert.True(s.Start.HasRecovery);
+    }
+
+    /// <summary>
+    /// The process that has been running longest, of those this user can look at. macOS lists the newest process first,
+    /// which is often a helper that exits within the test; that reads as the other Chainpen having gone.
+    /// </summary>
+    private static System.Diagnostics.Process LongestRunningOtherProcess()
+    {
+        System.Diagnostics.Process? oldest = null;
+        DateTime oldestStart = DateTime.MaxValue;
+        foreach (System.Diagnostics.Process process in System.Diagnostics.Process.GetProcesses())
+        {
+            try
+            {
+                if (process.Id != Environment.ProcessId && !process.HasExited && process.StartTime is var started
+                    && started > DateTime.MinValue && started < oldestStart)
+                {
+                    oldest?.Dispose();
+                    oldest = process;
+                    oldestStart = started;
+                    continue;
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+            {
+                // One this user can't look at.
+            }
+
+            process.Dispose();
+        }
+
+        return oldest ?? throw new InvalidOperationException("No other process to stand in for another Chainpen.");
     }
 
     [AvaloniaFact]
