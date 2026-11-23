@@ -101,28 +101,4 @@ public sealed class DarkModeTests
             Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
         }
     }
-
-    private static (byte Red, byte Green, byte Blue) Pixel(WriteableBitmap frame, int x, int y)
-    {
-        using ILockedFramebuffer pixels = frame.Lock();
-        byte[] pixel = new byte[4];
-        System.Runtime.InteropServices.Marshal.Copy(pixels.Address + (y * pixels.RowBytes) + (x * 4), pixel, 0, 4);
-        return pixels.Format == PixelFormat.Bgra8888 ? (pixel[2], pixel[1], pixel[0]) : (pixel[0], pixel[1], pixel[2]);
-    }
-
-    /// <summary>WCAG 2.2 contrast ratio.</summary>
-    private static double Contrast((byte, byte, byte) a, (byte, byte, byte) b)
-    {
-        double la = Luminance(a), lb = Luminance(b);
-        return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
-    }
-
-    private static double Luminance((byte Red, byte Green, byte Blue) colour) =>
-        (0.2126 * Channel(colour.Red)) + (0.7152 * Channel(colour.Green)) + (0.0722 * Channel(colour.Blue));
-
-    private static double Channel(byte value)
-    {
-        double c = value / 255.0;
-        return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
-    }
 }

@@ -46,6 +46,8 @@
             <SolidColorBrush x:Key="PrimaryHoverBorder" Color="#3a2161" />
             <Color x:Key="FocusRingColor">#4a2a7a</Color>
             <SolidColorBrush x:Key="FocusRing" Color="#4a2a7a" />
+            <!-- The ring round a form field on the page, which is light in both themes. -->
+            <SolidColorBrush x:Key="FocusRingOnPage" Color="#4a2a7a" />
             <!-- Selected text in boxes: a pale accent, so the text on it keeps its own colour and full contrast (WCAG 1.4.3). -->
             <SolidColorBrush x:Key="TextSelection" Color="#d9c8f5" />
             <Color x:Key="SelectionOnPageColor">#7443c9</Color>
@@ -136,6 +138,8 @@
             <SolidColorBrush x:Key="PrimaryHoverBorder" Color="#b79df2" />
             <Color x:Key="FocusRingColor">#d6c7fb</Color>
             <SolidColorBrush x:Key="FocusRing" Color="#d6c7fb" />
+            <!-- Pages stay light in dark mode, where #d6c7fb would be 1.5:1, so the ring on them keeps the light theme's. -->
+            <SolidColorBrush x:Key="FocusRingOnPage" Color="#4a2a7a" />
             <SolidColorBrush x:Key="TextSelection" Color="#4a3780" />
             <Color x:Key="SelectionOnPageColor">#7443c9</Color>
             <SolidColorBrush x:Key="SelectionOnPage" Color="#7443c9" />

@@ -195,7 +195,7 @@ public sealed partial class PagesCanvas
         {
             Chainpen.Core.Model.PageRect ringBox = ringed.Box;
             var ring = new Rect(rect.X + (ringBox.X * Zoom), rect.Y + (ringBox.Y * Zoom), ringBox.Width * Zoom, ringBox.Height * Zoom).Inflate(3);
-            context.DrawRectangle(null, new Pen(Brush("FocusRing", selection), 2), ring, 3, 3);
+            context.DrawRectangle(null, new Pen(Brush("FocusRingOnPage", selection), 2), ring, 3, 3);
         }
 
         if (editor.FocusedField is { } focused && focused.Page == page.Id)
@@ -207,7 +207,7 @@ public sealed partial class PagesCanvas
             {
                 double top = box.Y + 1 + (editor.FocusedOption * list.ListRowHeight);
                 var row = new Rect(rect.X + ((box.X + 1) * Zoom), rect.Y + (top * Zoom), (box.Width - 2) * Zoom, list.ListRowHeight * Zoom);
-                context.DrawRectangle(null, new Pen(Brush("FocusRing", selection), 1, new DashStyle([2, 2], 0)), row);
+                context.DrawRectangle(null, new Pen(Brush("FocusRingOnPage", selection), 1, new DashStyle([2, 2], 0)), row);
             }
         }
 

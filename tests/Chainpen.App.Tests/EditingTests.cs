@@ -342,6 +342,39 @@ public sealed class EditingTests(ITestOutputHelper output)
         return System.Text.Encoding.Latin1.GetBytes(text.ToString());
     }
 
+    /// <summary>
+    /// The ring round the form field in use stands out from the page (3:1) in the dark appearance too: the page stays
+    /// light, so the dark theme's pale focus ring would all but vanish on it.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task The_ring_round_a_form_field_shows_on_the_page_in_dark_mode()
+    {
+        Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.Dark });
+        try
+        {
+            using var e = await EditorSession.OpenAsync(file: "form-fields.pdf");
+            await Pump(() => e.Window.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
+            Pdf.Pdfium.FormField name = e.Editor.Source.FormFields(0).Single(field => field.Name == "Name");
+            var transform = new Core.Geometry.PageTransform(e.Editor.Source.GetPage(0), Rotation.None);
+            PagePoint corner = transform.ToDisplay(name.Rect.Left, name.Rect.Top);
+            PagePoint opposite = transform.ToDisplay(name.Rect.Right, name.Rect.Bottom);
+            e.Click((corner.X + opposite.X) / 2, (corner.Y + opposite.Y) / 2);
+            await Pump(() => e.Editor.EditingField?.Hit.Field.Name == "Name");
+            await e.SaveAsync("form-field-ring-dark");
+
+            // The ring is drawn just outside the field's top edge: look a few pixels above it for its strongest colour.
+            Point top = e.ToWindow((corner.X + opposite.X) / 2, Math.Min(corner.Y, opposite.Y));
+            using WriteableBitmap frame = await e.FrameAsync();
+            (byte, byte, byte) page = Pixel(frame, (int)top.X, (int)top.Y - 12);
+            double strongest = Enumerable.Range(1, 8).Max(above => Contrast(Pixel(frame, (int)top.X, (int)top.Y - above), page));
+            Assert.True(strongest >= 3, $"the ring is {strongest:0.00}:1 on the page");
+        }
+        finally
+        {
+            Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
+        }
+    }
+
     [AvaloniaFact]
     public async Task Tab_in_a_form_field_keeps_it_and_moves_to_the_next_field()
     {
