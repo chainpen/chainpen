@@ -21,7 +21,7 @@
         <FluentTheme>
             <FluentTheme.Palettes>
                 <ColorPaletteResources x:Key="Light" Accent="#7443c9" />
-                <ColorPaletteResources x:Key="Dark" Accent="#8457c7" />
+                <ColorPaletteResources x:Key="Dark" Accent="#8b5ecd" />
             </FluentTheme.Palettes>
         </FluentTheme>
         <StyleInclude Source="avares://Chainpen.App/Styles/Controls.axaml" />

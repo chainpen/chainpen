@@ -128,13 +128,14 @@
             <SolidColorBrush x:Key="AccentStrong" Color="#d6c7fb" />
             <Color x:Key="AccentTintColor">#32264d</Color>
             <SolidColorBrush x:Key="AccentTint" Color="#32264d" />
-            <Color x:Key="PrimaryColor">#8457c7</Color>
-            <SolidColorBrush x:Key="Primary" Color="#8457c7" />
+            <!-- Only a narrow band of violet keeps white text on it at 4.5:1 and its edge at 3:1 on every dark surface
+                 (the context bar and sunken panels included): this is 4.6:1 and 3.0:1. -->
+            <Color x:Key="PrimaryColor">#8b5ecd</Color>
+            <SolidColorBrush x:Key="Primary" Color="#8b5ecd" />
             <Color x:Key="OnPrimaryColor">#ffffff</Color>
             <SolidColorBrush x:Key="OnPrimary" Color="#ffffff" />
-            <!-- Lighter, but only as far as white stays 4.5:1 on it and its edge 3:1 on the surface, so the change is
-                 carried mostly by the lighter border. -->
-            <SolidColorBrush x:Key="PrimaryHover" Color="#8b5ecd" />
+            <!-- Darker (white 6.2:1), with a light edge that keeps the button 5:1 or more on every dark surface. -->
+            <SolidColorBrush x:Key="PrimaryHover" Color="#7443c9" />
             <SolidColorBrush x:Key="PrimaryHoverBorder" Color="#b79df2" />
             <Color x:Key="FocusRingColor">#d6c7fb</Color>
             <SolidColorBrush x:Key="FocusRing" Color="#d6c7fb" />

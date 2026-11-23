@@ -64,13 +64,14 @@ public sealed class DarkModeTests
     }
 
     /// <summary>
-    /// A primary button under the pointer keeps its white label readable (4.5:1) and its edge visible against the
-    /// title strip (3:1), in both appearances. The hover fill once used AccentStrong, the dark theme's palest violet.
+    /// A primary button, at rest and under the pointer, keeps its white label readable (4.5:1) and its edge visible
+    /// against the title strip (3:1), in both appearances. The hover fill once used AccentStrong, the dark theme's
+    /// palest violet.
     /// </summary>
     [AvaloniaTheory]
     [InlineData(Platform.AppearanceChoice.Light)]
     [InlineData(Platform.AppearanceChoice.Dark)]
-    public async Task A_hovered_primary_button_keeps_its_label_and_edge_readable(Platform.AppearanceChoice appearance)
+    public async Task A_primary_button_keeps_its_label_and_edge_readable_at_rest_and_hovered(Platform.AppearanceChoice appearance)
     {
         Platform.AppSettings.Update(settings => settings with { Appearance = appearance });
         try
@@ -84,21 +85,29 @@ public sealed class DarkModeTests
             Button export = window.GetVisualDescendants().OfType<Button>().First(b => b.Name == "ExportButton");
             Point topLeft = export.TranslatePoint(default, window)!.Value;
             Rect box = new(topLeft, export.Bounds.Size);
+            await Pump(() => true);
+            AssertReadable(window, box, "at rest");
+
             window.MouseMove(box.Center, RawInputModifiers.None);
             await Pump(() => export.IsPointerOver);
             Save(window, $"primary-hover-{appearance.ToString().ToLowerInvariant()}");
-
-            using WriteableBitmap frame = window.CaptureRenderedFrame()!;
-            // Inside the button, clear of its label and rounded corners; and the strip just above it.
-            (byte, byte, byte) fill = Pixel(frame, (int)(box.X + 6), (int)box.Center.Y);
-            (byte, byte, byte) strip = Pixel(frame, (int)box.Center.X, (int)(box.Y - 4));
-            Assert.True(Contrast((255, 255, 255), fill) >= 4.5, $"white on the hover fill {fill} is {Contrast((255, 255, 255), fill):0.00}:1");
-            Assert.True(Contrast(fill, strip) >= 3, $"the hover fill {fill} on the strip {strip} is {Contrast(fill, strip):0.00}:1");
+            AssertReadable(window, box, "hovered");
             window.CloseWithoutAsking();
         }
         finally
         {
             Platform.AppSettings.Update(settings => settings with { Appearance = Platform.AppearanceChoice.MatchSystem });
         }
+    }
+
+    private static void AssertReadable(Window window, Rect box, string state)
+    {
+        using WriteableBitmap frame = window.CaptureRenderedFrame()!;
+        // Inside the button, clear of its label and rounded corners; its outermost pixels; and the strip above it.
+        (byte, byte, byte) fill = Pixel(frame, (int)(box.X + 6), (int)box.Center.Y);
+        (byte, byte, byte) strip = Pixel(frame, (int)box.Center.X, (int)(box.Y - 4));
+        double edge = Enumerable.Range(0, 2).Max(inset => Contrast(Pixel(frame, (int)box.X + inset, (int)box.Center.Y), strip));
+        Assert.True(Contrast((255, 255, 255), fill) >= 4.5, $"{state}: white on the fill {fill} is {Contrast((255, 255, 255), fill):0.00}:1");
+        Assert.True(edge >= 3, $"{state}: the button's edge on the strip {strip} is {edge:0.00}:1");
     }
 }
