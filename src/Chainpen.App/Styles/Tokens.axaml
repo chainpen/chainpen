@@ -1,14 +1,13 @@
-<!--
-    EXPERIMENT (experiment/aaa-contrast): every text colour raised to WCAG 2.2 AAA (1.4.6, 7:1) to see what it does to
-    the brand. In the dark theme the filled buttons flip to a light fill with a dark label, since no violet keeps a
-    white label at 7:1 and its edge at 3:1 on the dark surfaces.
--->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!--
         Colour tokens copied from the Chainpen design system (tokens.json): one Color and one brush per token, named
         in PascalCase (surface-subtle → SurfaceSubtle). Keep in step with the design system. The page and the
         document inks are the same in both themes, because the document is never themed.
+
+        Text colours meet WCAG 2.2 AAA (1.4.6): 7:1 on every surface they sit on, and outlines and button edges 3:1.
+        The dark theme's filled buttons are a light fill with a dark label, since no violet or red keeps a white
+        label at 7:1 and its edge at 3:1 on the dark surfaces.
     -->
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
@@ -135,13 +134,12 @@
             <SolidColorBrush x:Key="AccentStrong" Color="#d6c7fb" />
             <Color x:Key="AccentTintColor">#32264d</Color>
             <SolidColorBrush x:Key="AccentTint" Color="#32264d" />
-            <!-- Only a narrow band of violet keeps white text on it at 4.5:1 and its edge at 3:1 on every dark surface
-                 (the context bar and sunken panels included): this is 4.6:1 and 3.0:1. -->
+            <!-- A light fill with a dark label (7.7:1); its edge is 6:1 or more on every dark surface. -->
             <Color x:Key="PrimaryColor">#b79df2</Color>
             <SolidColorBrush x:Key="Primary" Color="#b79df2" />
             <Color x:Key="OnPrimaryColor">#16181d</Color>
             <SolidColorBrush x:Key="OnPrimary" Color="#16181d" />
-            <!-- Darker (white 6.2:1), with a light edge that keeps the button 5:1 or more on every dark surface. -->
+            <!-- Lighter under the pointer (label 11:1). -->
             <SolidColorBrush x:Key="PrimaryHover" Color="#d6c7fb" />
             <SolidColorBrush x:Key="PrimaryHoverBorder" Color="#d6c7fb" />
             <Color x:Key="FocusRingColor">#d6c7fb</Color>
@@ -164,10 +162,10 @@
             <SolidColorBrush x:Key="WarningBorder" Color="#6b4a2a" />
             <Color x:Key="DangerColor">#ffa097</Color>
             <SolidColorBrush x:Key="Danger" Color="#ffa097" />
-            <!-- As with Primary: white on it at 4.5:1 and its edge at 3:1 on every dark surface (4.5:1 and 3.0:1). -->
+            <!-- As with Primary: a light fill with a dark label (7.8:1), its edge 6:1 or more on every dark surface. -->
             <Color x:Key="DangerFillColor">#ff8a80</Color>
             <SolidColorBrush x:Key="DangerFill" Color="#ff8a80" />
-            <!-- Darker under the pointer (white 6.8:1), with a light edge that keeps it 6:1 on the surface. -->
+            <!-- Lighter under the pointer (label 10:1). -->
             <SolidColorBrush x:Key="DangerFillHover" Color="#ffb3ab" />
             <SolidColorBrush x:Key="DangerFillHoverBorder" Color="#ffb3ab" />
             <Color x:Key="DangerTintColor">#3a1d1b</Color>

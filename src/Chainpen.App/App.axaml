@@ -15,12 +15,12 @@
     <Application.Styles>
         <!--
             Fluent's own controls (check boxes, focused text boxes) are drawn in its accent, which otherwise follows the
-            system's, usually blue. The light theme uses Accent; the dark one uses Primary, as #7443c9 is only 2.6:1
-            on the dark surface and check boxes are filled with it.
+            system's, usually blue. The light theme uses Accent. The dark theme's Accent and Primary are too light for a
+            white tick, so its check boxes use a mid violet: white on it is 4.6:1 and its edge 3:1 on every dark surface.
         -->
         <FluentTheme>
             <FluentTheme.Palettes>
-                <ColorPaletteResources x:Key="Light" Accent="#7443c9" />
+                <ColorPaletteResources x:Key="Light" Accent="#5d31aa" />
                 <ColorPaletteResources x:Key="Dark" Accent="#8b5ecd" />
             </FluentTheme.Palettes>
         </FluentTheme>
