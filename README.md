@@ -48,6 +48,7 @@ On macOS, `build/run-mac.sh [file ...]` builds and runs it as an app bundle (`ar
 | `tests/` | xUnit v3 tests for each project. |
 | `docs/` | User guide, install guide, command line and working-copy file format. |
 | `build/` | Packaging script, macOS Info.plist, app icon, corpus download. |
+| `site/` | The website: one page and its images, published with GitHub Pages by `.github/workflows/site.yml`. |
 
 ## Command line and MCP
 

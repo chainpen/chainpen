@@ -1,10 +1,11 @@
 name: CI
 
 # Tests all six platforms on pushes to main and pull requests into main; pushes to other branches don't run it. It can
-# also be run by hand (Actions → CI → Run workflow).
+# also be run by hand (Actions → CI → Run workflow). A push that only changes the website doesn't run it.
 on:
   push:
     branches: [main]
+    paths-ignore: ['site/**', '.github/workflows/site.yml']
   pull_request:
     branches: [main]
   workflow_dispatch:
