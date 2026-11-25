@@ -83,6 +83,14 @@ internal static partial class PdfiumNative
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nint FPDFImageObj_GetBitmap(nint imageObject);
 
+    /// <summary>
+    /// The image drawn by itself with its own mask, at the size its matrix gives it; only an upright matrix works.
+    /// The caller destroys the bitmap.
+    /// </summary>
+    [LibraryImport(Lib)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial nint FPDFImageObj_GetRenderedBitmap(nint document, nint page, nint imageObject);
+
     [LibraryImport(Lib)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial int FPDFBitmap_GetFormat(nint bitmap);

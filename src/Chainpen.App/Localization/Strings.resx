@@ -433,6 +433,7 @@
   <data name="Editor_PagesDeleted" xml:space="preserve"><value>{0} pages deleted</value></data>
   <data name="Editor_RecoveryCopyKept" xml:space="preserve"><value>Recovery copy kept {0}</value></data>
   <data name="Editor_UnsavedChangesRecovered" xml:space="preserve"><value>Your unsaved changes from {0} were recovered. Save to keep them in the file.</value></data>
+  <data name="Editor_OlderChangesRecovered" xml:space="preserve"><value>Your unsaved changes from {0} were recovered. {1} has been saved since then, so save these under a new name to keep both.</value></data>
   <data name="Editor_ExportedNotice" xml:space="preserve"><value>{0} ({1}) in the “{2}” folder. This is the one to send.</value></data>
   <data name="Editor_SizeKilobytes" xml:space="preserve"><value>{0} KB</value></data>
   <data name="Editor_SizeMegabytes" xml:space="preserve"><value>{0} MB</value></data>

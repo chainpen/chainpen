@@ -162,6 +162,82 @@ public sealed class DesktopFitTests : IDisposable
         Assert.True(s.Start.HasRecovery);
     }
 
+    [AvaloniaFact]
+    public async Task Delete_all_recovery_copies_leaves_the_one_another_running_Chainpen_holds()
+    {
+        // Two copies: one a document open in "another Chainpen" has (another running process stands in for it), and
+        // one left behind by a crash.
+        using System.Diagnostics.Process other = LongestRunningOtherProcess();
+        byte[] pdf = File.ReadAllBytes(TestFiles.Sample("sample-form.pdf"));
+        var theirs = new RecoveryCopy(Guid.NewGuid(), "theirs.pdf", null, null, DateTimeOffset.Now);
+        Assert.True(RecoveryStore.Write(theirs, pdf));
+        Assert.True(RecoveryStore.Write(new RecoveryCopy(Guid.NewGuid(), "left-behind.pdf", null, null, DateTimeOffset.Now), pdf));
+        string info = Path.Combine(RecoveryStore.Folder, $"{theirs.Id:N}.json");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(info))!;
+        json["OwnerProcessId"] = other.Id;
+        json["OwnerStartedAt"] = other.StartTime.ToUniversalTime();
+        File.WriteAllText(info, json.ToJsonString());
+
+        try
+        {
+            // Settings asks about, and deletes, only the one that is this Chainpen's to delete.
+            string? asked = null;
+            var settings = new SettingsViewModel(MainWindow.SignatureStore, (_, body, _) =>
+            {
+                asked = body;
+                return Task.FromResult(true);
+            });
+            await settings.DeleteRecoveryCopiesCommand.ExecuteAsync(null);
+            Assert.StartsWith("Unsaved changes in the recovery copy will be removed", asked, StringComparison.Ordinal);
+            Assert.Equal(theirs.Id, Assert.Single(RecoveryStore.List()).Id);
+            Assert.True(File.Exists(Path.Combine(RecoveryStore.Folder, $"{theirs.Id:N}.pdf")));
+
+            // With only theirs left there is nothing to delete, so nothing is asked.
+            asked = null;
+            await settings.DeleteRecoveryCopiesCommand.ExecuteAsync(null);
+            Assert.Null(asked);
+            Assert.Equal("There are no recovery copies to delete.", settings.Message);
+            Assert.Single(RecoveryStore.List());
+        }
+        finally
+        {
+            RecoveryStore.Delete(theirs.Id);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Older_unsaved_work_doesnt_open_in_place_of_a_file_saved_since_or_save_back_over_it()
+    {
+        // Saved, changed again, then a crash: the recovery copy is newer than the file it would save back to.
+        var crashed = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf"));
+        crashed.AddTick();
+        Assert.True(await crashed.Editor.SaveAsync());
+        string saved = crashed.Editor.WorkingCopyPath!;
+        crashed.AddTick();
+        await crashed.Editor.AutosaveAsync();
+        RecoveryCopy kept = Assert.Single(RecoveryStore.List());
+        Assert.Equal(saved, kept.WorkingCopyPath);
+        RecoveryStore.Release(kept.Id);
+
+        using var s = await Session.StartAsync();
+        Assert.Contains(s.Start.Recent, row => row.Path is not null && row.Recovery?.Id == kept.Id);
+
+        // Then the file is opened without recovering and saved again: it now holds the newer work.
+        File.SetLastWriteTimeUtc(saved, DateTime.UtcNow.AddMinutes(5));
+        s.Start.Refresh();
+        Assert.DoesNotContain(s.Start.Recent, row => row.Path is not null && row.Recovery is not null);
+        RecentItemViewModel older = Assert.Single(s.Start.Recent, row => row.Recovery is not null);
+        Assert.Equal(kept.Id, older.Recovery!.Id);
+
+        // The older changes can still be recovered, but saving them asks for a name rather than replacing the file.
+        await s.Window.RecoverAsync(kept);
+        EditorViewModel recovered = Editor(s.Window);
+        Assert.Equal(2, recovered.State.Items.Count);
+        Assert.Null(recovered.WorkingCopyPath);
+        Assert.Contains($"{Path.GetFileName(saved)} has been saved since then", recovered.RestoredNotice, StringComparison.Ordinal);
+        crashed.Window.CloseWithoutAsking();
+    }
+
     /// <summary>
     /// The process that has been running longest, of those this user can look at. macOS lists the newest process first,
     /// which is often a helper that exits within the test; that reads as the other Chainpen having gone.
@@ -330,6 +406,50 @@ public sealed class DesktopFitTests : IDisposable
         Assert.Equal(2, s.Editor.State.Items.Count);
         Assert.Equal([s.Editor.State.Pages[2].Id, s.Editor.State.Pages[3].Id], s.Editor.SelectedPages.OrderBy(id => s.Editor.State.IndexOf(id)));
         Assert.Equal(s.Editor.State.Pages[2].Id, s.Editor.State.Items[1].Page);
+    }
+
+    [AvaloniaFact]
+    public async Task While_a_dialog_is_open_the_menu_doesnt_act_on_the_document_behind_it()
+    {
+        // On macOS the menu bar sees ⌘Z, Delete, ⌘W and the rest before the dialog does.
+        using var s = await Session.OpenAsync(TestFiles.Sample("sample-form.pdf"));
+        s.AddTick();
+        NativeMenu menu = NativeMenu.GetMenu(s.Window)!;
+        Task<string?> asked = s.Window.AskPasswordAsync("locked.pdf", wasWrong: false);
+        await Pump(() => s.Dialog<PasswordDialog>() is not null);
+        PasswordDialog dialog = s.Dialog<PasswordDialog>()!;
+        TextBox password = dialog.FindControl<TextBox>("Password")!;
+        password.Text = "secret";
+
+        // With a button in the dialog in use, nothing reaches the document or the window.
+        dialog.GetVisualDescendants().OfType<Button>().First(button => button.Focusable).Focus();
+        Assert.IsNotType<TextBox>(s.Window.FocusManager!.GetFocusedElement());
+        int page = s.Editor.CurrentPageIndex;
+        foreach ((string top, string header) in new[] { ("Edit", "Undo"), ("Edit", "Delete"), ("Edit", "Select all"), ("View", "Organise pages"), ("Page", "Next page"), ("File", "Close window") })
+        {
+            Find(menu, top, header).Command!.Execute(null);
+        }
+
+        await Pump(() => true);
+        Assert.Single(s.Editor.State.Items);
+        Assert.False(s.Editor.IsOrganising);
+        Assert.Equal(page, s.Editor.CurrentPageIndex);
+        Assert.True(s.Window.IsVisible);
+        Assert.Same(dialog, s.Dialog<PasswordDialog>());
+
+        // A text box in the dialog still gets the commands that are for its text.
+        password.Focus();
+        Find(menu, "Edit", "Select all").Command!.Execute(null);
+        Assert.Equal("secret".Length, Math.Abs(password.SelectionEnd - password.SelectionStart));
+        Find(menu, "Page", "Next page").Command!.Execute(null);
+        Assert.Equal(page, s.Editor.CurrentPageIndex);
+        Assert.Single(s.Editor.State.Items);
+
+        // Once the dialog has gone, the menu is the document's again.
+        Click(dialog, "Cancel");
+        Assert.Null(await asked);
+        Find(menu, "Edit", "Undo").Command!.Execute(null);
+        Assert.Empty(s.Editor.State.Items);
     }
 
     [AvaloniaFact]

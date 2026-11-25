@@ -135,19 +135,23 @@ public sealed partial class EditorViewModel
 
     /// <summary>
     /// Makes this the recovered document (🎨 2 "Recover changes"): its changes are unsaved, saving goes back to the
-    /// working copy it came from, and its recovery copy is replaced as work continues.
+    /// working copy it came from, and its recovery copy is replaced as work continues. If that working copy has been
+    /// saved again since, it holds newer work, so saving asks for a name instead of going back over it.
     /// </summary>
     public void MarkRecovered(RecoveryCopy copy)
     {
         ArgumentNullException.ThrowIfNull(copy);
         RecoveryId = copy.Id;
         RecoveryStore.Claim(copy);
-        WorkingCopyPath = copy.WorkingCopyPath;
+        bool savedSince = copy.WorkingCopyPath is { } saved && RecoveryStore.IsOlderThanFile(copy, saved);
+        WorkingCopyPath = savedSince ? null : copy.WorkingCopyPath;
         LastSavedAt = null;
         _savedState = null;
         _autosavedState = State;
         RecoveryKeptAt = copy.SavedAt;
-        RestoredNotice = Text.Format(Strings.Editor_UnsavedChangesRecovered, FormatWhen(copy.SavedAt));
+        RestoredNotice = savedSince
+            ? Text.Format(Strings.Editor_OlderChangesRecovered, FormatWhen(copy.SavedAt), Path.GetFileName(copy.WorkingCopyPath))
+            : Text.Format(Strings.Editor_UnsavedChangesRecovered, FormatWhen(copy.SavedAt));
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(DocumentStatus));
     }

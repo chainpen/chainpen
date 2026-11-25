@@ -66,7 +66,12 @@ public static class FormSpotReader
                 words.Insert(0, ' ');
             }
 
-            words.Insert(0, char.ConvertFromUtf32(code));
+            // A damaged font map can give codes that aren't characters at all; they can't be part of the words.
+            if (System.Text.Rune.IsValid(code))
+            {
+                words.Insert(0, char.ConvertFromUtf32(code));
+            }
+
             if (box.Width > 0)
             {
                 left = box.X;

@@ -76,16 +76,16 @@ public partial class MainWindow
         }
 
         var edit = Menu(Strings.Menu_Edit,
-            Item(Strings.Editor_Undo, () => InTextBoxOr(box => box.Undo(), () => Editor?.UndoCommand.Execute(null)), Keys(Key.Z), requiresDocument: true),
-            Item(Strings.Editor_Redo, () => InTextBoxOr(box => box.Redo(), () => Editor?.RedoCommand.Execute(null)), Keys(Key.Z, KeyModifiers.Shift), requiresDocument: true),
+            Item(Strings.Editor_Undo, () => InTextBoxOr(box => box.Undo(), () => Editor?.UndoCommand.Execute(null)), Keys(Key.Z), requiresDocument: true, inDialogs: true),
+            Item(Strings.Editor_Redo, () => InTextBoxOr(box => box.Redo(), () => Editor?.RedoCommand.Execute(null)), Keys(Key.Z, KeyModifiers.Shift), requiresDocument: true, inDialogs: true),
             new NativeMenuItemSeparator(),
-            Item(Strings.Menu_Cut, () => InTextBoxOr(box => box.Cut(), () => { if (Editor is { } editor) { _ = CutAsync(editor); } }), Keys(Key.X), requiresDocument: true),
-            Item(Strings.Menu_Copy, () => InTextBoxOr(box => box.Copy(), () => { if (Editor is { } editor) { _ = PutOnClipboardAsync(editor.CopyToClipboard()); } }), Keys(Key.C), requiresDocument: true),
-            Item(Strings.Menu_Paste, () => InTextBoxOr(box => box.Paste(), () => { if (Editor is { } editor) { _ = PasteAsync(editor); } }), Keys(Key.V), requiresDocument: true),
+            Item(Strings.Menu_Cut, () => InTextBoxOr(box => box.Cut(), () => { if (Editor is { } editor) { _ = CutAsync(editor); } }), Keys(Key.X), requiresDocument: true, inDialogs: true),
+            Item(Strings.Menu_Copy, () => InTextBoxOr(box => box.Copy(), () => { if (Editor is { } editor) { _ = PutOnClipboardAsync(editor.CopyToClipboard()); } }), Keys(Key.C), requiresDocument: true, inDialogs: true),
+            Item(Strings.Menu_Paste, () => InTextBoxOr(box => box.Paste(), () => { if (Editor is { } editor) { _ = PasteAsync(editor); } }), Keys(Key.V), requiresDocument: true, inDialogs: true),
             Item(Strings.Editor_Duplicate, Duplicate, Keys(Key.D), requiresDocument: true),
-            Item(Strings.Common_Delete, () => InTextBoxOr(DeleteForward, Delete), new KeyGesture(Key.Delete), requiresDocument: true),
+            Item(Strings.Common_Delete, () => InTextBoxOr(DeleteForward, Delete), new KeyGesture(Key.Delete), requiresDocument: true, inDialogs: true),
             new NativeMenuItemSeparator(),
-            Item(Strings.Menu_SelectAll, () => InTextBoxOr(box => box.SelectAll(), SelectAll), Keys(Key.A), requiresDocument: true),
+            Item(Strings.Menu_SelectAll, () => InTextBoxOr(box => box.SelectAll(), SelectAll), Keys(Key.A), requiresDocument: true, inDialogs: true),
             new NativeMenuItemSeparator(),
             Item(Strings.Menu_Find, () => Editor?.OpenFindCommand.Execute(null), Keys(Key.F), requiresDocument: true),
             Item(Strings.Menu_FindNext, () => Editor?.NextMatchCommand.Execute(null), Keys(Key.G), requiresDocument: true),
@@ -107,8 +107,8 @@ public partial class MainWindow
             }, requiresDocument: true));
 
         var page = Menu(Strings.Editor_Page,
-            Item(Strings.Menu_PreviousPage, () => Editor?.PreviousPageCommand.Execute(null), new KeyGesture(Key.PageUp), requiresDocument: true),
-            Item(Strings.Menu_NextPage, () => Editor?.NextPageCommand.Execute(null), new KeyGesture(Key.PageDown), requiresDocument: true),
+            Item(Strings.Menu_PreviousPage, () => InTextBoxOr(box => MoveCaret(box, toEnd: false), () => Editor?.PreviousPageCommand.Execute(null)), new KeyGesture(Key.PageUp), requiresDocument: true, inDialogs: true),
+            Item(Strings.Menu_NextPage, () => InTextBoxOr(box => MoveCaret(box, toEnd: true), () => Editor?.NextPageCommand.Execute(null)), new KeyGesture(Key.PageDown), requiresDocument: true, inDialogs: true),
             new NativeMenuItemSeparator(),
             Item(Strings.Editor_RotateLeft, () => RunOnPages(editor => editor.RotatePagesLeftCommand), requiresDocument: true),
             Item(Strings.Editor_RotateRight, () => RunOnPages(editor => editor.RotatePagesRightCommand), requiresDocument: true),
@@ -144,15 +144,30 @@ public partial class MainWindow
     /// <summary>Menu items that need an open document are greyed out on the start screen.</summary>
     private void UpdateMenuForDocument() => _menuItemsNeedingDocument.ForEach(item => item.IsEnabled = Editor is not null);
 
-    private NativeMenuItem Item(string header, Action action, KeyGesture? gesture = null, bool requiresDocument = false)
+    /// <summary>
+    /// A menu item. While a dialog is open it does nothing: the window under a dialog can't be reached by Tab or by
+    /// clicking, and on macOS the menu bar sees ⌘Z, ⌘W, Delete and the rest before the dialog does, so without this
+    /// they'd act on the document behind it. <paramref name="inDialogs"/> is for the commands that also mean something
+    /// in a text box, which <see cref="InTextBoxOr"/> keeps to the dialog's own text boxes.
+    /// </summary>
+    private NativeMenuItem Item(string header, Action action, KeyGesture? gesture = null, bool requiresDocument = false, bool inDialogs = false)
     {
-        var item = new NativeMenuItem(header) { Command = new RelayCommand(action), Gesture = gesture };
+        Action guarded = inDialogs ? action : () => WhenNoDialog(action);
+        var item = new NativeMenuItem(header) { Command = new RelayCommand(guarded), Gesture = gesture };
         if (requiresDocument)
         {
             _menuItemsNeedingDocument.Add(item);
         }
 
         return item;
+    }
+
+    private void WhenNoDialog(Action action)
+    {
+        if (!DialogLayer.IsVisible)
+        {
+            action();
+        }
     }
 
     private static NativeMenuItem Menu(string header, params NativeMenuItemBase[] items)
@@ -179,7 +194,7 @@ public partial class MainWindow
         foreach (Platform.RecentFile file in files)
         {
             string path = file.Path;
-            recent.Items.Add(new NativeMenuItem(Path.GetFileName(path)) { Command = new RelayCommand(() => _ = OpenPathsAsync([path])) });
+            recent.Items.Add(new NativeMenuItem(Path.GetFileName(path)) { Command = new RelayCommand(() => WhenNoDialog(() => _ = OpenPathsAsync([path]))) });
         }
     }
 
@@ -194,7 +209,8 @@ public partial class MainWindow
 
     /// <summary>
     /// On macOS the menu bar sees ⌘A, ⌘C and the rest before the focused control does. While a text box has focus
-    /// (typing on the page, a form field, Go to page), the command is for its text, not for the page's items.
+    /// (typing on the page, a form field, Go to page, a box in a dialog), the command is for its text, not for the
+    /// page's items. With a dialog open and no text box in use it's for nothing: the document is out of reach.
     /// </summary>
     private void InTextBoxOr(Action<TextBox> forText, Action otherwise)
     {
@@ -202,10 +218,19 @@ public partial class MainWindow
         {
             forText(box);
         }
-        else
+        else if (!DialogLayer.IsVisible)
         {
             otherwise();
         }
+    }
+
+    /// <summary>Page Up and Page Down in a text box: to the start or end of what's typed, not to another page.</summary>
+    private static void MoveCaret(TextBox box, bool toEnd)
+    {
+        int index = toEnd ? (box.Text ?? string.Empty).Length : 0;
+        box.SelectionStart = index;
+        box.SelectionEnd = index;
+        box.CaretIndex = index;
     }
 
     /// <summary>The Delete key in a text box: removes the selection, or the character after the caret.</summary>

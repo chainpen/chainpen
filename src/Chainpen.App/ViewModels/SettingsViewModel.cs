@@ -212,7 +212,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task DeleteRecoveryCopiesAsync()
     {
-        int count = RecoveryStore.List().Count;
+        // Not the ones another running Chainpen holds for its open documents: those aren't deleted from here.
+        int count = RecoveryStore.List().Count(copy => !RecoveryStore.IsHeldElsewhere(copy));
         if (count == 0)
         {
             Message = Strings.Settings_NoRecoveryCopiesToDelete;

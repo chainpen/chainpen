@@ -27,6 +27,10 @@ public sealed partial class PdfiumPageEditor
     // About a 300 dpi A3 scan; past this a picture is flattened with the page rather than copied and re-encoded.
     private const long MaxWhitenPixels = 20_000_000;
 
+    // How large a picture is drawn to look for see-through parts, and the alpha that still counts as solid.
+    private const uint MaskProbePixels = 256;
+    private const byte OpaqueAlpha = 250;
+
     /// <summary>
     /// Removes what the whiteouts cover: objects entirely under one are deleted, and the covered pixels of pictures
     /// are made white. Returns false, having removed nothing that matters, when something is only partly covered and
@@ -178,7 +182,72 @@ public sealed partial class PdfiumPageEditor
         !FPDFPageObj_HasTransparency(image)
         && FPDFImageObj_GetImageMetadata(image, _page, out ImageMetadata metadata)
         && metadata.Colorspace != FPDF_COLORSPACE_UNKNOWN
-        && (long)metadata.Width * metadata.Height <= MaxWhitenPixels;
+        && (long)metadata.Width * metadata.Height <= MaxWhitenPixels
+        && !HasOwnMask(image, metadata);
+
+    /// <summary>
+    /// Whether the picture carries a mask of its own (/SMask or /Mask), as a logo with a see-through background does.
+    /// PDFium's transparency check doesn't look at those, and storing the picture again as JPEG would drop the mask and
+    /// turn its see-through parts solid. PDFium has no call that says so either, so the picture is drawn by itself,
+    /// small, and looked at. It only draws one upright, so the picture's place on the page is set aside meanwhile.
+    /// Not being able to tell counts as masked: the page is flattened, which keeps how it looks.
+    /// </summary>
+    private unsafe bool HasOwnMask(nint image, ImageMetadata metadata)
+    {
+        if (!FPDFPageObj_GetMatrix(image, out FsMatrix placed))
+        {
+            return true;
+        }
+
+        int width = (int)Math.Clamp(metadata.Width, 1u, MaskProbePixels), height = (int)Math.Clamp(metadata.Height, 1u, MaskProbePixels);
+        if (!FPDFImageObj_SetMatrix(image, width, 0, 0, height, 0, 0))
+        {
+            return true;
+        }
+
+        try
+        {
+            nint drawn = FPDFImageObj_GetRenderedBitmap(_document, _page, image);
+            if (drawn == 0)
+            {
+                return true;
+            }
+
+            try
+            {
+                byte* pixels = (byte*)FPDFBitmap_GetBuffer(drawn);
+                int stride = FPDFBitmap_GetStride(drawn);
+                if (FPDFBitmap_GetFormat(drawn) != FPDFBitmap_BGRA || pixels is null)
+                {
+                    return false;
+                }
+
+                // The outermost pixels are left out where there are others: an edge can be softened in the drawing.
+                int rows = FPDFBitmap_GetHeight(drawn), columns = FPDFBitmap_GetWidth(drawn);
+                int inset = Math.Min(rows, columns) > 2 ? 1 : 0;
+                for (int row = inset; row < rows - inset; row++)
+                {
+                    for (int column = inset; column < columns - inset; column++)
+                    {
+                        if (pixels[(row * stride) + (column * 4) + 3] < OpaqueAlpha)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+            finally
+            {
+                FPDFBitmap_Destroy(drawn);
+            }
+        }
+        finally
+        {
+            FPDFImageObj_SetMatrix(image, placed.A, placed.B, placed.C, placed.D, placed.E, placed.F);
+        }
+    }
 
     /// <summary>Whether any stretch of the path runs inside one of the areas (curves judged by their control points).</summary>
     private static bool PathPassesUnder(nint path, List<PdfBox> areas)

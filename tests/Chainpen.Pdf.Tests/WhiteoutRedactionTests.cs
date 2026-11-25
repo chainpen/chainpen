@@ -72,6 +72,41 @@ public sealed class WhiteoutRedactionTests
     }
 
     [Fact]
+    public void A_picture_with_see_through_parts_stays_see_through_when_whiteout_covers_some_of_it()
+    {
+        // A black square whose left half its own mask makes see-through, as a logo saved with transparency has.
+        // Whitening it in place would store it again without the mask, and the left half would turn solid black.
+        const string Draw = "q 100 0 0 100 50 50 cm /Im1 Do Q";
+        byte[] source = TestFiles.ClassicPdf(
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 200 200] >>",
+            "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>",
+            $"<< /Length {Draw.Length} >>\nstream\n{Draw}\nendstream",
+            "<< /Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8 /SMask 6 0 R /Length 12 >>\nstream\n"
+                + new string('\0', 12) + "\nendstream",
+            "<< /Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceGray /BitsPerComponent 8 /Length 4 >>\nstream\n\0\u00FF\0\u00FF\nendstream",
+        ]);
+        SourcePage[] pages;
+        using (PdfiumDocument opened = PdfiumDocument.Open(source))
+        {
+            pages = [opened.GetPageInfo(0).ToSourcePage()];
+            Bitmap before = Render(opened, 0, new PageTransform(pages[0], Rotation.None).DisplaySize);
+            Assert.Equal(0, before.CountDark(52, 100, 18, 40));
+            Assert.True(before.CountDark(130, 100, 18, 40) > 600, "the solid half is black to begin with");
+        }
+
+        var state = DocumentState.ForSourcePages(1);
+        ShapeItem whiteout = Whiteout(state.Pages[0].Id, 120, 40, 60, 40);
+        using PdfiumDocument final = PdfiumDocument.Open(DocumentWriter.FinalCopy(source, pages, state.WithItems([whiteout])).Pdf);
+
+        Bitmap image = Render(final, 0, new PageTransform(pages[0], Rotation.None).DisplaySize);
+        Assert.Equal(0, image.CountDark(52, 100, 18, 40));
+        Assert.True(image.CountDark(130, 100, 18, 40) > 600, "the solid half still shows below the whiteout");
+        Assert.Equal(0, image.CountDark(122, 52, 26, 26));
+    }
+
+    [Fact]
     public void Things_drawn_on_top_of_whiteout_stay_and_a_box_drawn_round_it_does_not_flatten_the_page()
     {
         (byte[] source, SourcePage[] pages) = Source("four-pages.pdf");

@@ -433,6 +433,7 @@
   <data name="Editor_PagesDeleted" xml:space="preserve"><value>{0} Seiten gelöscht</value></data>
   <data name="Editor_RecoveryCopyKept" xml:space="preserve"><value>Wiederherstellungskopie angelegt: {0}</value></data>
   <data name="Editor_UnsavedChangesRecovered" xml:space="preserve"><value>Ihre nicht gespeicherten Änderungen (Stand: {0}) wurden wiederhergestellt. Speichern Sie, um sie in der Datei zu behalten.</value></data>
+  <data name="Editor_OlderChangesRecovered" xml:space="preserve"><value>Ihre nicht gespeicherten Änderungen (Stand: {0}) wurden wiederhergestellt. {1} wurde seitdem gespeichert. Speichern Sie diese Änderungen unter einem neuen Namen, um beides zu behalten.</value></data>
   <data name="Editor_ExportedNotice" xml:space="preserve"><value>{0} ({1}) im Ordner „{2}“. Diese Datei ist zum Versenden.</value></data>
   <data name="Editor_SizeKilobytes" xml:space="preserve"><value>{0} KB</value></data>
   <data name="Editor_SizeMegabytes" xml:space="preserve"><value>{0} MB</value></data>

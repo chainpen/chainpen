@@ -228,7 +228,8 @@ public static class FieldLabels
                 text.Append(' ');
             }
 
-            if (character.Code > 0 && !char.IsControl((char)Math.Min(character.Code, char.MaxValue)))
+            // A damaged font map can give codes that aren't characters at all; they can't be part of a label.
+            if (character.Code > 0 && Rune.IsValid(character.Code) && !char.IsControl((char)Math.Min(character.Code, char.MaxValue)))
             {
                 text.Append(char.ConvertFromUtf32(character.Code));
             }

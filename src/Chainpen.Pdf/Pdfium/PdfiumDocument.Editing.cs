@@ -308,7 +308,22 @@ public sealed partial class PdfiumDocument
                     continue;
                 }
 
-                if (FPDFText_GetLooseCharBox(textPage, index, out FsRectF box))
+                // PDFium gives a character outside the Basic Multilingual Plane (an emoji, a rare kanji) as its two
+                // UTF-16 halves, one after the other. Here they're one character again; a half on its own is nothing.
+                int first = index;
+                if (code is >= 0xD800 and <= 0xDFFF)
+                {
+                    int next = index + 1 < count ? (int)FPDFText_GetUnicode(textPage, index + 1) : 0;
+                    if (!char.IsHighSurrogate((char)code) || next is < 0xDC00 or > 0xDFFF)
+                    {
+                        continue;
+                    }
+
+                    code = char.ConvertToUtf32((char)code, (char)next);
+                    index++;
+                }
+
+                if (FPDFText_GetLooseCharBox(textPage, first, out FsRectF box))
                 {
                     characters.Add(new PdfCharacter(code, box.Left, box.Bottom, box.Right, box.Top));
                 }

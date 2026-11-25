@@ -86,8 +86,9 @@ public static class RecoveryStore
     }
 
     /// <summary>Whether another Chainpen process that is still running wrote this copy.</summary>
-    private static bool IsHeldElsewhere(RecoveryCopy copy)
+    public static bool IsHeldElsewhere(RecoveryCopy copy)
     {
+        ArgumentNullException.ThrowIfNull(copy);
         if (copy.OwnerProcessId == 0 || copy.OwnerProcessId == Environment.ProcessId)
         {
             return false;
@@ -208,13 +209,37 @@ public static class RecoveryStore
     /// </summary>
     public static event Action? CopiesDeleted;
 
+    /// <summary>
+    /// Whether the file at <paramref name="path"/> has been written since the copy was kept. The file then holds
+    /// newer work than the copy does, so the copy mustn't stand in for it or be saved back over it.
+    /// </summary>
+    public static bool IsOlderThanFile(RecoveryCopy copy, string path)
+    {
+        ArgumentNullException.ThrowIfNull(copy);
+        try
+        {
+            return File.Exists(path) && new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero) > copy.SavedAt;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>"Delete all recovery copies" in Settings (FR-10.1).</summary>
     public static void DeleteAll()
     {
-        // Every file, not just the copies List() can read: a stray one holds document contents too.
+        // A copy another running Chainpen holds is its open document's only one, and that Chainpen wouldn't know to
+        // write it again as the documents open here do.
+        HashSet<string> heldElsewhere = [.. List().Where(IsHeldElsewhere).Select(copy => copy.Id.ToString("N"))];
+
+        // Every other file, not just the copies List() can read: a stray one holds document contents too.
         foreach (string file in Files())
         {
-            TryDelete(file);
+            if (!heldElsewhere.Contains(Path.GetFileName(file).Split('.')[0]))
+            {
+                TryDelete(file);
+            }
         }
 
         CopiesDeleted?.Invoke();

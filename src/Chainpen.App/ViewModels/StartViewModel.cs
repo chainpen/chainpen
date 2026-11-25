@@ -135,8 +135,11 @@ public sealed partial class StartViewModel : ObservableObject
         Refresh();
     }
 
+    // A file saved again since the copy was kept holds newer work: its row opens the file, and the copy gets a row of
+    // its own rather than opening in the file's place.
     private static bool Matches(RecoveryCopy copy, string path) =>
-        (copy.WorkingCopyPath is { } saved && AppSettings.SamePath(saved, path)) || (copy.OpenedFrom is { } opened && AppSettings.SamePath(opened, path));
+        ((copy.WorkingCopyPath is { } saved && AppSettings.SamePath(saved, path)) || (copy.OpenedFrom is { } opened && AppSettings.SamePath(opened, path)))
+        && !new[] { copy.WorkingCopyPath, copy.OpenedFrom }.OfType<string>().Any(file => RecoveryStore.IsOlderThanFile(copy, file));
 
     internal static string When(DateTimeOffset when)
     {

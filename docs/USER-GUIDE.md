@@ -66,9 +66,9 @@ Switch to **Organise pages** at the top left. Click pages to select them (Shift-
 - After exporting on a Mac, **Share…** on the notice sends the final copy with Mail, Messages, AirDrop and more.
 - **Print…** (⌘P / Ctrl+P) prints the document as the final copy looks, through your computer's print dialog (on Linux it opens in your PDF viewer to print from there).
 - Before exporting, Chainpen lists **possible gaps** on the pages you've added to: boxes with none ticked, and blanks after labels like "Name:" or "Date:" or along a line, with nothing in them. **Show me** takes you to each one with the right tool ready; **Next gap** moves on and **Back to export** returns. They're hints: Chainpen can't tell what's meant to be filled, and it doesn't look at pages you haven't touched or at boxes and blanks drawn only as table cells.
-- Whiteout removes what it covers from the final copy: covered text is deleted and covered parts of a scan are made white, so nothing can be copied or uncovered. If it only partly covers some text or a line, that whole page is saved as a picture, so its text can't be searched or copied. Your working copy keeps everything, so the whiteout can still be moved.
+- Whiteout removes what it covers from the final copy: covered text is deleted and covered parts of a scan are made white, so nothing can be copied or uncovered. If it only partly covers some text, a line or a picture with see-through parts, that whole page is saved as a picture, so its text can't be searched or copied. Your working copy keeps everything, so the whiteout can still be moved.
 
-If Chainpen closes unexpectedly, your unsaved changes are offered back the next time you start it. Recovery copies are kept for 30 days (change this in Settings).
+If Chainpen closes unexpectedly, your unsaved changes are offered back the next time you start it. Recovery copies are kept for 30 days (change this in Settings). If you saved the file again after the recovery copy was kept, the file is the newer of the two: it opens as usual from Recent, the older unsaved changes have a row of their own, and saving them asks for a new name so neither replaces the other.
 
 ## Settings
 

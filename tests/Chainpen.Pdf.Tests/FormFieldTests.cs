@@ -210,6 +210,82 @@ public sealed class FormFieldTests
     }
 
     [Fact]
+    public void A_rare_character_or_emoji_beside_a_field_is_read_whole_and_kept_in_its_label()
+    {
+        // 𠮷 is outside the Basic Multilingual Plane, as emoji are. PDFium hands those back as two UTF-16 halves, which
+        // used to stop the page's fields being read at all. Here the form's "~" stands for 𠮷.
+        const string Words = "BT /F1 12 Tf 20 150 Td (Name ~) Tj ET";
+        const string ToUnicode = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Adobe-Identity-UCS def "
+            + "/CMapType 2 def 1 begincodespacerange <00> <FF> endcodespacerange 1 beginbfchar <7E> <D842DFB7> endbfchar "
+            + "endcmap CMapName currentdict /CMap defineresource pop end end";
+        using PdfiumDocument pdf = PdfiumDocument.Open(TestFiles.ClassicPdf(
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 300 200] >>",
+            "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+            $"<< /Length {Words.Length} >>\nstream\n{Words}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /ToUnicode 6 0 R >>",
+            $"<< /Length {ToUnicode.Length} >>\nstream\n{ToUnicode}\nendstream",
+        ]));
+
+        IReadOnlyList<PdfCharacter> characters = pdf.GetCharacters(0);
+        PdfCharacter rare = Assert.Single(characters, character => character.Code == 0x20BB7);
+        Assert.DoesNotContain(characters, character => character.Code is >= 0xD800 and <= 0xDFFF);
+        Assert.True(rare.Right > rare.Left, "the character has a box of its own");
+
+        var field = new FormField("f1", FormFieldKind.Text, (rare.Right + 6, rare.Bottom, rare.Right + 120, rare.Top), string.Empty, false, string.Empty, [], false, false);
+        Assert.Equal("Name \U00020BB7", Assert.Single(Import.FieldLabels.FromPage([field], characters)).Label);
+    }
+
+    [Fact]
+    public void An_XFA_templates_descriptions_are_read_by_each_fields_full_name()
+    {
+        const string Template = "<template><subform name=\"form\"><subform name=\"page\"/><subform name=\"page\">"
+            + "<field name=\"first\"><assist><toolTip>Your  name</toolTip></assist></field>"
+            + "<exclGroup name=\"pay\"><assist><speak>How you pay</speak></assist></exclGroup></subform></subform></template>";
+        IReadOnlyDictionary<string, string> descriptions = PdfiumDocument.XfaDescriptions(System.Text.Encoding.UTF8.GetBytes(Template));
+        Assert.Equal("Your name", descriptions["form[0].page[1].first[0]"]);
+        Assert.Equal("How you pay", descriptions["form[0].page[1].pay[0]"]);
+    }
+
+    [Fact]
+    public void An_XFA_template_nested_thousands_deep_is_set_aside_without_running_out_of_stack_or_time()
+    {
+        // Made to crash a walk that follows every level, or to take minutes to load: 200,000 subforms, each inside
+        // the last. A crashed or hung test run is this test failing.
+        const int Depth = 200_000;
+        var xml = new System.Text.StringBuilder("<template><subform name=\"form\"><field name=\"first\"><assist><toolTip>Your name</toolTip></assist></field>");
+        for (int level = 0; level < Depth; level++)
+        {
+            xml.Append("<subform name=\"s\">");
+        }
+
+        for (int level = 0; level < Depth; level++)
+        {
+            xml.Append("</subform>");
+        }
+
+        xml.Append("</subform></template>");
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Empty(PdfiumDocument.XfaDescriptions(System.Text.Encoding.UTF8.GetBytes(xml.ToString())));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"took {watch.Elapsed}");
+    }
+
+    [Fact]
+    public void Codes_that_are_not_characters_are_left_out_of_a_label()
+    {
+        // Half a pair on its own, and a number past the end of Unicode: what a damaged font map can give.
+        PdfCharacter[] line =
+        [
+            .. "Name".Select((letter, index) => new PdfCharacter(letter, 10 + (index * 6), 100, 16 + (index * 6), 110)),
+            new PdfCharacter(0xD83D, 34, 100, 40, 110),
+            new PdfCharacter(0x110000, 40, 100, 46, 110),
+        ];
+        var field = new FormField("f1", FormFieldKind.Text, (50, 98, 150, 112), string.Empty, false, string.Empty, [], false, false);
+        Assert.Equal("Name", Assert.Single(Import.FieldLabels.FromPage([field], line)).Label);
+    }
+
+    [Fact]
     public void Text_fields_can_be_emptied_and_a_page_with_no_form_has_no_fields()
     {
         byte[] saved;

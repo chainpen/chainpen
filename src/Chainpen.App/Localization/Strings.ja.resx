@@ -433,6 +433,7 @@
   <data name="Editor_PagesDeleted" xml:space="preserve"><value>{0}ページを削除しました</value></data>
   <data name="Editor_RecoveryCopyKept" xml:space="preserve"><value>復元用コピーを保管：{0}</value></data>
   <data name="Editor_UnsavedChangesRecovered" xml:space="preserve"><value>{0}の未保存の変更を復元しました。ファイルに残すには保存してください。</value></data>
+  <data name="Editor_OlderChangesRecovered" xml:space="preserve"><value>{0}の未保存の変更を復元しました。{1}はその後に保存されています。両方を残すには、別の名前で保存してください。</value></data>
   <data name="Editor_ExportedNotice" xml:space="preserve"><value>「{2}」フォルダ内の{0}（{1}）。送るのはこのファイルです。</value></data>
   <data name="Editor_SizeKilobytes" xml:space="preserve"><value>{0} KB</value></data>
   <data name="Editor_SizeMegabytes" xml:space="preserve"><value>{0} MB</value></data>

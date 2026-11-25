@@ -12,6 +12,12 @@ public sealed partial class PdfiumDocument
     private const int MaxXfaTemplateBytes = 16 * 1024 * 1024;
 
     /// <summary>
+    /// The deepest nesting read. Real templates nest a dozen or so elements; one nested thousands deep is made to
+    /// run the walk below out of stack (which closes the app) or to take minutes to load.
+    /// </summary>
+    private const int MaxXfaDepth = 256;
+
+    /// <summary>
     /// Field descriptions from the document's XFA template, by the field's full name as its fields have it
     /// ("topmostSubform[0].Page1[0].f1_01[0]"). Forms made with XFA tools (the IRS's, many governments') keep their
     /// tooltips there rather than on the fields. Empty when there's no template or it can't be read. The XML is
@@ -20,14 +26,28 @@ public sealed partial class PdfiumDocument
     public IReadOnlyDictionary<string, string> GetXfaDescriptions()
     {
         byte[]? template = ReadXfaTemplate();
-        if (template is null)
-        {
-            return new Dictionary<string, string>();
-        }
+        return template is null ? new Dictionary<string, string>() : XfaDescriptions(template);
+    }
 
+    /// <summary>The descriptions in an XFA template's XML; empty when it isn't XML or is nested too deep to be real.</summary>
+    internal static IReadOnlyDictionary<string, string> XfaDescriptions(byte[] template)
+    {
         try
         {
             var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = MaxXfaTemplateBytes };
+
+            // Checked in a pass of its own, which takes no stack and no time to speak of, before anything is built.
+            using (var depths = XmlReader.Create(new MemoryStream(template), settings))
+            {
+                while (depths.Read())
+                {
+                    if (depths.Depth > MaxXfaDepth)
+                    {
+                        return new Dictionary<string, string>();
+                    }
+                }
+            }
+
             using var reader = XmlReader.Create(new MemoryStream(template), settings);
             XElement root = XElement.Load(reader);
             var descriptions = new Dictionary<string, string>(StringComparer.Ordinal);
