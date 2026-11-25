@@ -242,7 +242,7 @@
   <data name="Start_AFileThatLooksTheSame" xml:space="preserve"><value>A file that looks the same for whoever you send it to.</value></data>
   <data name="Start_DocumentsYouOpenWillBeListed" xml:space="preserve"><value>Documents you open will be listed here next time.</value></data>
   <data name="Start_NothingLeavesThisComputerChainpenDoesnt" xml:space="preserve"><value>Nothing leaves this computer: Chainpen doesn’t need an account or an internet connection.</value></data>
-  <data name="Start_FreeForPersonalUseAndFree" xml:space="preserve"><value>Free for personal use, and free for businesses during the beta. About Chainpen has the details.</value></data>
+  <data name="Start_FreeToUseAtHomeAndAtWork" xml:space="preserve"><value>Free to use, at home and at work. About Chainpen has the details.</value></data>
   <data name="Start_OpenAPDFOrImageMod" xml:space="preserve"><value>Open a PDF or image (Mod+O)</value></data>
   <data name="Editor_PageOfPages" xml:space="preserve"><value>Page {0} of {1}</value></data>
   <data name="Editor_PagesCantBeShown_One" xml:space="preserve"><value>{0} page can’t be shown</value></data>
@@ -649,7 +649,7 @@
 
 Fill in and sign PDFs and scanned forms. Your documents stay on this computer.
 
-Free for personal use, and for businesses during the beta. After the beta, businesses need a licence.
+Free for everyone, at home and at work. Chainpen may not be resold.
 
 The full terms, and the licences for the fonts and libraries Chainpen uses, are in the Licenses folder that comes with the app.</value></data>
   <data name="Main_PracticeFormPdf" xml:space="preserve"><value>Practice form.pdf</value></data>

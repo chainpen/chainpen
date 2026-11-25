@@ -242,7 +242,7 @@
   <data name="Start_AFileThatLooksTheSame" xml:space="preserve"><value>送った相手の誰にでも同じように見えるファイルです。</value></data>
   <data name="Start_DocumentsYouOpenWillBeListed" xml:space="preserve"><value>開いた書類は、次回からここに表示されます。</value></data>
   <data name="Start_NothingLeavesThisComputerChainpenDoesnt" xml:space="preserve"><value>このコンピュータから外には何も送られません。Chainpenにアカウントやインターネット接続は必要ありません。</value></data>
-  <data name="Start_FreeForPersonalUseAndFree" xml:space="preserve"><value>個人利用は無料で、ベータ期間中は企業での利用も無料です。詳しくは「Chainpenについて」をご覧ください。</value></data>
+  <data name="Start_FreeToUseAtHomeAndAtWork" xml:space="preserve"><value>個人でも仕事でも無料で使えます。詳しくは「Chainpenについて」をご覧ください。</value></data>
   <data name="Start_OpenAPDFOrImageMod" xml:space="preserve"><value>PDFまたは画像を開く (Mod+O)</value></data>
   <data name="Editor_PageOfPages" xml:space="preserve"><value>{0} / {1}ページ</value></data>
   <data name="Editor_PagesCantBeShown_One" xml:space="preserve"><value>{0}ページを表示できません</value></data>
@@ -649,7 +649,7 @@
 
 PDFやスキャンした用紙に記入して署名できます。書類はこのコンピュータから出ません。
 
-個人利用は無料で、ベータ期間中は企業での利用も無料です。ベータ期間終了後、企業での利用にはライセンスが必要です。
+個人でも仕事でも、どなたでも無料で使えます。Chainpenを再販売することはできません。
 
 利用条件の全文と、Chainpenが使用しているフォントおよびライブラリのライセンスは、アプリに付属のLicensesフォルダにあります。</value></data>
   <data name="Main_PracticeFormPdf" xml:space="preserve"><value>練習用フォーム.pdf</value></data>

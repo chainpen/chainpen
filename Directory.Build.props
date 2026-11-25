@@ -8,7 +8,6 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Authors>The Chainpen Authors</Authors>
     <Copyright>Copyright 2026 The Chainpen Authors</Copyright>
-    <PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
     <!-- xUnit v3 runs on Microsoft.Testing.Platform (see global.json), which reports a crashed test host as a failure. -->
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>

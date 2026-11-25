@@ -56,11 +56,11 @@ the Model Context Protocol. Neither signs: that's done in the app. See [docs/CLI
 
 ## Licence
 
-[Business Source License 1.1](LICENSE). In plain words:
+[Apache License 2.0 with the Commons Clause](LICENSE). In plain words:
 
-- **Free for personal use**, always.
-- **Free for everyone during the beta**, businesses included: every version below 1.0.0, until 90 days after 1.0.0 is released.
-- **After the beta, businesses and other organisations need a paid licence** to use Chainpen for their work.
+- **Free for everyone**, at home and at work.
+- **The code is yours to read, build, change and share.**
+- **It can't be sold.** Nobody but its authors may sell Chainpen, or a product or service whose value comes entirely or mostly from what Chainpen does.
 
-The source is public to read, build and change for non-production use. [LICENSE](LICENSE) is what counts; [NOTICE](NOTICE)
+That last condition means this isn't an open-source licence as the Open Source Initiative defines one. [LICENSE](LICENSE) is what counts; [NOTICE](NOTICE)
 summarises it. Libraries and fonts Chainpen ships, and their licences, are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

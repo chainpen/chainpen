@@ -195,9 +195,9 @@
 
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
                        Text="{x:Static l:Strings.Start_NothingLeavesThisComputerChainpenDoesnt}" />
-            <!-- The licence in a sentence (FS-027): free for personal use, and for everyone during the beta. -->
+            <!-- The licence in a sentence (FS-027): free for everyone to use. -->
             <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                       Text="{x:Static l:Strings.Start_FreeForPersonalUseAndFree}" />
+                       Text="{x:Static l:Strings.Start_FreeToUseAtHomeAndAtWork}" />
         </StackPanel>
     </ScrollViewer>
     </DockPanel>

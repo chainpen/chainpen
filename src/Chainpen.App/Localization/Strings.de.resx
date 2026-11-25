@@ -242,7 +242,7 @@
   <data name="Start_AFileThatLooksTheSame" xml:space="preserve"><value>Eine Datei, die für jeden Empfänger gleich aussieht.</value></data>
   <data name="Start_DocumentsYouOpenWillBeListed" xml:space="preserve"><value>Dokumente, die Sie öffnen, erscheinen beim nächsten Mal hier.</value></data>
   <data name="Start_NothingLeavesThisComputerChainpenDoesnt" xml:space="preserve"><value>Nichts verlässt diesen Computer: Chainpen braucht kein Konto und keine Internetverbindung.</value></data>
-  <data name="Start_FreeForPersonalUseAndFree" xml:space="preserve"><value>Kostenlos für den privaten Gebrauch und während der Beta auch für Unternehmen. Details unter „Über Chainpen“.</value></data>
+  <data name="Start_FreeToUseAtHomeAndAtWork" xml:space="preserve"><value>Kostenlos, privat und bei der Arbeit. Details unter „Über Chainpen“.</value></data>
   <data name="Start_OpenAPDFOrImageMod" xml:space="preserve"><value>PDF oder Bild öffnen (Mod+O)</value></data>
   <data name="Editor_PageOfPages" xml:space="preserve"><value>Seite {0} von {1}</value></data>
   <data name="Editor_PagesCantBeShown_One" xml:space="preserve"><value>{0} Seite kann nicht angezeigt werden</value></data>
@@ -649,7 +649,7 @@
 
 PDFs und gescannte Formulare ausfüllen und unterschreiben. Ihre Dokumente bleiben auf diesem Computer.
 
-Kostenlos für den privaten Gebrauch und während der Beta auch für Unternehmen. Nach der Beta brauchen Unternehmen eine Lizenz.
+Kostenlos für alle, privat und bei der Arbeit. Chainpen darf nicht weiterverkauft werden.
 
 Die vollständigen Bedingungen und die Lizenzen der Schriften und Bibliotheken, die Chainpen verwendet, finden Sie im Ordner „Licenses“, der mit der App geliefert wird.</value></data>
   <data name="Main_PracticeFormPdf" xml:space="preserve"><value>Übungsformular.pdf</value></data>

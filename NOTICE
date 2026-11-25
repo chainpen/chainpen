@@ -1,12 +1,13 @@
 Chainpen
 Copyright 2026 The Chainpen Authors
 
-Chainpen is licensed under the Business Source License 1.1 (see LICENSE). In short, and LICENSE decides:
+Chainpen is licensed under the Apache License, Version 2.0, with the Commons Clause License Condition v1.0 (see
+LICENSE). In short, and LICENSE decides:
 
-- Personal use by individuals is free.
-- During the beta (versions below 1.0.0, until 90 days after 1.0.0 is released) everyone, businesses included, may
-  use Chainpen free of charge.
-- After that, use by businesses and other organisations needs a commercial licence from the Licensor.
+- Anyone may use Chainpen free of charge, at home or at work.
+- Anyone may read, change and share the code.
+- Only the Licensor may sell Chainpen, or a product or service whose value comes entirely or mostly from what
+  Chainpen does.
 
 Chainpen includes third-party software under its own licences; see THIRD-PARTY-NOTICES.md and the app's Licenses
 folder.
